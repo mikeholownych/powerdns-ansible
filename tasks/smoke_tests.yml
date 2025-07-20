@@ -2,30 +2,30 @@
 # Smoke Tests for PowerDNS Infrastructure
 
 - name: Display smoke test start
-  debug:
+  ansible.builtin.debug:
     msg: "=== Running PowerDNS Smoke Tests ==="
 
 - name: Test PowerDNS service status
-  systemd:
+  ansible.builtin.systemd:
     name: pdns
   register: pdns_service_status
   failed_when: pdns_service_status.status.ActiveState != 'active'
 
 - name: Test MySQL service status
-  systemd:
+  ansible.builtin.systemd:
     name: "{{ mysql_service_name }}"
   register: mysql_service_status
   failed_when: mysql_service_status.status.ActiveState != 'active'
   when: "'mysql' in dns_features"
 
 - name: Test basic DNS resolution
-  command: dig @{{ ansible_default_ipv4.address }} {{ primary_domains[0] | default('localhost') }} SOA +short
+  ansible.builtin.command: dig @{{ ansible_default_ipv4.address }} {{ primary_domains[0] | default('localhost') }} SOA +short
   register: dns_resolution_test
   failed_when: dns_resolution_test.rc != 0
   changed_when: false
 
 - name: Test PowerDNS API connectivity
-  uri:
+  ansible.builtin.uri:
     url: "http://{{ ansible_default_ipv4.address }}:{{ powerdns_webserver_port | default(8081) }}/api/v1/servers"
     method: GET
     headers:
@@ -35,7 +35,7 @@
   when: "'api' in dns_features"
 
 - name: Test database connectivity
-  mysql_query:
+  community.mysql.mysql_query:
     login_user: "{{ powerdns_db_user }}"
     login_password: "{{ powerdns_db_password }}"
     login_host: "{{ powerdns_db_host }}"
@@ -45,7 +45,7 @@
   when: "'mysql' in dns_features"
 
 - name: Test zone count
-  mysql_query:
+  community.mysql.mysql_query:
     login_user: "{{ powerdns_db_user }}"
     login_password: "{{ powerdns_db_password }}"
     login_host: "{{ powerdns_db_host }}"
@@ -55,39 +55,39 @@
   when: "'mysql' in dns_features"
 
 - name: Test DNSSEC functionality
-  command: pdnsutil show-zone {{ primary_domains[0] | default('example.com') }}
+  ansible.builtin.command: pdnsutil show-zone {{ primary_domains[0] | default('example.com') }}
   register: dnssec_test
   failed_when: false
   changed_when: false
   when: "'dnssec' in dns_features"
 
 - name: Test DNSdist functionality
-  command: dig @{{ ansible_default_ipv4.address }} google.com +short
+  ansible.builtin.command: dig @{{ ansible_default_ipv4.address }} google.com +short
   register: dnsdist_test
   failed_when: dnsdist_test.rc != 0
   changed_when: false
-  when: 
+  when:
     - "'dnsdist' in dns_features"
     - server_role == 'loadbalancer'
 
 - name: Test HAProxy stats page
-  uri:
+  ansible.builtin.uri:
     url: "http://{{ ansible_default_ipv4.address }}:{{ haproxy_stats_port | default(8404) }}/stats"
     method: GET
     status_code: 200
   register: haproxy_stats_test
-  when: 
+  when:
     - "'haproxy_servers' in group_names"
     - server_role == 'loadbalancer'
 
 - name: Test Keepalived VIP
-  command: ip addr show
+  ansible.builtin.command: ip addr show
   register: vip_test
   changed_when: false
   when: keepalived_enabled | default(false)
 
 - name: Test Prometheus metrics endpoint
-  uri:
+  ansible.builtin.uri:
     url: "http://{{ ansible_default_ipv4.address }}:{{ prometheus_port | default(9090) }}/metrics"
     method: GET
     status_code: 200
@@ -95,7 +95,7 @@
   when: "'monitoring' in dns_features"
 
 - name: Test PowerDNS metrics
-  uri:
+  ansible.builtin.uri:
     url: "http://{{ ansible_default_ipv4.address }}:{{ powerdns_exporter_port | default(9120) }}/metrics"
     method: GET
     status_code: 200
@@ -103,7 +103,7 @@
   when: "'monitoring' in dns_features"
 
 - name: Test log file creation
-  stat:
+  ansible.builtin.stat:
     path: "{{ item }}"
   register: log_files_test
   loop:
@@ -114,27 +114,27 @@
   when: "'logging' in dns_features"
 
 - name: Test configuration file syntax
-  command: pdns_server --config-check
+  ansible.builtin.command: pdns_server --config-check
   register: config_syntax_test
   failed_when: config_syntax_test.rc != 0
   changed_when: false
 
 - name: Test backup functionality
-  command: /usr/local/bin/backup-powerdns.sh --test
+  ansible.builtin.command: /usr/local/bin/backup-powerdns.sh --test
   register: backup_test
   failed_when: backup_test.rc != 0
   changed_when: false
   when: "'backup' in dns_features"
 
 - name: Test self-healing functionality
-  command: /opt/self-healing/scripts/service-health-monitor.sh --test
+  ansible.builtin.command: /opt/self-healing/scripts/service-health-monitor.sh --test
   register: self_healing_test
   failed_when: self_healing_test.rc != 0
   changed_when: false
   when: "'self_healing' in dns_features"
 
 - name: Compile smoke test results
-  set_fact:
+  ansible.builtin.set_fact:
     smoke_test_results:
       powerdns_service: "{{ 'PASS' if pdns_service_status.status.ActiveState == 'active' else 'FAIL' }}"
       mysql_service: "{{ 'PASS' if mysql_service_status.status.ActiveState == 'active' else 'FAIL' if 'mysql' in dns_features else 'SKIP' }}"
@@ -146,7 +146,7 @@
       monitoring: "{{ 'PASS' if prometheus_test.status == 200 else 'FAIL' if 'monitoring' in dns_features else 'SKIP' }}"
 
 - name: Display smoke test results
-  debug:
+  ansible.builtin.debug:
     msg:
       - "=== Smoke Test Results ==="
       - "PowerDNS Service: {{ smoke_test_results.powerdns_service }}"
@@ -159,7 +159,7 @@
       - "Monitoring: {{ smoke_test_results.monitoring }}"
 
 - name: Fail if any critical smoke tests failed
-  fail:
+  ansible.builtin.fail:
     msg: "Critical smoke tests failed. Check the results above."
   when: >
     smoke_test_results.powerdns_service == 'FAIL' or
@@ -169,7 +169,7 @@
     (smoke_test_results.api_connectivity == 'FAIL' and 'api' in dns_features)
 
 - name: Record smoke test results
-  copy:
+  ansible.builtin.copy:
     dest: /var/lib/powerdns-state/reports/smoke-test-results.json
     content: |
       {
