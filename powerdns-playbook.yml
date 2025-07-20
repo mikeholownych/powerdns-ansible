@@ -9,7 +9,7 @@
 
   pre_tasks:
     - name: Validate required variables
-      assert:
+      ansible.builtin.assert:
         that:
           - powerdns_api_key is defined
           - powerdns_db_password is defined
@@ -17,7 +17,7 @@
         fail_msg: "Required variables are not defined. Check vault/secrets.yml"
 
     - name: Set server role based on inventory group
-      set_fact:
+      ansible.builtin.set_fact:
         server_role: >-
           {{
             'primary'
@@ -27,7 +27,7 @@
       when: server_role is not defined
 
     - name: Display configuration summary
-      debug:
+      ansible.builtin.debug:
         msg:
           - "Server: {{ inventory_hostname }}"
           - "Role: {{ server_role }}"
@@ -70,7 +70,7 @@
 
   post_tasks:
     - name: Run comprehensive health check
-      include_tasks: tasks/health_check.yml
+      ansible.builtin.include_tasks: tasks/health_check.yml
       tags: ['health', 'validation']
 
     - name: Display setup completion summary
@@ -85,21 +85,21 @@
 
   handlers:
     - name: restart powerdns
-      systemd:
+      ansible.builtin.systemd:
         name: pdns
         state: restarted
         enabled: true
       listen: "restart powerdns"
 
     - name: restart mysql
-      systemd:
+      ansible.builtin.systemd:
         name: "{{ mysql_service_name }}"
         state: restarted
         enabled: true
       listen: "restart mysql"
 
     - name: reload firewall
-      systemd:
+      ansible.builtin.systemd:
         name: ufw
         state: reloaded
       listen: "reload firewall"
