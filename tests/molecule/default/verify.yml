@@ -1,0 +1,429 @@
+---
+# Molecule Verification Tests
+# Comprehensive validation of PowerDNS infrastructure
+
+- name: Verify PowerDNS Infrastructure
+  hosts: all
+  gather_facts: yes
+  vars:
+    test_domain: "molecule-test.local"
+    test_records:
+      - { name: "www", type: "A", content: "192.168.1.100" }
+      - { name: "mail", type: "A", content: "192.168.1.101" }
+      - { name: "ftp", type: "CNAME", content: "www.molecule-test.local." }
+
+  tasks:
+    - name: Display verification start
+      debug:
+        msg: "=== Starting PowerDNS Infrastructure Verification ==="
+
+    #################################
+    # Service Status Verification
+    #################################
+
+    - name: Verify PowerDNS service is running
+      systemd:
+        name: pdns
+      register: pdns_service
+      failed_when: pdns_service.status.ActiveState != 'active'
+
+    - name: Verify MySQL service is running
+      systemd:
+        name: "{{ mysql_service_name | default('mysql') }}"
+      register: mysql_service
+      failed_when: mysql_service.status.ActiveState != 'active'
+      when: "'mysql' in (dns_features | default(['mysql']))"
+
+    - name: Verify Prometheus service is running
+      systemd:
+        name: prometheus
+      register: prometheus_service
+      failed_when: prometheus_service.status.ActiveState != 'active'
+      when: "'monitoring' in (dns_features | default([]))"
+
+    #################################
+    # Network Connectivity Tests
+    #################################
+
+    - name: Test DNS port accessibility
+      wait_for:
+        port: 53
+        host: "{{ ansible_default_ipv4.address }}"
+        timeout: 10
+      register: dns_port_test
+
+    - name: Test PowerDNS API accessibility
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ powerdns_webserver_port | default(8081) }}/api/v1/servers"
+        method: GET
+        headers:
+          X-API-Key: "{{ powerdns_api_key | default('test-api-key') }}"
+        status_code: 200
+        timeout: 10
+      register: api_test
+      when: "'api' in (dns_features | default(['api']))"
+
+    - name: Test MySQL connectivity
+      mysql_query:
+        login_user: "{{ powerdns_db_user | default('pdns') }}"
+        login_password: "{{ powerdns_db_password | default('pdns123') }}"
+        login_host: "{{ powerdns_db_host | default('localhost') }}"
+        login_db: "{{ powerdns_db_name | default('powerdns') }}"
+        query: "SELECT 1 as test"
+      register: mysql_connectivity_test
+      when: "'mysql' in (dns_features | default(['mysql']))"
+
+    #################################
+    # DNS Resolution Tests
+    #################################
+
+    - name: Test basic DNS resolution
+      command: dig @{{ ansible_default_ipv4.address }} localhost A +short
+      register: basic_dns_test
+      failed_when: basic_dns_test.rc != 0
+      changed_when: false
+
+    - name: Test SOA record resolution
+      command: dig @{{ ansible_default_ipv4.address }} {{ primary_domains[0] | default('example.com') }} SOA +short
+      register: soa_test
+      failed_when: soa_test.rc != 0
+      changed_when: false
+
+    - name: Test NS record resolution
+      command: dig @{{ ansible_default_ipv4.address }} {{ primary_domains[0] | default('example.com') }} NS +short
+      register: ns_test
+      failed_when: ns_test.rc != 0
+      changed_when: false
+
+    #################################
+    # API Functionality Tests
+    #################################
+
+    - name: Create test zone via API
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ powerdns_webserver_port | default(8081) }}/api/v1/servers/localhost/zones"
+        method: POST
+        headers:
+          X-API-Key: "{{ powerdns_api_key | default('test-api-key') }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          name: "{{ test_domain }}."
+          kind: "Native"
+          nameservers:
+            - "ns1.{{ test_domain }}."
+        status_code: 201
+      register: test_zone_creation
+      when: "'api' in (dns_features | default(['api']))"
+
+    - name: Add test records via API
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ powerdns_webserver_port | default(8081) }}/api/v1/servers/localhost/zones/{{ test_domain }}./rrsets"
+        method: PATCH
+        headers:
+          X-API-Key: "{{ powerdns_api_key | default('test-api-key') }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          rrsets:
+            - name: "{{ item.name }}.{{ test_domain }}."
+              type: "{{ item.type }}"
+              records:
+                - content: "{{ item.content }}"
+                  disabled: false
+        status_code: 204
+      loop: "{{ test_records }}"
+      register: test_record_creation
+      when: "'api' in (dns_features | default(['api']))"
+
+    - name: Verify test record resolution
+      command: dig @{{ ansible_default_ipv4.address }} {{ item.name }}.{{ test_domain }} {{ item.type }} +short
+      register: test_record_resolution
+      failed_when: 
+        - test_record_resolution.rc != 0
+        - item.type != 'CNAME'  # CNAME resolution might return different format
+      changed_when: false
+      loop: "{{ test_records }}"
+      when: "'api' in (dns_features | default(['api']))"
+
+    #################################
+    # DNSSEC Validation Tests
+    #################################
+
+    - name: Test DNSSEC functionality
+      block:
+        - name: Check if zone is DNSSEC signed
+          command: dig @{{ ansible_default_ipv4.address }} {{ primary_domains[0] | default('example.com') }} DNSKEY +dnssec
+          register: dnssec_test
+          failed_when: dnssec_test.rc != 0
+          changed_when: false
+
+        - name: Verify DNSSEC signatures
+          command: dig @{{ ansible_default_ipv4.address }} {{ primary_domains[0] | default('example.com') }} SOA +dnssec
+          register: dnssec_signature_test
+          failed_when: 
+            - dnssec_signature_test.rc != 0
+            - "'RRSIG' not in dnssec_signature_test.stdout"
+          changed_when: false
+
+      when: "'dnssec' in (dns_features | default([]))"
+
+    #################################
+    # Zone Transfer Tests
+    #################################
+
+    - name: Test AXFR zone transfer
+      command: dig AXFR {{ primary_domains[0] | default('example.com') }} @{{ ansible_default_ipv4.address }}
+      register: axfr_test
+      failed_when: axfr_test.rc != 0
+      changed_when: false
+      when: server_role | default('primary') == 'primary'
+
+    - name: Test IXFR zone transfer
+      command: dig IXFR={{ ansible_date_time.epoch }} {{ primary_domains[0] | default('example.com') }} @{{ ansible_default_ipv4.address }}
+      register: ixfr_test
+      failed_when: false  # IXFR might not be supported in all configurations
+      changed_when: false
+      when: server_role | default('primary') == 'primary'
+
+    #################################
+    # Database Schema Validation
+    #################################
+
+    - name: Verify PowerDNS database schema
+      mysql_query:
+        login_user: "{{ powerdns_db_user | default('pdns') }}"
+        login_password: "{{ powerdns_db_password | default('pdns123') }}"
+        login_host: "{{ powerdns_db_host | default('localhost') }}"
+        login_db: "{{ powerdns_db_name | default('powerdns') }}"
+        query: "SHOW TABLES"
+      register: db_schema_test
+      when: "'mysql' in (dns_features | default(['mysql']))"
+
+    - name: Verify required database tables exist
+      mysql_query:
+        login_user: "{{ powerdns_db_user | default('pdns') }}"
+        login_password: "{{ powerdns_db_password | default('pdns123') }}"
+        login_host: "{{ powerdns_db_host | default('localhost') }}"
+        login_db: "{{ powerdns_db_name | default('powerdns') }}"
+        query: "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = '{{ powerdns_db_name | default('powerdns') }}' AND table_name IN ('domains', 'records', 'supermasters')"
+      register: required_tables_test
+      failed_when: required_tables_test.query_result[0]['count'] < 3
+      when: "'mysql' in (dns_features | default(['mysql']))"
+
+    #################################
+    # Configuration Validation
+    #################################
+
+    - name: Verify PowerDNS configuration syntax
+      command: pdns_server --config-check
+      register: config_syntax_test
+      failed_when: config_syntax_test.rc != 0
+      changed_when: false
+
+    - name: Verify configuration file permissions
+      stat:
+        path: /etc/powerdns/pdns.conf
+      register: config_permissions
+      failed_when: 
+        - config_permissions.stat.mode != '0640'
+        - config_permissions.stat.gr_name != 'pdns'
+
+    - name: Verify log directory permissions
+      stat:
+        path: /var/log/powerdns
+      register: log_permissions
+      failed_when:
+        - config_permissions.stat.mode not in ['0750', '0755']
+        - config_permissions.stat.pw_name != 'pdns'
+
+    #################################
+    # Performance Tests
+    #################################
+
+    - name: Test DNS query performance
+      shell: |
+        time_start=$(date +%s%N)
+        dig @{{ ansible_default_ipv4.address }} {{ primary_domains[0] | default('example.com') }} A +short >/dev/null
+        time_end=$(date +%s%N)
+        echo $(( (time_end - time_start) / 1000000 ))
+      register: dns_performance_test
+      changed_when: false
+
+    - name: Verify DNS response time is acceptable
+      assert:
+        that:
+          - dns_performance_test.stdout | int < 1000  # Less than 1 second
+        fail_msg: "DNS response time too slow: {{ dns_performance_test.stdout }}ms"
+        success_msg: "DNS response time acceptable: {{ dns_performance_test.stdout }}ms"
+
+    #################################
+    # Security Tests
+    #################################
+
+    - name: Test Fail2Ban is running
+      systemd:
+        name: fail2ban
+      register: fail2ban_service
+      failed_when: fail2ban_service.status.ActiveState != 'active'
+      when: fail2ban_enabled | default(true)
+
+    - name: Verify firewall is active
+      command: ufw status
+      register: firewall_status
+      failed_when: "'Status: active' not in firewall_status.stdout"
+      when: 
+        - ansible_os_family == "Debian"
+        - firewall_enabled | default(true)
+
+    - name: Test unauthorized API access is blocked
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ powerdns_webserver_port | default(8081) }}/api/v1/servers"
+        method: GET
+        headers:
+          X-API-Key: "invalid-key"
+        status_code: 401
+      register: api_security_test
+      when: "'api' in (dns_features | default(['api']))"
+
+    #################################
+    # Monitoring Tests
+    #################################
+
+    - name: Test Prometheus metrics endpoint
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ prometheus_port | default(9090) }}/metrics"
+        method: GET
+        status_code: 200
+      register: prometheus_metrics_test
+      when: "'monitoring' in (dns_features | default([]))"
+
+    - name: Test PowerDNS exporter metrics
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ powerdns_exporter_port | default(9120) }}/metrics"
+        method: GET
+        status_code: 200
+      register: powerdns_exporter_test
+      when: "'monitoring' in (dns_features | default([]))"
+
+    #################################
+    # Self-Healing Tests
+    #################################
+
+    - name: Test self-healing health check script
+      command: /usr/local/bin/self-healing-health-check.sh
+      register: self_healing_test
+      failed_when: self_healing_test.rc != 0
+      changed_when: false
+      when: self_healing_enabled | default(false)
+
+    - name: Simulate service failure and recovery
+      block:
+        - name: Stop PowerDNS service
+          systemd:
+            name: pdns
+            state: stopped
+
+        - name: Wait for self-healing to detect and fix
+          pause:
+            seconds: 30
+
+        - name: Verify service was automatically restarted
+          systemd:
+            name: pdns
+          register: recovery_test
+          failed_when: recovery_test.status.ActiveState != 'active'
+
+      when: 
+        - self_healing_enabled | default(false)
+        - simulate_failures | default(false)
+
+    #################################
+    # Cleanup Test Resources
+    #################################
+
+    - name: Clean up test zone
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ powerdns_webserver_port | default(8081) }}/api/v1/servers/localhost/zones/{{ test_domain }}."
+        method: DELETE
+        headers:
+          X-API-Key: "{{ powerdns_api_key | default('test-api-key') }}"
+        status_code: 204
+      register: test_zone_cleanup
+      when: "'api' in (dns_features | default(['api']))"
+
+    #################################
+    # Test Results Summary
+    #################################
+
+    - name: Compile test results
+      set_fact:
+        verification_results:
+          services:
+            powerdns: "{{ 'PASS' if pdns_service.status.ActiveState == 'active' else 'FAIL' }}"
+            mysql: "{{ 'PASS' if mysql_service.status.ActiveState == 'active' else 'SKIP' if 'mysql' not in (dns_features | default(['mysql'])) else 'FAIL' }}"
+            prometheus: "{{ 'PASS' if prometheus_service.status.ActiveState == 'active' else 'SKIP' if 'monitoring' not in (dns_features | default([])) else 'FAIL' }}"
+          dns_functionality:
+            basic_resolution: "{{ 'PASS' if basic_dns_test.rc == 0 else 'FAIL' }}"
+            soa_resolution: "{{ 'PASS' if soa_test.rc == 0 else 'FAIL' }}"
+            ns_resolution: "{{ 'PASS' if ns_test.rc == 0 else 'FAIL' }}"
+            performance: "{{ 'PASS' if dns_performance_test.stdout | int < 1000 else 'FAIL' }}"
+          api_functionality:
+            zone_creation: "{{ 'PASS' if test_zone_creation.status == 201 else 'SKIP' if 'api' not in (dns_features | default(['api'])) else 'FAIL' }}"
+            record_creation: "{{ 'PASS' if test_record_creation is succeeded else 'SKIP' if 'api' not in (dns_features | default(['api'])) else 'FAIL' }}"
+            security: "{{ 'PASS' if api_security_test.status == 401 else 'SKIP' if 'api' not in (dns_features | default(['api'])) else 'FAIL' }}"
+          security:
+            fail2ban: "{{ 'PASS' if fail2ban_service.status.ActiveState == 'active' else 'SKIP' if not (fail2ban_enabled | default(true)) else 'FAIL' }}"
+            firewall: "{{ 'PASS' if 'Status: active' in firewall_status.stdout else 'SKIP' if not (firewall_enabled | default(true)) else 'FAIL' }}"
+          monitoring:
+            prometheus: "{{ 'PASS' if prometheus_metrics_test.status == 200 else 'SKIP' if 'monitoring' not in (dns_features | default([])) else 'FAIL' }}"
+            exporter: "{{ 'PASS' if powerdns_exporter_test.status == 200 else 'SKIP' if 'monitoring' not in (dns_features | default([])) else 'FAIL' }}"
+
+    - name: Display verification results
+      debug:
+        msg:
+          - "=== PowerDNS Infrastructure Verification Results ==="
+          - "Services:"
+          - "  PowerDNS: {{ verification_results.services.powerdns }}"
+          - "  MySQL: {{ verification_results.services.mysql }}"
+          - "  Prometheus: {{ verification_results.services.prometheus }}"
+          - "DNS Functionality:"
+          - "  Basic Resolution: {{ verification_results.dns_functionality.basic_resolution }}"
+          - "  SOA Resolution: {{ verification_results.dns_functionality.soa_resolution }}"
+          - "  NS Resolution: {{ verification_results.dns_functionality.ns_resolution }}"
+          - "  Performance: {{ verification_results.dns_functionality.performance }} ({{ dns_performance_test.stdout }}ms)"
+          - "API Functionality:"
+          - "  Zone Creation: {{ verification_results.api_functionality.zone_creation }}"
+          - "  Record Creation: {{ verification_results.api_functionality.record_creation }}"
+          - "  Security: {{ verification_results.api_functionality.security }}"
+          - "Security:"
+          - "  Fail2Ban: {{ verification_results.security.fail2ban }}"
+          - "  Firewall: {{ verification_results.security.firewall }}"
+          - "Monitoring:"
+          - "  Prometheus: {{ verification_results.monitoring.prometheus }}"
+          - "  Exporter: {{ verification_results.monitoring.exporter }}"
+
+    - name: Save verification results
+      copy:
+        dest: /tmp/molecule-verification-results.json
+        content: |
+          {
+            "timestamp": "{{ ansible_date_time.iso8601 }}",
+            "hostname": "{{ inventory_hostname }}",
+            "dns_features": {{ dns_features | default(['mysql', 'api']) | to_json }},
+            "verification_results": {{ verification_results | to_json }},
+            "overall_status": "{{ 'PASS' if verification_results.services.powerdns == 'PASS' and verification_results.dns_functionality.basic_resolution == 'PASS' else 'FAIL' }}"
+          }
+        mode: '0644'
+
+    - name: Fail if critical tests failed
+      fail:
+        msg: "Critical verification tests failed. Check results above."
+      when: >
+        verification_results.services.powerdns == 'FAIL' or
+        verification_results.dns_functionality.basic_resolution == 'FAIL' or
+        verification_results.dns_functionality.soa_resolution == 'FAIL'
+
+    - name: Display verification completion
+      debug:
+        msg: "=== PowerDNS Infrastructure Verification Complete ✓ ==="

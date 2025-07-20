@@ -1,0 +1,46 @@
+# Development dependencies for PowerDNS Operations Collection
+
+# Core Ansible
+ansible>=4.0.0,<7.0.0
+ansible-core>=2.11.0,<2.15.0
+
+# Testing frameworks
+molecule[docker]>=4.0.0
+pytest>=6.0.0
+pytest-ansible>=3.0.0
+testinfra>=6.0.0
+
+# Linting and formatting
+ansible-lint>=6.0.0
+yamllint>=1.26.0
+flake8>=4.0.0
+black>=22.0.0
+
+# Documentation
+sphinx>=4.0.0
+sphinx-rtd-theme>=1.0.0
+myst-parser>=0.17.0
+
+# Pre-commit hooks
+pre-commit>=2.15.0
+
+# Docker for testing
+docker>=5.0.0
+
+# Additional Ansible collections for testing
+community.general>=4.0.0
+community.mysql>=3.0.0
+ansible.posix>=1.3.0
+community.crypto>=2.0.0
+
+# Python dependencies for roles
+PyMySQL>=1.0.0
+dnspython>=2.0.0
+cryptography>=3.0.0
+jinja2>=3.0.0
+pyyaml>=5.4.0
+
+# Development utilities
+ipython>=7.0.0
+jupyter>=1.0.0
+requests>=2.25.0

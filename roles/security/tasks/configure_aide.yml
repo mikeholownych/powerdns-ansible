@@ -1,0 +1,106 @@
+---
+# Configure AIDE (Advanced Intrusion Detection Environment)
+
+- name: Install AIDE
+  package:
+    name: aide
+    state: present
+
+- name: Check if AIDE database exists
+  stat:
+    path: /var/lib/aide/aide.db
+  register: aide_db_exists
+
+- name: Create AIDE configuration
+  template:
+    src: aide.conf.j2
+    dest: /etc/aide/aide.conf
+    owner: root
+    group: root
+    mode: '0600'
+    backup: yes
+  notify: rebuild aide database
+
+- name: Initialize AIDE database (first time)
+  command: aide --init
+  when: not aide_db_exists.stat.exists
+  register: aide_init
+  changed_when: aide_init.rc == 0
+
+- name: Move new AIDE database to active location
+  command: mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
+  when: not aide_db_exists.stat.exists and aide_init.rc == 0
+
+- name: Create AIDE check script
+  template:
+    src: aide-check.sh.j2
+    dest: /usr/local/bin/aide-check.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create AIDE update script
+  template:
+    src: aide-update.sh.j2
+    dest: /usr/local/bin/aide-update.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Schedule daily AIDE checks
+  cron:
+    name: "AIDE integrity check"
+    cron_file: aide-check
+    user: root
+    minute: "0"
+    hour: "3"
+    job: "/usr/local/bin/aide-check.sh"
+    state: present
+
+- name: Schedule weekly AIDE database updates
+  cron:
+    name: "AIDE database update"
+    cron_file: aide-update
+    user: root
+    minute: "0"
+    hour: "4"
+    weekday: "0"
+    job: "/usr/local/bin/aide-update.sh"
+    state: present
+
+- name: Create AIDE log directory
+  file:
+    path: /var/log/aide
+    state: directory
+    owner: root
+    group: root
+    mode: '0750'
+
+- name: Configure AIDE log rotation
+  template:
+    src: aide-logrotate.j2
+    dest: /etc/logrotate.d/aide
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Set proper permissions on AIDE files
+  file:
+    path: "{{ item }}"
+    owner: root
+    group: root
+    mode: '0600'
+  loop:
+    - /var/lib/aide/aide.db
+    - /etc/aide/aide.conf
+  ignore_errors: yes
+
+- name: Display AIDE setup status
+  debug:
+    msg:
+      - "AIDE (file integrity monitoring) configured"
+      - "Database location: /var/lib/aide/aide.db"
+      - "Configuration: /etc/aide/aide.conf"
+      - "Daily checks: 03:00 AM"
+      - "Weekly updates: Sunday 04:00 AM"
+      - "Logs: /var/log/aide/"

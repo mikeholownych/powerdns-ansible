@@ -1,0 +1,35 @@
+---
+# Example: Clean Install Configuration
+# This file demonstrates how to perform a clean install of PowerDNS
+
+# To use this example:
+# 1. Copy this file to your inventory directory
+# 2. Modify the variables as needed
+# 3. Run: ansible-playbook powerdns-playbook.yml --extra-vars "@examples/clean-install-example.yml" --ask-vault-pass
+
+# DANGER: This will remove ALL existing PowerDNS and MySQL data!
+perform_clean_install: true
+
+# Optional: Skip confirmation prompt (USE WITH EXTREME CAUTION!)
+# clean_install_force: true
+
+# Optional: Backup before clean install (recommended)
+# clean_install_backup_before: true
+
+# Example of additional variables you might want to set
+powerdns_cache_ttl: 30
+mysql_root_password: "{{ vault_mysql_root_password }}"
+powerdns_db_password: "{{ vault_powerdns_db_password }}"
+powerdns_api_key: "{{ vault_powerdns_api_key }}"
+
+# Example domains to configure after clean install
+primary_domains:
+  - example.com
+  - internal.local
+
+# Performance settings for fresh install
+performance_config:
+  max_tcp_connections: 25
+  max_queue_length: 6000
+  distributor_threads: 4
+  receiver_threads: 2

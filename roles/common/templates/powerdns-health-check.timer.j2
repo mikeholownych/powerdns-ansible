@@ -1,0 +1,11 @@
+[Unit]
+Description=PowerDNS Health Check Timer
+Requires=powerdns-health-check.service
+
+[Timer]
+OnBootSec={{ monitoring_config.health_check_interval | default(300) }}s
+OnUnitActiveSec={{ monitoring_config.health_check_interval | default(300) }}s
+Unit=powerdns-health-check.service
+
+[Install]
+WantedBy=timers.target

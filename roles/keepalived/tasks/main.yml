@@ -1,0 +1,177 @@
+---
+# Keepalived installation and configuration for high availability
+
+- name: Install keepalived
+  package:
+    name: keepalived
+    state: present
+
+- name: Install additional networking tools
+  package:
+    name: "{{ keepalived_tools[ansible_os_family] | default([]) }}"
+    state: present
+  when: keepalived_tools[ansible_os_family] is defined
+
+- name: Create keepalived configuration backup
+  copy:
+    src: /etc/keepalived/keepalived.conf
+    dest: /etc/keepalived/keepalived.conf.backup.{{ ansible_date_time.epoch }}
+    remote_src: yes
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_stat.stat.exists is defined and ansible_stat.stat.exists
+  ignore_errors: yes
+
+- name: Generate keepalived configuration
+  template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  notify: restart keepalived
+
+- name: Create keepalived scripts directory
+  file:
+    path: /etc/keepalived/scripts
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create keepalived health check scripts
+  template:
+    src: "{{ item }}.j2"
+    dest: "/etc/keepalived/scripts/{{ item }}"
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - check_powerdns.sh
+    - check_mysql.sh
+    - check_haproxy.sh
+    - notify_master.sh
+    - notify_backup.sh
+    - notify_fault.sh
+  notify: restart keepalived
+
+- name: Configure sysctl for keepalived
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop:
+    - { name: "net.ipv4.ip_nonlocal_bind", value: "1" }
+    - { name: "net.ipv4.ip_forward", value: "1" }
+    - { name: "net.ipv4.conf.all.arp_ignore", value: "1" }
+    - { name: "net.ipv4.conf.all.arp_announce", value: "2" }
+
+- name: Enable and start keepalived service
+  systemd:
+    name: keepalived
+    enabled: yes
+    state: started
+    daemon_reload: yes
+
+- name: Check keepalived service status
+  systemd:
+    name: keepalived
+  register: keepalived_service_status
+
+- name: Display keepalived service status
+  debug:
+    msg: "Keepalived service is {{ keepalived_service_status.status.ActiveState }}"
+
+- name: Test keepalived configuration
+  command: keepalived --config-test
+  register: keepalived_config_check
+  failed_when: keepalived_config_check.rc != 0
+  changed_when: false
+  ignore_errors: yes
+
+- name: Create keepalived management scripts
+  template:
+    src: "{{ item }}.j2"
+    dest: "/usr/local/bin/{{ item }}"
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - keepalived-status.sh
+    - keepalived-failover.sh
+    - keepalived-monitor.sh
+
+- name: Configure keepalived log rotation
+  template:
+    src: keepalived-logrotate.j2
+    dest: /etc/logrotate.d/keepalived
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Create keepalived monitoring cron job
+  cron:
+    name: "Keepalived Health Monitor"
+    minute: "*/2"
+    job: "/usr/local/bin/keepalived-monitor.sh"
+    user: root
+  when: keepalived_monitoring_enabled | default(true)
+
+- name: Configure firewall for VRRP
+  ufw:
+    rule: allow
+    proto: "{{ item.proto }}"
+    src: "{{ item.src | default('any') }}"
+    comment: "{{ item.comment }}"
+  loop:
+    - { proto: "vrrp", comment: "VRRP Protocol" }
+    - { proto: "112", comment: "VRRP Protocol (IP Protocol 112)" }
+  when: ansible_os_family == "Debian" and firewall_enabled | default(true)
+  notify: reload firewall
+
+- name: Verify keepalived VRRP state
+  shell: |
+    if [ -f /var/run/keepalived.pid ]; then
+      ip addr show | grep -q "{{ keepalived_vip }}" && echo "MASTER" || echo "BACKUP"
+    else
+      echo "NOT_RUNNING"
+    fi
+  register: vrrp_state
+  changed_when: false
+
+- name: Display VRRP state
+  debug:
+    msg: "VRRP State: {{ vrrp_state.stdout }}"
+
+- name: Create keepalived status check
+  template:
+    src: keepalived-check.service.j2
+    dest: /etc/systemd/system/keepalived-check.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart keepalived-check
+
+- name: Create keepalived status check timer
+  template:
+    src: keepalived-check.timer.j2
+    dest: /etc/systemd/system/keepalived-check.timer
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - reload systemd
+    - start keepalived-check-timer
+
+- name: Enable keepalived status check timer
+  systemd:
+    name: keepalived-check.timer
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  when: keepalived_monitoring_enabled | default(true)

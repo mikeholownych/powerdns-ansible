@@ -1,0 +1,12 @@
+---
+# Clean Install Handlers
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+  listen: "reload systemd"
+
+- name: clean package cache
+  package:
+    update_cache: yes
+  listen: "clean package cache"

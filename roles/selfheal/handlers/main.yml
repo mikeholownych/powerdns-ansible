@@ -1,0 +1,22 @@
+---
+# Self-Healing Role Handlers
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+  listen: "reload systemd"
+
+- name: restart powerdns-self-healing
+  systemd:
+    name: powerdns-self-healing.service
+    state: restarted
+    enabled: yes
+  listen: "restart powerdns-self-healing"
+
+- name: start powerdns-self-healing-timer
+  systemd:
+    name: powerdns-self-healing.timer
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  listen: "start powerdns-self-healing-timer"

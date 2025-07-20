@@ -1,0 +1,279 @@
+---
+# State Management and Change Tracking
+
+- name: Create state management directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - /var/lib/powerdns-state
+    - /var/lib/powerdns-state/configs
+    - /var/lib/powerdns-state/backups
+    - /var/lib/powerdns-state/reports
+    - /var/log/powerdns-state
+
+- name: Install state management dependencies
+  package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - python3
+    - python3-pip
+    - python3-yaml
+    - python3-json
+    - jq
+
+- name: Create configuration hash tracking script
+  template:
+    src: config-hash-tracker.py.j2
+    dest: /usr/local/bin/config-hash-tracker.py
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create state report generator
+  template:
+    src: state-report-generator.py.j2
+    dest: /usr/local/bin/state-report-generator.py
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create drift detection script
+  template:
+    src: drift-detector.py.j2
+    dest: /usr/local/bin/drift-detector.py
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Generate initial configuration hashes
+  shell: |
+    find {{ item }} -type f -exec sha256sum {} \; > /var/lib/powerdns-state/configs/{{ item | basename }}.hashes 2>/dev/null || true
+  loop:
+    - /etc/powerdns
+    - /etc/mysql
+    - /etc/prometheus
+    - /etc/haproxy
+    - /etc/keepalived
+  when: track_config_changes | default(true)
+  changed_when: false
+
+- name: Create current system state snapshot
+  shell: |
+    /usr/local/bin/state-report-generator.py --format {{ state_report_format | default('json') }} \
+      --output /var/lib/powerdns-state/reports/current-state.{{ state_report_format | default('json') }}
+  register: state_snapshot
+  changed_when: state_snapshot.rc == 0
+
+- name: Store deployment metadata
+  copy:
+    dest: /var/lib/powerdns-state/deployment-metadata.json
+    content: |
+      {
+        "deployment_timestamp": "{{ ansible_date_time.iso8601 }}",
+        "operation_mode": "{{ operation_mode }}",
+        "dns_features": {{ dns_features | to_json }},
+        "zones_enabled": {{ zones_enabled | default([]) | to_json }},
+        "server_role": "{{ server_role }}",
+        "ansible_version": "{{ ansible_version.full }}",
+        "playbook_version": "{{ playbook_version | default('unknown') }}",
+        "operator": "{{ ansible_user_id }}",
+        "hostname": "{{ inventory_hostname }}",
+        "ip_address": "{{ ansible_default_ipv4.address }}",
+        "os_info": {
+          "distribution": "{{ ansible_distribution }}",
+          "version": "{{ ansible_distribution_version }}",
+          "kernel": "{{ ansible_kernel }}"
+        },
+        "package_versions": {
+          "powerdns": "{{ powerdns_version | default('latest') }}",
+          "mysql": "{{ mysql_version | default('latest') }}",
+          "prometheus": "{{ prometheus_version | default('latest') }}"
+        }
+      }
+    mode: '0644'
+
+- name: Create change tracking database
+  copy:
+    dest: /var/lib/powerdns-state/change-log.json
+    content: |
+      {
+        "changes": [],
+        "last_update": "{{ ansible_date_time.iso8601 }}",
+        "change_count": 0
+      }
+    mode: '0644'
+    force: no
+
+- name: Record current deployment as change
+  shell: |
+    python3 -c "
+    import json
+    import datetime
+    
+    # Load existing change log
+    try:
+        with open('/var/lib/powerdns-state/change-log.json', 'r') as f:
+            log = json.load(f)
+    except:
+        log = {'changes': [], 'last_update': '', 'change_count': 0}
+    
+    # Add new change
+    change = {
+        'timestamp': '{{ ansible_date_time.iso8601 }}',
+        'operation_mode': '{{ operation_mode }}',
+        'features_changed': {{ dns_features | to_json }},
+        'operator': '{{ ansible_user_id }}',
+        'hostname': '{{ inventory_hostname }}',
+        'change_id': '{{ ansible_date_time.epoch }}'
+    }
+    
+    log['changes'].append(change)
+    log['last_update'] = '{{ ansible_date_time.iso8601 }}'
+    log['change_count'] = len(log['changes'])
+    
+    # Keep only last 100 changes
+    if len(log['changes']) > 100:
+        log['changes'] = log['changes'][-100:]
+    
+    # Save updated log
+    with open('/var/lib/powerdns-state/change-log.json', 'w') as f:
+        json.dump(log, f, indent=2)
+    "
+  changed_when: true
+
+- name: Create service state tracking
+  shell: |
+    systemctl is-active {{ item }} > /var/lib/powerdns-state/service-{{ item }}.state 2>&1 || echo "inactive" > /var/lib/powerdns-state/service-{{ item }}.state
+  loop:
+    - pdns
+    - mysql
+    - prometheus
+    - haproxy
+    - keepalived
+  changed_when: false
+  failed_when: false
+
+- name: Generate comprehensive state report
+  template:
+    src: comprehensive-state-report.j2
+    dest: "/var/lib/powerdns-state/reports/state-report-{{ ansible_date_time.epoch }}.{{ state_report_format | default('json') }}"
+    mode: '0644'
+
+- name: Create state monitoring cron job
+  cron:
+    name: "PowerDNS State Monitoring"
+    cron_file: powerdns-state-monitoring
+    user: root
+    minute: "*/{{ drift_detection_interval | default(60) // 60 }}"
+    job: "/usr/local/bin/drift-detector.py --auto-correct={{ drift_auto_correction | default(false) | lower }}"
+    state: present
+  when: drift_detection_enabled | default(true)
+
+- name: Create state report cleanup job
+  cron:
+    name: "PowerDNS State Report Cleanup"
+    cron_file: powerdns-state-cleanup
+    user: root
+    minute: "0"
+    hour: "2"
+    job: "find /var/lib/powerdns-state/reports -name 'state-report-*.json' -mtime +30 -delete"
+    state: present
+
+- name: Create state backup job
+  cron:
+    name: "PowerDNS State Backup"
+    cron_file: powerdns-state-backup
+    user: root
+    minute: "0"
+    hour: "1"
+    job: "tar -czf /var/lib/powerdns-state/backups/state-backup-$(date +%Y%m%d).tar.gz -C /var/lib/powerdns-state configs reports change-log.json deployment-metadata.json"
+    state: present
+  when: config_backup_on_change | default(true)
+
+- name: Create state validation script
+  template:
+    src: state-validator.py.j2
+    dest: /usr/local/bin/state-validator.py
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Validate current state
+  command: /usr/local/bin/state-validator.py --validate-all
+  register: state_validation
+  failed_when: state_validation.rc != 0
+  changed_when: false
+  when: validate_after_upgrade | default(true)
+
+- name: Create rollback preparation script
+  template:
+    src: rollback-prepare.py.j2
+    dest: /usr/local/bin/rollback-prepare.py
+    owner: root
+    group: root
+    mode: '0755'
+  when: enable_rollback | default(true)
+
+- name: Prepare rollback point
+  command: /usr/local/bin/rollback-prepare.py --create-checkpoint
+  register: rollback_preparation
+  changed_when: rollback_preparation.rc == 0
+  when: 
+    - enable_rollback | default(true)
+    - operation_mode in ['update', 'upgrade']
+
+- name: Create state notification script
+  template:
+    src: state-notifier.py.j2
+    dest: /usr/local/bin/state-notifier.py
+    owner: root
+    group: root
+    mode: '0755'
+  when: notify_on_changes | default(true)
+
+- name: Send state change notification
+  command: /usr/local/bin/state-notifier.py --event "deployment_complete" --operation "{{ operation_mode }}"
+  register: notification_sent
+  changed_when: notification_sent.rc == 0
+  failed_when: false
+  when: notify_on_changes | default(true)
+
+- name: Create state query interface
+  template:
+    src: state-query.py.j2
+    dest: /usr/local/bin/powerdns-state
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Display state management summary
+  debug:
+    msg:
+      - "=== State Management Configured ==="
+      - "State Directory: /var/lib/powerdns-state/"
+      - "Current State: /var/lib/powerdns-state/reports/current-state.{{ state_report_format | default('json') }}"
+      - "Change Log: /var/lib/powerdns-state/change-log.json"
+      - "Query Interface: powerdns-state --help"
+      - "Drift Detection: {{ 'Enabled' if drift_detection_enabled | default(true) else 'Disabled' }}"
+      - "Auto Correction: {{ 'Enabled' if drift_auto_correction | default(false) else 'Disabled' }}"
+      - "Rollback Ready: {{ 'Yes' if enable_rollback | default(true) else 'No' }}"
+
+- name: Create state management logrotate configuration
+  copy:
+    dest: /etc/logrotate.d/powerdns-state
+    content: |
+      /var/log/powerdns-state/*.log {
+          daily
+          missingok
+          rotate 30
+          compress
+          delaycompress
+          notifempty
+          create 0644 root root
+      }
+    mode: '0644'

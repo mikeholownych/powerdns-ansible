@@ -1,0 +1,461 @@
+---
+# MySQL/MariaDB setup for PowerDNS
+
+- name: Ensure MySQL config directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /etc/mysql
+    - /etc/mysql/conf.d
+    - /etc/mysql/mysql.conf.d
+
+- name: Install MySQL/MariaDB packages
+  package:
+    name: "{{ mysql_packages[ansible_os_family] }}"
+    state: present
+
+- name: Ensure Python MySQL packages are installed for Ansible modules
+  package:
+    name: python3-pymysql
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Ensure Python MySQL packages are installed for Ansible modules (RHEL)
+  package:
+    name: python3-PyMySQL
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Verify Python MySQL module availability
+  command: "{{ ansible_python_interpreter }} -c 'import pymysql; print(\"PyMySQL available:\", pymysql.__version__)'"
+  register: pymysql_check
+  ignore_errors: yes
+
+- name: Display Python MySQL module status
+  debug:
+    msg: "{{ pymysql_check.stdout if pymysql_check.rc == 0 else 'PyMySQL not available: ' + pymysql_check.stderr }}"
+
+- name: Start and enable MySQL/MariaDB service
+  systemd:
+    name: "{{ mysql_service_name }}"
+    state: started
+    enabled: yes
+
+- name: Wait for MySQL to be ready
+  wait_for:
+    port: 3306
+    host: localhost
+    timeout: 30
+    delay: 5
+
+- name: Secure MySQL installation
+  mysql_user:
+    name: root
+    password: "{{ mysql_root_password }}"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    state: present
+  when: mysql_root_password is defined
+  ignore_errors: yes
+
+- name: Create MySQL configuration file for root
+  template:
+    src: mysql-root.cnf.j2
+    dest: /root/.my.cnf
+    owner: root
+    group: root
+    mode: '0600'
+  when: mysql_root_password is defined
+
+- name: Remove anonymous MySQL users
+  mysql_user:
+    name: ''
+    host_all: yes
+    state: absent
+    login_user: root
+    login_password: "{{ mysql_root_password | default(omit) }}"
+
+- name: Remove MySQL test database
+  mysql_db:
+    name: test
+    state: absent
+    login_user: root
+    login_password: "{{ mysql_root_password | default(omit) }}"
+
+- name: Create PowerDNS database
+  mysql_db:
+    name: "{{ powerdns_db_name }}"
+    state: present
+    login_user: root
+    login_password: "{{ mysql_root_password | default(omit) }}"
+    encoding: utf8mb4
+    collation: utf8mb4_unicode_ci
+
+- name: Create PowerDNS database user with minimal privileges
+  mysql_user:
+    name: "{{ powerdns_db_user }}"
+    password: "{{ powerdns_db_password }}"
+    priv: "{{ powerdns_db_name }}.*:SELECT,INSERT,UPDATE,DELETE"
+    host: "{{ item }}"
+    state: present
+    login_user: root
+    login_password: "{{ mysql_root_password | default(omit) }}"
+  loop:
+    - localhost
+    - 127.0.0.1
+    - "{{ ansible_default_ipv4.address }}"
+
+- name: Configure MySQL for PowerDNS performance
+  template:
+    src: mysql-powerdns.cnf.j2
+    dest: /etc/mysql/conf.d/powerdns.cnf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart mysql
+  when: ansible_os_family == "Debian"
+
+- name: Configure MariaDB for PowerDNS performance (RHEL)
+  template:
+    src: mysql-powerdns.cnf.j2
+    dest: /etc/my.cnf.d/powerdns.cnf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart mysql
+  when: ansible_os_family == "RedHat"
+
+- name: Create PowerDNS database schema
+  mysql_db:
+    name: "{{ powerdns_db_name }}"
+    state: import
+    target: "{{ item }}"
+    login_user: root
+    login_password: "{{ mysql_root_password | default(omit) }}"
+  with_first_found:
+    - files:
+        - /usr/share/pdns-backend-mysql/schema/schema.mysql.sql
+        - /usr/share/doc/pdns-backend-mysql/schema.mysql.sql
+        - /usr/share/powerdns/schema.mysql.sql
+      skip: true
+  ignore_errors: yes
+
+- name: Create custom PowerDNS schema if standard not found
+  mysql_query:
+    login_user: root
+    login_password: "{{ mysql_root_password | default(omit) }}"
+    login_db: "{{ powerdns_db_name }}"
+    query: |
+      CREATE TABLE IF NOT EXISTS domains (
+        id                    INT AUTO_INCREMENT,
+        name                  VARCHAR(255) NOT NULL,
+        master                VARCHAR(128) DEFAULT NULL,
+        last_check            INT DEFAULT NULL,
+        type                  VARCHAR(6) NOT NULL,
+        notified_serial       INT UNSIGNED DEFAULT NULL,
+        account               VARCHAR(40) CHARACTER SET 'utf8' DEFAULT NULL,
+        PRIMARY KEY (id)
+      ) Engine=InnoDB CHARACTER SET 'latin1';
+
+      CREATE UNIQUE INDEX name_index ON domains(name);
+
+      CREATE TABLE IF NOT EXISTS records (
+        id                    BIGINT AUTO_INCREMENT,
+        domain_id             INT DEFAULT NULL,
+        name                  VARCHAR(255) DEFAULT NULL,
+        type                  VARCHAR(10) DEFAULT NULL,
+        content               VARCHAR(64000) DEFAULT NULL,
+        ttl                   INT DEFAULT NULL,
+        prio                  INT DEFAULT NULL,
+        disabled              TINYINT(1) DEFAULT 0,
+        ordername             VARCHAR(255) BINARY DEFAULT NULL,
+        auth                  TINYINT(1) DEFAULT 1,
+        PRIMARY KEY (id)
+      ) Engine=InnoDB CHARACTER SET 'latin1';
+
+      CREATE INDEX nametype_index ON records(name,type);
+      CREATE INDEX domain_id ON records(domain_id);
+      CREATE INDEX ordername ON records (ordername);
+
+      CREATE TABLE IF NOT EXISTS supermasters (
+        ip                    VARCHAR(64) NOT NULL,
+        nameserver            VARCHAR(255) NOT NULL,
+        account               VARCHAR(40) CHARACTER SET 'utf8' NOT NULL,
+        PRIMARY KEY (ip, nameserver)
+      ) Engine=InnoDB CHARACTER SET 'latin1';
+
+      CREATE TABLE IF NOT EXISTS comments (
+        id                    INT AUTO_INCREMENT,
+        domain_id             INT NOT NULL,
+        name                  VARCHAR(255) NOT NULL,
+        type                  VARCHAR(10) NOT NULL,
+        modified_at           INT NOT NULL,
+        account               VARCHAR(40) CHARACTER SET 'utf8' DEFAULT NULL,
+        comment               TEXT CHARACTER SET 'utf8' NOT NULL,
+        PRIMARY KEY (id)
+      ) Engine=InnoDB CHARACTER SET 'latin1';
+
+      CREATE INDEX comments_name_type_idx ON comments (name, type);
+      CREATE INDEX comments_order_idx ON comments (domain_id, modified_at);
+
+      CREATE TABLE IF NOT EXISTS domainmetadata (
+        id                    INT AUTO_INCREMENT,
+        domain_id             INT NOT NULL,
+        kind                  VARCHAR(32),
+        content               TEXT,
+        PRIMARY KEY (id)
+      ) Engine=InnoDB CHARACTER SET 'latin1';
+
+      CREATE INDEX domainmetadata_idx ON domainmetadata (domain_id, kind);
+
+      CREATE TABLE IF NOT EXISTS cryptokeys (
+        id                    INT AUTO_INCREMENT,
+        domain_id             INT NOT NULL,
+        flags                 INT NOT NULL,
+        active                BOOL,
+        published             BOOL DEFAULT 1,
+        content               TEXT,
+        PRIMARY KEY(id)
+      ) Engine=InnoDB CHARACTER SET 'latin1';
+
+      CREATE INDEX domainidindex ON cryptokeys(domain_id);
+
+      CREATE TABLE IF NOT EXISTS tsigkeys (
+        id                    INT AUTO_INCREMENT,
+        name                  VARCHAR(255),
+        algorithm             VARCHAR(50),
+        secret                VARCHAR(255),
+        PRIMARY KEY (id)
+      ) Engine=InnoDB CHARACTER SET 'latin1';
+
+      CREATE UNIQUE INDEX namealgoindex ON tsigkeys(name, algorithm);
+  when: server_role == 'primary'
+
+- name: Verify database schema
+  mysql_query:
+    login_user: root
+    login_password: "{{ mysql_root_password | default(omit) }}"
+    login_db: "{{ powerdns_db_name }}"
+    query: "SHOW TABLES;"
+  register: db_tables
+
+- name: Display database tables
+  debug:
+    msg: "PowerDNS database contains {{ db_tables.rowcount[0] }} tables"
+  when: db_tables.rowcount is defined
+
+- name: Create database backup user
+  mysql_user:
+    name: backup
+    password: "{{ backup_encryption_key | default('backup123') }}"
+    priv: "{{ powerdns_db_name }}.*:SELECT,LOCK TABLES"
+    host: localhost
+    state: present
+    login_user: root
+    login_password: "{{ mysql_root_password | default(omit) }}"
+  when: backup_config.enabled | default(true)
+
+- name: Configure MySQL slow query log
+  mysql_variables:
+    variable: slow_query_log
+    value: 'ON'
+    login_user: root
+    login_password: "{{ mysql_root_password | default(omit) }}"
+
+- name: Configure MySQL slow query log file
+  mysql_variables:
+    variable: slow_query_log_file
+    value: '/var/log/mysql/mysql-slow.log'
+    login_user: root
+    login_password: "{{ mysql_root_password | default(omit) }}"
+
+- name: Set MySQL slow query time threshold
+  mysql_variables:
+    variable: long_query_time
+    value: '2'
+    login_user: root
+    login_password: "{{ mysql_root_password | default(omit) }}"
+
+#################################
+# MySQL/MariaDB Replication Setup
+#################################
+
+- name: Configure MySQL for replication (Master)
+  template:
+    src: mysql-replication-master.cnf.j2
+    dest: "{{ mysql_replication_config_path[ansible_os_family] }}"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart mysql
+  when: 
+    - mysql_replication_enabled | default(false)
+    - server_role == 'primary'
+
+- name: Configure MySQL for replication (Slave)
+  template:
+    src: mysql-replication-slave.cnf.j2
+    dest: "{{ mysql_replication_config_path[ansible_os_family] }}"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart mysql
+  when: 
+    - mysql_replication_enabled | default(false)
+    - server_role == 'secondary'
+
+- name: Create replication user on master
+  mysql_user:
+    name: "{{ mysql_replication_user }}"
+    password: "{{ mysql_replication_password }}"
+    priv: "*.*:REPLICATION SLAVE"
+    host: "{{ mysql_replication_host_pattern | default('%') }}"
+    state: present
+    login_user: root
+    login_password: "{{ mysql_root_password | default(omit) }}"
+  when: 
+    - mysql_replication_enabled | default(false)
+    - server_role == 'primary'
+
+- name: Get master status
+  mysql_query:
+    login_user: root
+    login_password: "{{ mysql_root_password | default(omit) }}"
+    query: "SHOW MASTER STATUS"
+  register: mysql_master_status
+  when: 
+    - mysql_replication_enabled | default(false)
+    - server_role == 'primary'
+
+- name: Configure slave replication
+  mysql_replication:
+    mode: changemaster
+    master_host: "{{ mysql_master_host }}"
+    master_user: "{{ mysql_replication_user }}"
+    master_password: "{{ mysql_replication_password }}"
+    master_log_file: "{{ hostvars[mysql_master_host]['mysql_master_status']['query_result'][0]['File'] }}"
+    master_log_pos: "{{ hostvars[mysql_master_host]['mysql_master_status']['query_result'][0]['Position'] }}"
+    login_user: root
+    login_password: "{{ mysql_root_password | default(omit) }}"
+  when: 
+    - mysql_replication_enabled | default(false)
+    - server_role == 'secondary'
+    - mysql_master_host is defined
+
+- name: Start slave replication
+  mysql_replication:
+    mode: startslave
+    login_user: root
+    login_password: "{{ mysql_root_password | default(omit) }}"
+  when: 
+    - mysql_replication_enabled | default(false)
+    - server_role == 'secondary'
+
+- name: Check slave status
+  mysql_replication:
+    mode: getslave
+    login_user: root
+    login_password: "{{ mysql_root_password | default(omit) }}"
+  register: mysql_slave_status
+  when: 
+    - mysql_replication_enabled | default(false)
+    - server_role == 'secondary'
+
+- name: Display replication status
+  debug:
+    msg: 
+      - "Slave IO Running: {{ mysql_slave_status.Slave_IO_Running | default('N/A') }}"
+      - "Slave SQL Running: {{ mysql_slave_status.Slave_SQL_Running | default('N/A') }}"
+      - "Seconds Behind Master: {{ mysql_slave_status.Seconds_Behind_Master | default('N/A') }}"
+  when: 
+    - mysql_replication_enabled | default(false)
+    - server_role == 'secondary'
+    - mysql_slave_status is defined
+
+#################################
+# MySQL High Availability Setup
+#################################
+
+- name: Create MySQL failover scripts
+  template:
+    src: "{{ item }}.j2"
+    dest: "/usr/local/bin/{{ item }}"
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - mysql-failover.sh
+    - mysql-promote-slave.sh
+    - mysql-health-check.sh
+  when: mysql_ha_enabled | default(false)
+
+- name: Create MySQL monitoring user for HAProxy
+  mysql_user:
+    name: "{{ mysql_monitor_user | default('mysql_monitor') }}"
+    password: "{{ mysql_monitor_password | default('monitor123') }}"
+    priv: "*.*:USAGE"
+    host: "{{ item }}"
+    state: present
+    login_user: root
+    login_password: "{{ mysql_root_password | default(omit) }}"
+  loop:
+    - localhost
+    - "{{ ansible_default_ipv4.address }}"
+    - "{{ mysql_replication_host_pattern | default('%') }}"
+  when: mysql_ha_enabled | default(false)
+
+- name: Configure MySQL for high availability
+  mysql_variables:
+    variable: "{{ item.name }}"
+    value: "{{ item.value }}"
+    login_user: root
+    login_password: "{{ mysql_root_password | default(omit) }}"
+  loop:
+    - { name: "read_only", value: "{{ 'OFF' if server_role == 'primary' else 'ON' }}" }
+    - { name: "sync_binlog", value: "1" }
+    - { name: "innodb_flush_log_at_trx_commit", value: "1" }
+  when: mysql_ha_enabled | default(false)
+
+#################################
+# MySQL Connectivity Validation
+#################################
+
+- name: Wait for MySQL to be ready with retries
+  wait_for:
+    port: 3306
+    host: "{{ mysql_host | default('127.0.0.1') }}"
+    delay: 5
+    timeout: 60
+  retries: 3
+  delay: 10
+
+- name: Validate MySQL is reachable from PowerDNS node
+  mysql_query:
+    login_user: "{{ powerdns_db_user }}"
+    login_password: "{{ powerdns_db_password }}"
+    login_host: "{{ powerdns_db_host }}"
+    login_db: "{{ powerdns_db_name }}"
+    query: "SELECT 1 as test_connection;"
+  register: mysql_connectivity_test
+  retries: 3
+  delay: 5
+
+- name: Display MySQL connectivity test result
+  debug:
+    msg: "MySQL connectivity test: {{ 'PASSED' if mysql_connectivity_test.query_result[0]['test_connection'] == 1 else 'FAILED' }}"
+
+- name: Ensure PowerDNS DB schema is present
+  mysql_query:
+    login_user: "{{ powerdns_db_user }}"
+    login_password: "{{ powerdns_db_password }}"
+    login_host: "{{ powerdns_db_host }}"
+    login_db: "{{ powerdns_db_name }}"
+    query: "SHOW TABLES LIKE 'records';"
+  register: schema_check
+  when: server_role == 'primary'
+
+- name: Display schema validation result
+  debug:
+    msg: "PowerDNS schema validation: {{ 'PASSED' if schema_check.rowcount[0] > 0 else 'FAILED - records table missing' }}"
+  when: server_role == 'primary' and schema_check is defined

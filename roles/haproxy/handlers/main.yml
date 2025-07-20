@@ -1,0 +1,24 @@
+---
+# HAProxy handlers
+
+- name: restart haproxy
+  systemd:
+    name: haproxy
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+
+- name: reload haproxy
+  systemd:
+    name: haproxy
+    state: reloaded
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+
+- name: validate haproxy config
+  command: haproxy -c -f /etc/haproxy/haproxy.cfg
+  register: haproxy_config_check
+  failed_when: haproxy_config_check.rc != 0
+  changed_when: false

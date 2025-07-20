@@ -1,0 +1,288 @@
+---
+# Zones-as-Code Management for PowerDNS
+
+- name: Create zones-as-code directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - /opt/zones-as-code
+    - /opt/zones-as-code/zones
+    - /opt/zones-as-code/templates
+    - /opt/zones-as-code/scripts
+    - /opt/zones-as-code/backups
+    - /var/log/zones-as-code
+
+- name: Install zones-as-code dependencies
+  package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - python3
+    - python3-pip
+    - python3-yaml
+    - python3-jinja2
+    - python3-requests
+    - git
+
+- name: Install Python dependencies for zones management
+  pip:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - pyyaml
+    - jinja2
+    - requests
+    - jsonschema
+    - gitpython
+
+- name: Create zone management scripts
+  template:
+    src: "{{ item }}.j2"
+    dest: "/opt/zones-as-code/scripts/{{ item }}"
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - zone-manager.py
+    - zone-validator.py
+    - zone-deployer.py
+    - zone-backup.py
+    - zone-diff.py
+
+- name: Create zone template files
+  template:
+    src: "{{ item }}.j2"
+    dest: "/opt/zones-as-code/templates/{{ item }}"
+    owner: root
+    group: root
+    mode: '0644'
+  loop:
+    - zone-template.yaml
+    - record-template.yaml
+    - reverse-zone-template.yaml
+
+- name: Create zone schema validation
+  template:
+    src: zone-schema.json.j2
+    dest: /opt/zones-as-code/zone-schema.json
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Generate zones from inventory
+  template:
+    src: generate-zones-from-inventory.py.j2
+    dest: /opt/zones-as-code/scripts/generate-zones-from-inventory.py
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create zone configuration from inventory
+  script: /opt/zones-as-code/scripts/generate-zones-from-inventory.py
+  register: zone_generation
+  changed_when: zone_generation.rc == 0
+  when: zones_auto_generation | default(false)
+
+- name: Create zone files from templates
+  template:
+    src: zone-config.yaml.j2
+    dest: "/opt/zones-as-code/zones/{{ item }}.yaml"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ primary_domains | default([]) }}"
+  when: zones_template_generation | default(true)
+
+- name: Create reverse zone files
+  template:
+    src: reverse-zone-config.yaml.j2
+    dest: "/opt/zones-as-code/zones/{{ item | replace('/', '_') }}.yaml"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ reverse_zones | default([]) }}"
+  when: reverse_zones_enabled | default(true)
+
+- name: Validate zone configurations
+  command: /opt/zones-as-code/scripts/zone-validator.py {{ item }}
+  loop: "{{ primary_domains | default([]) }}"
+  register: zone_validation
+  failed_when: zone_validation.rc != 0
+  changed_when: false
+  when: zone_validation_enabled | default(true)
+
+- name: Deploy zones to PowerDNS
+  command: /opt/zones-as-code/scripts/zone-deployer.py --zone {{ item }} --deploy
+  loop: "{{ primary_domains | default([]) }}"
+  register: zone_deployment
+  changed_when: "'DEPLOYED' in zone_deployment.stdout"
+  when: 
+    - zones_auto_deploy | default(false)
+    - server_role == 'primary'
+
+- name: Create zone backup before changes
+  command: /opt/zones-as-code/scripts/zone-backup.py --all
+  register: zone_backup
+  changed_when: zone_backup.rc == 0
+  when: zones_backup_before_deploy | default(true)
+
+- name: Set up Git repository for zones
+  git:
+    repo: "{{ zones_git_repo }}"
+    dest: /opt/zones-as-code/git-repo
+    version: "{{ zones_git_branch | default('main') }}"
+    force: yes
+  when: 
+    - zones_git_enabled | default(false)
+    - zones_git_repo is defined
+
+- name: Configure Git hooks for zone validation
+  template:
+    src: "{{ item }}.j2"
+    dest: "/opt/zones-as-code/git-repo/.git/hooks/{{ item }}"
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - pre-commit
+    - post-receive
+  when: zones_git_enabled | default(false)
+
+- name: Create zone monitoring and alerting
+  template:
+    src: zone-monitor.py.j2
+    dest: /opt/zones-as-code/scripts/zone-monitor.py
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Schedule zone monitoring
+  cron:
+    name: "Zone Monitoring"
+    cron_file: zone-monitoring
+    user: root
+    minute: "*/10"
+    job: "/opt/zones-as-code/scripts/zone-monitor.py"
+    state: present
+  when: zone_monitoring_enabled | default(true)
+
+- name: Create zone API integration
+  template:
+    src: zone-api-client.py.j2
+    dest: /opt/zones-as-code/scripts/zone-api-client.py
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create zone synchronization script
+  template:
+    src: zone-sync.py.j2
+    dest: /opt/zones-as-code/scripts/zone-sync.py
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Schedule zone synchronization
+  cron:
+    name: "Zone Synchronization"
+    cron_file: zone-sync
+    user: root
+    minute: "*/30"
+    job: "/opt/zones-as-code/scripts/zone-sync.py"
+    state: present
+  when: zone_sync_enabled | default(false)
+
+- name: Create zone rollback mechanism
+  template:
+    src: zone-rollback.py.j2
+    dest: /opt/zones-as-code/scripts/zone-rollback.py
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create zone management CLI
+  template:
+    src: zone-cli.py.j2
+    dest: /usr/local/bin/zone-cli
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create zone management web interface (optional)
+  template:
+    src: zone-web-interface.py.j2
+    dest: /opt/zones-as-code/scripts/zone-web-interface.py
+    owner: root
+    group: root
+    mode: '0755'
+  when: zone_web_interface_enabled | default(false)
+
+- name: Configure zone change notifications
+  template:
+    src: zone-notifications.py.j2
+    dest: /opt/zones-as-code/scripts/zone-notifications.py
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create zone documentation generator
+  template:
+    src: zone-docs-generator.py.j2
+    dest: /opt/zones-as-code/scripts/zone-docs-generator.py
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Generate zone documentation
+  command: /opt/zones-as-code/scripts/zone-docs-generator.py
+  register: zone_docs
+  changed_when: zone_docs.rc == 0
+  when: zone_documentation_enabled | default(true)
+
+- name: Create zone testing framework
+  template:
+    src: zone-tests.py.j2
+    dest: /opt/zones-as-code/scripts/zone-tests.py
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Run zone tests
+  command: /opt/zones-as-code/scripts/zone-tests.py --all
+  register: zone_tests
+  failed_when: zone_tests.rc != 0
+  changed_when: false
+  when: zone_testing_enabled | default(true)
+
+- name: Create zone performance monitoring
+  template:
+    src: zone-performance.py.j2
+    dest: /opt/zones-as-code/scripts/zone-performance.py
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Schedule zone performance monitoring
+  cron:
+    name: "Zone Performance Monitoring"
+    cron_file: zone-performance
+    user: root
+    minute: "*/5"
+    job: "/opt/zones-as-code/scripts/zone-performance.py"
+    state: present
+  when: zone_performance_monitoring | default(false)
+
+- name: Display zones-as-code setup summary
+  debug:
+    msg:
+      - "=== Zones-as-Code Setup Complete ==="
+      - "Zone Management CLI: zone-cli --help"
+      - "Zone Directory: /opt/zones-as-code/zones/"
+      - "Scripts Directory: /opt/zones-as-code/scripts/"
+      - "Logs: /var/log/zones-as-code/"
+      - "Git Integration: {{ 'Enabled' if zones_git_enabled | default(false) else 'Disabled' }}"
+      - "Auto Deployment: {{ 'Enabled' if zones_auto_deploy | default(false) else 'Disabled' }}"

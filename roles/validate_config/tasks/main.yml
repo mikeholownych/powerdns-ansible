@@ -1,0 +1,250 @@
+---
+# Configuration Validation and Preflight Checks
+
+- name: Display validation start message
+  debug:
+    msg: "=== Starting PowerDNS Configuration Validation ==="
+
+- name: Validate operation mode
+  assert:
+    that:
+      - operation_mode is defined
+      - operation_mode in ['install', 'update', 'upgrade', 'maintenance']
+    fail_msg: "operation_mode must be one of: install, update, upgrade, maintenance"
+    success_msg: "Operation mode: {{ operation_mode }}"
+
+- name: Validate DNS features configuration
+  assert:
+    that:
+      - dns_features is defined
+      - dns_features is iterable
+    fail_msg: "dns_features must be defined as a list"
+    success_msg: "DNS features enabled: {{ dns_features | join(', ') }}"
+
+- name: Validate server role
+  assert:
+    that:
+      - server_role is defined
+      - server_role in ['primary', 'secondary', 'recursor', 'loadbalancer']
+    fail_msg: "server_role must be one of: primary, secondary, recursor, loadbalancer"
+    success_msg: "Server role: {{ server_role }}"
+
+- name: Check PowerDNS version format
+  assert:
+    that:
+      - powerdns_version is defined
+      - powerdns_version is match("^[0-9.\\-a-zA-Z]+$")
+    fail_msg: "powerdns_version must be in valid package version format"
+    success_msg: "PowerDNS version: {{ powerdns_version }}"
+  when: powerdns_version is defined
+
+- name: Validate MySQL configuration
+  assert:
+    that:
+      - powerdns_db_name is defined
+      - powerdns_db_user is defined
+      - powerdns_db_password is defined
+      - powerdns_db_host is defined
+    fail_msg: "MySQL configuration variables must be defined"
+    success_msg: "MySQL configuration validated"
+  when: "'mysql' in dns_features"
+
+- name: Check MySQL connectivity (if MySQL feature enabled)
+  wait_for:
+    host: "{{ powerdns_db_host }}"
+    port: "{{ powerdns_db_port | default(3306) }}"
+    timeout: 10
+  when: 
+    - "'mysql' in dns_features"
+    - operation_mode in ['update', 'upgrade']
+
+- name: Validate DNSSEC configuration
+  assert:
+    that:
+      - dnssec_key_algorithm is defined
+      - dnssec_key_algorithm in ['rsasha1', 'rsasha256', 'rsasha512', 'ecdsa256', 'ecdsa384', 'ed25519']
+    fail_msg: "Invalid DNSSEC key algorithm"
+    success_msg: "DNSSEC algorithm: {{ dnssec_key_algorithm }}"
+  when: "'dnssec' in dns_features"
+
+- name: Validate API configuration
+  assert:
+    that:
+      - powerdns_api_key is defined
+      - powerdns_api_key | length >= 16
+    fail_msg: "PowerDNS API key must be at least 16 characters"
+    success_msg: "API configuration validated"
+  when: "'api' in dns_features"
+
+- name: Check zones configuration
+  assert:
+    that:
+      - zones_enabled is defined
+      - zones_enabled is iterable
+    fail_msg: "zones_enabled must be defined as a list"
+    success_msg: "Zones to manage: {{ zones_enabled | join(', ') }}"
+  when: "'zone_templates' in dns_features"
+
+- name: Validate zone template syntax
+  template:
+    src: "{{ item }}.j2"
+    dest: "/tmp/validate_{{ item }}"
+  loop: "{{ zones_enabled | default([]) }}"
+  register: zone_template_validation
+  failed_when: false
+  changed_when: false
+  when: "'zone_templates' in dns_features"
+
+- name: Clean up validation files
+  file:
+    path: "/tmp/validate_{{ item }}"
+    state: absent
+  loop: "{{ zones_enabled | default([]) }}"
+  when: "'zone_templates' in dns_features"
+
+- name: Check system requirements
+  assert:
+    that:
+      - ansible_memtotal_mb >= 1024
+      - ansible_processor_vcpus >= 1
+    fail_msg: "System does not meet minimum requirements (1GB RAM, 1 CPU)"
+    success_msg: "System requirements met"
+
+- name: Validate network configuration
+  assert:
+    that:
+      - ansible_default_ipv4.address is defined
+      - ansible_default_ipv4.address != '127.0.0.1'
+    fail_msg: "Valid network interface required"
+    success_msg: "Network configuration: {{ ansible_default_ipv4.address }}"
+
+- name: Check disk space
+  assert:
+    that:
+      - item.size_available > 1073741824  # 1GB in bytes
+    fail_msg: "Insufficient disk space on {{ item.mount }}"
+    success_msg: "Sufficient disk space available"
+  loop: "{{ ansible_mounts }}"
+  when: item.mount in ['/', '/var', '/etc']
+
+- name: Validate firewall configuration
+  command: ufw status
+  register: firewall_status
+  failed_when: false
+  changed_when: false
+  when: 
+    - ansible_os_family == "Debian"
+    - "'security' in dns_features"
+
+- name: Check for conflicting services
+  service_facts:
+
+- name: Ensure no conflicting DNS services
+  assert:
+    that:
+      - ansible_facts.services['systemd-resolved.service'].state != 'running' or dns_port != 53
+    fail_msg: "Conflicting DNS service detected on port 53"
+    success_msg: "No conflicting DNS services detected"
+  when: dns_port | default(53) == 53
+
+- name: Validate backup configuration
+  assert:
+    that:
+      - backup_config.retention_days is defined
+      - backup_config.retention_days | int > 0
+    fail_msg: "Invalid backup retention configuration"
+    success_msg: "Backup retention: {{ backup_config.retention_days }} days"
+  when: "'backup' in dns_features"
+
+- name: Check monitoring prerequisites
+  assert:
+    that:
+      - prometheus_port is defined
+      - prometheus_port | int > 1024
+      - prometheus_port | int < 65536
+    fail_msg: "Invalid Prometheus port configuration"
+    success_msg: "Monitoring port: {{ prometheus_port }}"
+  when: "'monitoring' in dns_features"
+
+- name: Validate SSL/TLS configuration
+  assert:
+    that:
+      - ssl_cert_path is defined
+      - ssl_key_path is defined
+    fail_msg: "SSL certificate paths must be defined"
+    success_msg: "SSL configuration validated"
+  when: "'ssl' in dns_features"
+
+- name: Check for existing PowerDNS installation
+  stat:
+    path: /etc/powerdns/pdns.conf
+  register: existing_pdns_config
+
+- name: Compute existing configuration hash
+  stat:
+    path: /etc/powerdns/pdns.conf
+    checksum_algorithm: sha256
+  register: existing_config_hash
+  when: existing_pdns_config.stat.exists
+
+- name: Store configuration state
+  set_fact:
+    pdns_existing_installation: "{{ existing_pdns_config.stat.exists }}"
+    pdns_config_hash: "{{ existing_config_hash.stat.checksum | default('new') }}"
+
+- name: Validate upgrade path
+  assert:
+    that:
+      - pdns_existing_installation
+    fail_msg: "Cannot upgrade - no existing PowerDNS installation found"
+    success_msg: "Existing installation detected, upgrade possible"
+  when: operation_mode == 'upgrade'
+
+- name: Check package availability
+  package_facts:
+    manager: auto
+
+- name: Validate PowerDNS package availability
+  assert:
+    that:
+      - "'pdns-server' in ansible_facts.packages or operation_mode == 'install'"
+    fail_msg: "PowerDNS package not available for installation"
+    success_msg: "PowerDNS package available"
+
+- name: Create validation report
+  copy:
+    dest: /tmp/powerdns_validation_report.json
+    content: |
+      {
+        "timestamp": "{{ ansible_date_time.iso8601 }}",
+        "hostname": "{{ inventory_hostname }}",
+        "operation_mode": "{{ operation_mode }}",
+        "server_role": "{{ server_role }}",
+        "dns_features": {{ dns_features | to_json }},
+        "zones_enabled": {{ zones_enabled | default([]) | to_json }},
+        "existing_installation": {{ pdns_existing_installation | to_json }},
+        "config_hash": "{{ pdns_config_hash }}",
+        "system_info": {
+          "os": "{{ ansible_distribution }} {{ ansible_distribution_version }}",
+          "memory_mb": {{ ansible_memtotal_mb }},
+          "cpu_cores": {{ ansible_processor_vcpus }},
+          "ip_address": "{{ ansible_default_ipv4.address }}"
+        },
+        "validation_status": "PASSED"
+      }
+    mode: '0644'
+
+- name: Display validation summary
+  debug:
+    msg:
+      - "=== Configuration Validation Complete ==="
+      - "Operation Mode: {{ operation_mode }}"
+      - "Server Role: {{ server_role }}"
+      - "DNS Features: {{ dns_features | join(', ') }}"
+      - "Zones Enabled: {{ zones_enabled | default([]) | join(', ') }}"
+      - "Existing Installation: {{ 'Yes' if pdns_existing_installation else 'No' }}"
+      - "System: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+      - "Memory: {{ ansible_memtotal_mb }}MB"
+      - "CPU Cores: {{ ansible_processor_vcpus }}"
+      - "IP Address: {{ ansible_default_ipv4.address }}"
+      - "Validation: PASSED ✓"

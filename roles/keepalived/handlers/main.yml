@@ -1,0 +1,38 @@
+---
+# Keepalived handlers
+
+- name: restart keepalived
+  systemd:
+    name: keepalived
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+
+- name: reload keepalived
+  systemd:
+    name: keepalived
+    state: reloaded
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+
+- name: restart keepalived-check
+  systemd:
+    name: keepalived-check.service
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+
+- name: start keepalived-check-timer
+  systemd:
+    name: keepalived-check.timer
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: reload firewall
+  systemd:
+    name: ufw
+    state: reloaded
+  when: ansible_os_family == "Debian"

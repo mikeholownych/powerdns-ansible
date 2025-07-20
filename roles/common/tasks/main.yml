@@ -1,0 +1,197 @@
+---
+# Common tasks for all PowerDNS servers
+
+- name: Update package cache
+  package:
+    update_cache: yes
+  when: ansible_os_family in ['Debian', 'RedHat']
+
+- name: Install common packages
+  package:
+    name:
+      - curl
+      - wget
+      - vim
+      - htop
+      - net-tools
+      - dnsutils
+      - python3
+      - python3-pip
+      - logrotate
+      - cron
+    state: present
+
+- name: Ensure system group for pdns (Debian)
+  shell: |
+    if ! getent group pdns >/dev/null; then
+      addgroup --system pdns
+    elif [ "$(getent group pdns | cut -d: -f3)" -ge 1000 ]; then
+      delgroup pdns
+      addgroup --system pdns
+    fi
+  args:
+    executable: /bin/bash
+  when: ansible_os_family == "Debian"
+
+- name: Ensure system group for pdns (RHEL)
+  shell: |
+    if ! getent group pdns >/dev/null; then
+      groupadd --system pdns
+    elif [ "$(getent group pdns | cut -d: -f3)" -ge 1000 ]; then
+      groupdel pdns
+      groupadd --system pdns
+    fi
+  args:
+    executable: /bin/bash
+  when: ansible_os_family == "RedHat"
+
+- name: Ensure pdns system user exists
+  ansible.builtin.user:
+    name: pdns
+    group: pdns
+    shell: /usr/sbin/nologin
+    system: yes
+    create_home: no
+
+- name: Create PowerDNS directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ powerdns_user }}"
+    group: "{{ powerdns_group }}"
+    mode: '0755'
+  loop:
+    - "{{ powerdns_config_dir }}"
+    - "{{ powerdns_backup_dir }}"
+    - /var/lib/powerdns
+    - /var/log/powerdns
+
+- name: Set up log rotation for PowerDNS
+  template:
+    src: powerdns-logrotate.j2
+    dest: /etc/logrotate.d/powerdns
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Configure system limits for PowerDNS
+  template:
+    src: powerdns-limits.conf.j2
+    dest: /etc/security/limits.d/powerdns.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Configure sysctl parameters for DNS performance
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop:
+    - { name: 'net.core.rmem_max', value: '16777216' }
+    - { name: 'net.core.wmem_max', value: '16777216' }
+    - { name: 'net.ipv4.udp_mem', value: '102400 873800 16777216' }
+    - { name: 'net.core.netdev_max_backlog', value: '5000' }
+  when: system_tuning.tcp_keepalive | default(true)
+
+- name: Ensure system-wide DB clients are present
+  ansible.builtin.apt:
+    name:
+      - python3-pymysql
+      - python3-psycopg2
+      - python3-ldap
+    state: present
+
+- name: Create backup script
+  template:
+    src: backup-powerdns.sh.j2
+    dest: /usr/local/bin/backup-powerdns.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Schedule backup cron job
+  cron:
+    name: "PowerDNS Configuration Backup"
+    cron_file: powerdns-backup
+    user: root
+    minute: "0"
+    hour: "2"
+    job: "/usr/local/bin/backup-powerdns.sh"
+    state: "{{ 'present' if backup_config.enabled else 'absent' }}"
+
+- name: Install health check script
+  template:
+    src: health-check.sh.j2
+    dest: /usr/local/bin/powerdns-health-check.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create systemd timer for health checks
+  template:
+    src: powerdns-health-check.timer.j2
+    dest: /etc/systemd/system/powerdns-health-check.timer
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload systemd
+  register: timer_template_result
+
+- name: Create systemd service for health checks
+  template:
+    src: powerdns-health-check.service.j2
+    dest: /etc/systemd/system/powerdns-health-check.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload systemd
+  register: service_template_result
+
+- name: Force systemd to reload after creating health check files
+  meta: flush_handlers
+
+- name: Ensure systemd daemon is reloaded before starting timer
+  systemd:
+    daemon_reload: yes
+  when: not ansible_check_mode
+
+- name: Verify health check timer file exists
+  stat:
+    path: /etc/systemd/system/powerdns-health-check.timer
+  register: timer_file_check
+  when: not ansible_check_mode
+
+- name: Verify health check service file exists
+  stat:
+    path: /etc/systemd/system/powerdns-health-check.service
+  register: service_file_check
+  when: not ansible_check_mode
+
+- name: Check if systemd files would be created (check mode)
+  debug:
+    msg: "Health check systemd files would be created: timer={{ timer_template_result.changed | default(false) }}, service={{ service_template_result.changed | default(false) }}"
+  when: ansible_check_mode
+
+- name: Enable and start health check timer
+  systemd:
+    name: powerdns-health-check.timer
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  when: 
+    - monitoring_config.enabled | default(true)
+    - not ansible_check_mode
+    - timer_file_check is defined
+    - service_file_check is defined
+    - timer_file_check.stat.exists | default(true)
+    - service_file_check.stat.exists | default(true)
+
+
+- name: Show what would happen with health check timer (check mode)
+  debug:
+    msg: "Would enable and start powerdns-health-check.timer service"
+  when: 
+    - ansible_check_mode
+    - monitoring_config.enabled | default(true)

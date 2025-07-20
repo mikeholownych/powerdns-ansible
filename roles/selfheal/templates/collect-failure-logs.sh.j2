@@ -1,0 +1,300 @@
+#!/bin/bash
+# Failure Log Collection Script
+# Collects diagnostic information when services fail
+
+set -euo pipefail
+
+# Configuration
+FAILURE_LOG_DIR="/var/log/powerdns-failures"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+FAILURE_REPORT="$FAILURE_LOG_DIR/failure-report-$TIMESTAMP.log"
+
+# Create failure log directory
+mkdir -p "$FAILURE_LOG_DIR"
+
+# Start failure report
+cat > "$FAILURE_REPORT" << EOF
+PowerDNS Infrastructure Failure Report
+Generated: $(date)
+Hostname: {{ inventory_hostname }}
+Server Role: {{ server_role | default('unknown') }}
+Operation Mode: {{ operation_mode | default('unknown') }}
+DNS Features: {{ dns_features | join(', ') }}
+
+================================================================================
+SYSTEM INFORMATION
+================================================================================
+EOF
+
+# System information
+echo "=== System Information ===" >> "$FAILURE_REPORT"
+uname -a >> "$FAILURE_REPORT" 2>&1
+echo "" >> "$FAILURE_REPORT"
+
+echo "=== Memory Information ===" >> "$FAILURE_REPORT"
+free -h >> "$FAILURE_REPORT" 2>&1
+echo "" >> "$FAILURE_REPORT"
+
+echo "=== Disk Usage ===" >> "$FAILURE_REPORT"
+df -h >> "$FAILURE_REPORT" 2>&1
+echo "" >> "$FAILURE_REPORT"
+
+echo "=== Load Average ===" >> "$FAILURE_REPORT"
+uptime >> "$FAILURE_REPORT" 2>&1
+echo "" >> "$FAILURE_REPORT"
+
+# Network information
+echo "=== Network Configuration ===" >> "$FAILURE_REPORT"
+ip addr show >> "$FAILURE_REPORT" 2>&1
+echo "" >> "$FAILURE_REPORT"
+
+echo "=== Network Connections ===" >> "$FAILURE_REPORT"
+netstat -tuln >> "$FAILURE_REPORT" 2>&1
+echo "" >> "$FAILURE_REPORT"
+
+# Service status
+echo "" >> "$FAILURE_REPORT"
+echo "================================================================================
+SERVICE STATUS
+================================================================================" >> "$FAILURE_REPORT"
+
+echo "=== PowerDNS Service Status ===" >> "$FAILURE_REPORT"
+systemctl status pdns --no-pager -l >> "$FAILURE_REPORT" 2>&1
+echo "" >> "$FAILURE_REPORT"
+
+{% if 'mysql' in dns_features %}
+echo "=== MySQL Service Status ===" >> "$FAILURE_REPORT"
+systemctl status {{ mysql_service_name }} --no-pager -l >> "$FAILURE_REPORT" 2>&1
+echo "" >> "$FAILURE_REPORT"
+{% endif %}
+
+{% if 'monitoring' in dns_features %}
+echo "=== Prometheus Service Status ===" >> "$FAILURE_REPORT"
+systemctl status prometheus --no-pager -l >> "$FAILURE_REPORT" 2>&1
+echo "" >> "$FAILURE_REPORT"
+{% endif %}
+
+# Process information
+echo "=== Running Processes ===" >> "$FAILURE_REPORT"
+ps aux | grep -E "(pdns|mysql|prometheus)" | grep -v grep >> "$FAILURE_REPORT" 2>&1
+echo "" >> "$FAILURE_REPORT"
+
+# Log files
+echo "" >> "$FAILURE_REPORT"
+echo "================================================================================
+LOG FILES
+================================================================================" >> "$FAILURE_REPORT"
+
+echo "=== PowerDNS Logs (last 50 lines) ===" >> "$FAILURE_REPORT"
+journalctl -u pdns --no-pager -n 50 >> "$FAILURE_REPORT" 2>&1
+echo "" >> "$FAILURE_REPORT"
+
+{% if 'mysql' in dns_features %}
+echo "=== MySQL Error Log (last 50 lines) ===" >> "$FAILURE_REPORT"
+if [ -f /var/log/mysql/error.log ]; then
+    tail -50 /var/log/mysql/error.log >> "$FAILURE_REPORT" 2>&1
+else
+    journalctl -u {{ mysql_service_name }} --no-pager -n 50 >> "$FAILURE_REPORT" 2>&1
+fi
+echo "" >> "$FAILURE_REPORT"
+{% endif %}
+
+echo "=== System Log (last 50 lines) ===" >> "$FAILURE_REPORT"
+journalctl --no-pager -n 50 >> "$FAILURE_REPORT" 2>&1
+echo "" >> "$FAILURE_REPORT"
+
+# Configuration files
+echo "" >> "$FAILURE_REPORT"
+echo "================================================================================
+CONFIGURATION FILES
+================================================================================" >> "$FAILURE_REPORT"
+
+echo "=== PowerDNS Configuration ===" >> "$FAILURE_REPORT"
+if [ -f /etc/powerdns/pdns.conf ]; then
+    cat /etc/powerdns/pdns.conf >> "$FAILURE_REPORT" 2>&1
+else
+    echo "PowerDNS configuration file not found" >> "$FAILURE_REPORT"
+fi
+echo "" >> "$FAILURE_REPORT"
+
+{% if 'mysql' in dns_features %}
+echo "=== MySQL Configuration ===" >> "$FAILURE_REPORT"
+if [ -f /etc/mysql/my.cnf ]; then
+    cat /etc/mysql/my.cnf >> "$FAILURE_REPORT" 2>&1
+elif [ -f /etc/my.cnf ]; then
+    cat /etc/my.cnf >> "$FAILURE_REPORT" 2>&1
+else
+    echo "MySQL configuration file not found" >> "$FAILURE_REPORT"
+fi
+echo "" >> "$FAILURE_REPORT"
+{% endif %}
+
+# Configuration validation
+echo "" >> "$FAILURE_REPORT"
+echo "================================================================================
+CONFIGURATION VALIDATION
+================================================================================" >> "$FAILURE_REPORT"
+
+echo "=== PowerDNS Configuration Check ===" >> "$FAILURE_REPORT"
+pdns_server --config-check >> "$FAILURE_REPORT" 2>&1 || echo "PowerDNS configuration check failed" >> "$FAILURE_REPORT"
+echo "" >> "$FAILURE_REPORT"
+
+{% if 'mysql' in dns_features %}
+echo "=== MySQL Configuration Check ===" >> "$FAILURE_REPORT"
+mysqld --help --verbose >> "$FAILURE_REPORT" 2>&1 || echo "MySQL configuration check failed" >> "$FAILURE_REPORT"
+echo "" >> "$FAILURE_REPORT"
+{% endif %}
+
+# Database connectivity
+{% if 'mysql' in dns_features %}
+echo "" >> "$FAILURE_REPORT"
+echo "================================================================================
+DATABASE CONNECTIVITY
+================================================================================" >> "$FAILURE_REPORT"
+
+echo "=== Database Connection Test ===" >> "$FAILURE_REPORT"
+mysql -u {{ powerdns_db_user }} -p{{ powerdns_db_password }} -h {{ powerdns_db_host }} -e "SELECT 1;" >> "$FAILURE_REPORT" 2>&1 || echo "Database connection failed" >> "$FAILURE_REPORT"
+echo "" >> "$FAILURE_REPORT"
+
+echo "=== Database Schema Check ===" >> "$FAILURE_REPORT"
+mysql -u {{ powerdns_db_user }} -p{{ powerdns_db_password }} -h {{ powerdns_db_host }} -D {{ powerdns_db_name }} -e "SHOW TABLES;" >> "$FAILURE_REPORT" 2>&1 || echo "Database schema check failed" >> "$FAILURE_REPORT"
+echo "" >> "$FAILURE_REPORT"
+{% endif %}
+
+# DNS functionality
+echo "" >> "$FAILURE_REPORT"
+echo "================================================================================
+DNS FUNCTIONALITY
+================================================================================" >> "$FAILURE_REPORT"
+
+echo "=== DNS Resolution Test ===" >> "$FAILURE_REPORT"
+dig @localhost {{ primary_domains[0] | default('localhost') }} SOA >> "$FAILURE_REPORT" 2>&1 || echo "DNS resolution test failed" >> "$FAILURE_REPORT"
+echo "" >> "$FAILURE_REPORT"
+
+echo "=== External DNS Test ===" >> "$FAILURE_REPORT"
+dig @8.8.8.8 google.com >> "$FAILURE_REPORT" 2>&1 || echo "External DNS test failed" >> "$FAILURE_REPORT"
+echo "" >> "$FAILURE_REPORT"
+
+# API functionality
+{% if 'api' in dns_features %}
+echo "" >> "$FAILURE_REPORT"
+echo "================================================================================
+API FUNCTIONALITY
+================================================================================" >> "$FAILURE_REPORT"
+
+echo "=== PowerDNS API Test ===" >> "$FAILURE_REPORT"
+curl -H "X-API-Key: {{ powerdns_api_key }}" "http://{{ ansible_default_ipv4.address }}:{{ powerdns_webserver_port | default(8081) }}/api/v1/servers" >> "$FAILURE_REPORT" 2>&1 || echo "PowerDNS API test failed" >> "$FAILURE_REPORT"
+echo "" >> "$FAILURE_REPORT"
+{% endif %}
+
+# File permissions
+echo "" >> "$FAILURE_REPORT"
+echo "================================================================================
+FILE PERMISSIONS
+================================================================================" >> "$FAILURE_REPORT"
+
+echo "=== PowerDNS Directory Permissions ===" >> "$FAILURE_REPORT"
+ls -la /etc/powerdns/ >> "$FAILURE_REPORT" 2>&1
+ls -la /var/lib/powerdns/ >> "$FAILURE_REPORT" 2>&1 || echo "PowerDNS lib directory not accessible" >> "$FAILURE_REPORT"
+ls -la /var/log/powerdns/ >> "$FAILURE_REPORT" 2>&1 || echo "PowerDNS log directory not accessible" >> "$FAILURE_REPORT"
+echo "" >> "$FAILURE_REPORT"
+
+{% if 'mysql' in dns_features %}
+echo "=== MySQL Directory Permissions ===" >> "$FAILURE_REPORT"
+ls -la /var/lib/mysql/ >> "$FAILURE_REPORT" 2>&1 || echo "MySQL lib directory not accessible" >> "$FAILURE_REPORT"
+ls -la /var/log/mysql/ >> "$FAILURE_REPORT" 2>&1 || echo "MySQL log directory not accessible" >> "$FAILURE_REPORT"
+echo "" >> "$FAILURE_REPORT"
+{% endif %}
+
+# Recent changes
+echo "" >> "$FAILURE_REPORT"
+echo "================================================================================
+RECENT CHANGES
+================================================================================" >> "$FAILURE_REPORT"
+
+echo "=== Recent Package Changes ===" >> "$FAILURE_REPORT"
+if [ -f /var/log/dpkg.log ]; then
+    grep "$(date +%Y-%m-%d)" /var/log/dpkg.log | tail -20 >> "$FAILURE_REPORT" 2>&1 || echo "No recent package changes" >> "$FAILURE_REPORT"
+elif [ -f /var/log/yum.log ]; then
+    grep "$(date +%b %d)" /var/log/yum.log | tail -20 >> "$FAILURE_REPORT" 2>&1 || echo "No recent package changes" >> "$FAILURE_REPORT"
+else
+    echo "Package log not found" >> "$FAILURE_REPORT"
+fi
+echo "" >> "$FAILURE_REPORT"
+
+echo "=== Recent Configuration Changes ===" >> "$FAILURE_REPORT"
+if [ -f /var/lib/powerdns-state/change-log.json ]; then
+    tail -20 /var/lib/powerdns-state/change-log.json >> "$FAILURE_REPORT" 2>&1
+else
+    echo "No configuration change log found" >> "$FAILURE_REPORT"
+fi
+echo "" >> "$FAILURE_REPORT"
+
+# Environment variables
+echo "" >> "$FAILURE_REPORT"
+echo "================================================================================
+ENVIRONMENT
+================================================================================" >> "$FAILURE_REPORT"
+
+echo "=== Environment Variables ===" >> "$FAILURE_REPORT"
+env | grep -E "(PATH|HOME|USER|SHELL)" >> "$FAILURE_REPORT" 2>&1
+echo "" >> "$FAILURE_REPORT"
+
+# End of report
+echo "" >> "$FAILURE_REPORT"
+echo "================================================================================
+END OF FAILURE REPORT
+================================================================================" >> "$FAILURE_REPORT"
+echo "Report generated at: $(date)" >> "$FAILURE_REPORT"
+echo "Report location: $FAILURE_REPORT" >> "$FAILURE_REPORT"
+
+# Compress the report
+gzip "$FAILURE_REPORT"
+COMPRESSED_REPORT="${FAILURE_REPORT}.gz"
+
+# Create summary
+SUMMARY_FILE="$FAILURE_LOG_DIR/failure-summary-$TIMESTAMP.json"
+cat > "$SUMMARY_FILE" << EOF
+{
+    "timestamp": "$(date -Iseconds)",
+    "hostname": "{{ inventory_hostname }}",
+    "server_role": "{{ server_role | default('unknown') }}",
+    "operation_mode": "{{ operation_mode | default('unknown') }}",
+    "dns_features": {{ dns_features | to_json }},
+    "failure_report": "$COMPRESSED_REPORT",
+    "summary": {
+        "services_checked": [
+            "pdns"{{ ',' if 'mysql' in dns_features }}
+            {{ '"' + mysql_service_name + '"' if 'mysql' in dns_features }}{{ ',' if 'monitoring' in dns_features and 'mysql' in dns_features }}
+            {{ '"prometheus"' if 'monitoring' in dns_features }}
+        ],
+        "log_files_collected": [
+            "systemd_journals",
+            "powerdns_logs"{{ ',' if 'mysql' in dns_features }}
+            {{ '"mysql_logs"' if 'mysql' in dns_features }}
+        ],
+        "configuration_files": [
+            "pdns.conf"{{ ',' if 'mysql' in dns_features }}
+            {{ '"my.cnf"' if 'mysql' in dns_features }}
+        ]
+    }
+}
+EOF
+
+# Output results
+echo "Failure log collection completed"
+echo "Report: $COMPRESSED_REPORT"
+echo "Summary: $SUMMARY_FILE"
+
+# Send notification if configured
+{% if notify_on_changes | default(true) %}
+if [ -x "/usr/local/bin/state-notifier.py" ]; then
+    /usr/local/bin/state-notifier.py --event "failure_logs_collected" --file "$COMPRESSED_REPORT" >/dev/null 2>&1 || true
+fi
+{% endif %}
+
+# Clean up old failure reports (keep last 10)
+find "$FAILURE_LOG_DIR" -name "failure-report-*.log.gz" -type f | sort | head -n -10 | xargs rm -f 2>/dev/null || true
+find "$FAILURE_LOG_DIR" -name "failure-summary-*.json" -type f | sort | head -n -10 | xargs rm -f 2>/dev/null || true
+
+echo "Failure log collection script completed successfully"

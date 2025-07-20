@@ -1,0 +1,30 @@
+---
+# PowerDNS Recursor handlers
+
+- name: restart recursor
+  systemd:
+    name: "{{ recursor_service_name }}"
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+
+- name: reload recursor
+  systemd:
+    name: "{{ recursor_service_name }}"
+    state: reloaded
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+
+- name: validate recursor config
+  command: pdns_recursor --config-check
+  register: recursor_config_check
+  failed_when: recursor_config_check.rc != 0
+  changed_when: false
+
+- name: reload firewall
+  systemd:
+    name: ufw
+    state: reloaded
+  when: ansible_os_family == "Debian"

@@ -1,0 +1,18 @@
+# PowerDNS system limits configuration
+{{ powerdns_user }} soft nofile {{ system_tuning.file_descriptors | default(65536) }}
+{{ powerdns_user }} hard nofile {{ system_tuning.file_descriptors | default(65536) }}
+{{ powerdns_user }} soft nproc 32768
+{{ powerdns_user }} hard nproc 32768
+
+# Core dump settings
+{% if system_tuning.core_dump | default(false) %}
+{{ powerdns_user }} soft core unlimited
+{{ powerdns_user }} hard core unlimited
+{% else %}
+{{ powerdns_user }} soft core 0
+{{ powerdns_user }} hard core 0
+{% endif %}
+
+# Memory limits (optional)
+# {{ powerdns_user }} soft memlock unlimited
+# {{ powerdns_user }} hard memlock unlimited

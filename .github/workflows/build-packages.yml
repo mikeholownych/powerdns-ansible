@@ -1,0 +1,370 @@
+name: Build and Publish Packages
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+env:
+  PACKAGE_NAME: powerdns-ops-collection
+  PACKAGE_VERSION: 1.0.0
+
+jobs:
+  lint-and-test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible ansible-lint yamllint molecule[docker] pytest
+
+      - name: Lint YAML files
+        run: yamllint .
+
+      - name: Lint Ansible files
+        run: ansible-lint
+
+      - name: Test Ansible syntax
+        run: |
+          ansible-playbook --syntax-check powerdns-operational-playbook.yml
+          ansible-playbook --syntax-check powerdns-playbook.yml
+
+      - name: Run Molecule tests
+        run: molecule test
+        env:
+          MOLECULE_NO_LOG: false
+
+  build-deb-package:
+    name: Build DEB Package
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04, debian-11, debian-12]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up build environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential devscripts debhelper dh-make fakeroot
+
+      - name: Create package structure
+        run: |
+          mkdir -p packaging/deb/${PACKAGE_NAME}-${PACKAGE_VERSION}
+          cp -r roles/ packaging/deb/${PACKAGE_NAME}-${PACKAGE_VERSION}/
+          cp -r tasks/ packaging/deb/${PACKAGE_NAME}-${PACKAGE_VERSION}/
+          cp -r vars/ packaging/deb/${PACKAGE_NAME}-${PACKAGE_VERSION}/
+          cp -r inventory/ packaging/deb/${PACKAGE_NAME}-${PACKAGE_VERSION}/
+          cp -r examples/ packaging/deb/${PACKAGE_NAME}-${PACKAGE_VERSION}/
+          cp *.yml packaging/deb/${PACKAGE_NAME}-${PACKAGE_VERSION}/
+          cp *.md packaging/deb/${PACKAGE_NAME}-${PACKAGE_VERSION}/
+          cp LICENSE packaging/deb/${PACKAGE_NAME}-${PACKAGE_VERSION}/
+
+      - name: Create Debian control files
+        run: |
+          mkdir -p packaging/deb/${PACKAGE_NAME}-${PACKAGE_VERSION}/debian
+          cat > packaging/deb/${PACKAGE_NAME}-${PACKAGE_VERSION}/debian/control << EOF
+          Source: ${PACKAGE_NAME}
+          Section: admin
+          Priority: optional
+          Maintainer: PowerDNS Operations Collection Contributors <maintainers@example.com>
+          Build-Depends: debhelper (>= 10)
+          Standards-Version: 4.5.0
+          Homepage: https://github.com/ansible-collections/community.powerdns_ops
+
+          Package: ${PACKAGE_NAME}
+          Architecture: all
+          Depends: ansible (>= 2.9), python3-pymysql, python3-dnspython
+          Recommends: powerdns-server, mysql-server, prometheus
+          Description: Production-ready PowerDNS infrastructure automation
+           This package provides comprehensive PowerDNS infrastructure automation
+           with enterprise-grade security, monitoring, self-healing, and operational
+           excellence features. Includes roles for multi-node deployment, DNSSEC
+           automation, security hardening, and high availability clustering.
+          EOF
+
+          cat > packaging/deb/${PACKAGE_NAME}-${PACKAGE_VERSION}/debian/changelog << EOF
+          ${PACKAGE_NAME} (${PACKAGE_VERSION}-1) unstable; urgency=medium
+
+            * Initial release of PowerDNS Operations Collection
+            * Enterprise-grade DNS infrastructure automation
+            * DNSSEC automation with key management
+            * Security hardening with AppArmor/SELinux
+            * Self-healing and monitoring capabilities
+            * High availability clustering support
+
+           -- PowerDNS Operations Collection Contributors <maintainers@example.com>  $(date -R)
+          EOF
+
+          cat > packaging/deb/${PACKAGE_NAME}-${PACKAGE_VERSION}/debian/rules << 'EOF'
+          #!/usr/bin/make -f
+
+          %:
+          	dh $@
+
+          override_dh_auto_install:
+          	mkdir -p debian/${PACKAGE_NAME}/usr/share/ansible/collections/community/powerdns_ops
+          	cp -r roles/ debian/${PACKAGE_NAME}/usr/share/ansible/collections/community/powerdns_ops/
+          	cp -r tasks/ debian/${PACKAGE_NAME}/usr/share/ansible/collections/community/powerdns_ops/
+          	cp -r vars/ debian/${PACKAGE_NAME}/usr/share/ansible/collections/community/powerdns_ops/
+          	cp -r inventory/ debian/${PACKAGE_NAME}/usr/share/ansible/collections/community/powerdns_ops/
+          	cp -r examples/ debian/${PACKAGE_NAME}/usr/share/ansible/collections/community/powerdns_ops/
+          	cp *.yml debian/${PACKAGE_NAME}/usr/share/ansible/collections/community/powerdns_ops/
+          	mkdir -p debian/${PACKAGE_NAME}/usr/share/doc/${PACKAGE_NAME}
+          	cp *.md debian/${PACKAGE_NAME}/usr/share/doc/${PACKAGE_NAME}/
+          	cp LICENSE debian/${PACKAGE_NAME}/usr/share/doc/${PACKAGE_NAME}/
+          	mkdir -p debian/${PACKAGE_NAME}/usr/bin
+          	echo '#!/bin/bash' > debian/${PACKAGE_NAME}/usr/bin/powerdns-ops-deploy
+          	echo 'ansible-playbook /usr/share/ansible/collections/community/powerdns_ops/powerdns-operational-playbook.yml "$$@"' >> debian/${PACKAGE_NAME}/usr/bin/powerdns-ops-deploy
+          	chmod +x debian/${PACKAGE_NAME}/usr/bin/powerdns-ops-deploy
+          EOF
+
+          chmod +x packaging/deb/${PACKAGE_NAME}-${PACKAGE_VERSION}/debian/rules
+
+          echo "10" > packaging/deb/${PACKAGE_NAME}-${PACKAGE_VERSION}/debian/compat
+
+      - name: Build DEB package
+        run: |
+          cd packaging/deb/${PACKAGE_NAME}-${PACKAGE_VERSION}
+          debuild -us -uc -b
+
+      - name: Upload DEB artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: deb-package-${{ matrix.os }}
+          path: packaging/deb/*.deb
+
+  build-rpm-package:
+    name: Build RPM Package
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    strategy:
+      matrix:
+        os: [centos-8, centos-9, fedora-37, fedora-38, rocky-8, rocky-9]
+    container:
+      image: ${{ matrix.os == 'centos-8' && 'centos:8' || matrix.os == 'centos-9' && 'centos:stream9' || matrix.os == 'rocky-8' && 'rockylinux:8' || matrix.os == 'rocky-9' && 'rockylinux:9' || matrix.os == 'fedora-37' && 'fedora:37' || matrix.os == 'fedora-38' && 'fedora:38' || 'fedora:latest' }}
+    steps:
+      - name: Install build dependencies
+        run: |
+          if command -v dnf >/dev/null 2>&1; then
+            dnf install -y rpm-build rpmdevtools git
+          else
+            yum install -y rpm-build rpmdevtools git
+          fi
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up RPM build environment
+        run: |
+          rpmdev-setuptree
+          mkdir -p ~/rpmbuild/SOURCES
+
+      - name: Create source tarball
+        run: |
+          tar --exclude='.git' --exclude='packaging' -czf ~/rpmbuild/SOURCES/${PACKAGE_NAME}-${PACKAGE_VERSION}.tar.gz .
+
+      - name: Create RPM spec file
+        run: |
+          cat > ~/rpmbuild/SPECS/${PACKAGE_NAME}.spec << EOF
+          Name:           ${PACKAGE_NAME}
+          Version:        ${PACKAGE_VERSION}
+          Release:        1%{?dist}
+          Summary:        Production-ready PowerDNS infrastructure automation
+          License:        MIT
+          URL:            https://github.com/ansible-collections/community.powerdns_ops
+          Source0:        %{name}-%{version}.tar.gz
+          BuildArch:      noarch
+
+          Requires:       ansible >= 2.9
+          Requires:       python3-PyMySQL
+          Requires:       python3-dns
+          Recommends:     pdns-server
+          Recommends:     mariadb-server
+          Recommends:     prometheus
+
+          %description
+          This package provides comprehensive PowerDNS infrastructure automation
+          with enterprise-grade security, monitoring, self-healing, and operational
+          excellence features. Includes roles for multi-node deployment, DNSSEC
+          automation, security hardening, and high availability clustering.
+
+          %prep
+          %setup -q
+
+          %build
+          # Nothing to build
+
+          %install
+          mkdir -p %{buildroot}/usr/share/ansible/collections/community/powerdns_ops
+          cp -r roles/ %{buildroot}/usr/share/ansible/collections/community/powerdns_ops/
+          cp -r tasks/ %{buildroot}/usr/share/ansible/collections/community/powerdns_ops/
+          cp -r vars/ %{buildroot}/usr/share/ansible/collections/community/powerdns_ops/
+          cp -r inventory/ %{buildroot}/usr/share/ansible/collections/community/powerdns_ops/
+          cp -r examples/ %{buildroot}/usr/share/ansible/collections/community/powerdns_ops/
+          cp *.yml %{buildroot}/usr/share/ansible/collections/community/powerdns_ops/
+
+          mkdir -p %{buildroot}/usr/share/doc/%{name}
+          cp *.md %{buildroot}/usr/share/doc/%{name}/
+          cp LICENSE %{buildroot}/usr/share/doc/%{name}/
+
+          mkdir -p %{buildroot}/usr/bin
+          cat > %{buildroot}/usr/bin/powerdns-ops-deploy << 'SCRIPT_EOF'
+          #!/bin/bash
+          ansible-playbook /usr/share/ansible/collections/community/powerdns_ops/powerdns-operational-playbook.yml "\$@"
+          SCRIPT_EOF
+          chmod +x %{buildroot}/usr/bin/powerdns-ops-deploy
+
+          %files
+          /usr/share/ansible/collections/community/powerdns_ops/
+          /usr/share/doc/%{name}/
+          /usr/bin/powerdns-ops-deploy
+
+          %changelog
+          * $(date +'%a %b %d %Y') PowerDNS Operations Collection Contributors <maintainers@example.com> - ${PACKAGE_VERSION}-1
+          - Initial release of PowerDNS Operations Collection
+          - Enterprise-grade DNS infrastructure automation
+          - DNSSEC automation with key management
+          - Security hardening with AppArmor/SELinux
+          - Self-healing and monitoring capabilities
+          - High availability clustering support
+          EOF
+
+      - name: Build RPM package
+        run: |
+          rpmbuild -ba ~/rpmbuild/SPECS/${PACKAGE_NAME}.spec
+
+      - name: Upload RPM artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: rpm-package-${{ matrix.os }}
+          path: ~/rpmbuild/RPMS/noarch/*.rpm
+
+  build-ansible-collection:
+    name: Build Ansible Collection
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Ansible
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible
+
+      - name: Build Ansible Collection
+        run: |
+          ansible-galaxy collection build
+
+      - name: Upload Collection artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ansible-collection
+          path: community-powerdns_ops-*.tar.gz
+
+  publish-packages:
+    name: Publish Packages
+    runs-on: ubuntu-latest
+    needs: [build-deb-package, build-rpm-package, build-ansible-collection]
+    if: github.event_name == 'release' && github.event.action == 'published'
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Create release directory
+        run: |
+          mkdir -p release-assets
+          find . -name "*.deb" -exec cp {} release-assets/ \;
+          find . -name "*.rpm" -exec cp {} release-assets/ \;
+          find . -name "*.tar.gz" -exec cp {} release-assets/ \;
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to Ansible Galaxy
+        run: |
+          ansible-galaxy collection publish community-powerdns_ops-*.tar.gz --api-key=${{ secrets.GALAXY_API_KEY }}
+        if: env.GALAXY_API_KEY != ''
+        env:
+          GALAXY_API_KEY: ${{ secrets.GALAXY_API_KEY }}
+
+  publish-to-packagecloud:
+    name: Publish to PackageCloud
+    runs-on: ubuntu-latest
+    needs: [build-deb-package, build-rpm-package]
+    if: github.event_name == 'release' && github.event.action == 'published'
+    steps:
+      - name: Download DEB artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: deb-package-ubuntu-20.04
+
+      - name: Download more DEB artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: deb-package-ubuntu-22.04
+        continue-on-error: true
+
+      - name: Download RPM artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: rpm-package-centos-8
+
+      - name: Download more RPM artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: rpm-package-centos-9
+        continue-on-error: true
+
+      - name: Install PackageCloud CLI
+        run: |
+          gem install package_cloud
+
+      - name: Publish DEB packages
+        run: |
+          for deb in $(find . -name "*.deb"); do
+            package_cloud push community/powerdns-ops/ubuntu/focal $deb || true
+            package_cloud push community/powerdns-ops/ubuntu/jammy $deb || true
+            package_cloud push community/powerdns-ops/debian/bullseye $deb || true
+            package_cloud push community/powerdns-ops/debian/bookworm $deb || true
+          done
+        env:
+          PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
+        if: env.PACKAGECLOUD_TOKEN != ''
+
+      - name: Publish RPM packages
+        run: |
+          for rpm in $(find . -name "*.rpm"); do
+            package_cloud push community/powerdns-ops/el/8 $rpm || true
+            package_cloud push community/powerdns-ops/el/9 $rpm || true
+            package_cloud push community/powerdns-ops/fedora/37 $rpm || true
+            package_cloud push community/powerdns-ops/fedora/38 $rpm || true
+          done
+        env:
+          PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
+        if: env.PACKAGECLOUD_TOKEN != ''

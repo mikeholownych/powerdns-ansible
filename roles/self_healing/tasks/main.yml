@@ -1,0 +1,231 @@
+---
+# Self-healing and drift detection for PowerDNS infrastructure
+
+- name: Create self-healing directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - /opt/self-healing
+    - /opt/self-healing/scripts
+    - /opt/self-healing/configs
+    - /var/log/self-healing
+
+- name: Create configuration hash tracking
+  template:
+    src: config-tracker.sh.j2
+    dest: /opt/self-healing/scripts/config-tracker.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create service health monitor
+  template:
+    src: service-health-monitor.sh.j2
+    dest: /opt/self-healing/scripts/service-health-monitor.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create drift detection script
+  template:
+    src: drift-detector.sh.j2
+    dest: /opt/self-healing/scripts/drift-detector.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create auto-recovery script
+  template:
+    src: auto-recovery.sh.j2
+    dest: /opt/self-healing/scripts/auto-recovery.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create systemd watchdog service for PowerDNS
+  template:
+    src: powerdns-watchdog.service.j2
+    dest: /etc/systemd/system/powerdns-watchdog.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart powerdns-watchdog
+
+- name: Create systemd watchdog timer
+  template:
+    src: powerdns-watchdog.timer.j2
+    dest: /etc/systemd/system/powerdns-watchdog.timer
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - reload systemd
+    - start powerdns-watchdog-timer
+
+- name: Create MySQL watchdog service
+  template:
+    src: mysql-watchdog.service.j2
+    dest: /etc/systemd/system/mysql-watchdog.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart mysql-watchdog
+
+- name: Create MySQL watchdog timer
+  template:
+    src: mysql-watchdog.timer.j2
+    dest: /etc/systemd/system/mysql-watchdog.timer
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - reload systemd
+    - start mysql-watchdog-timer
+
+- name: Create configuration baseline
+  shell: |
+    # Create baseline hashes for critical configuration files
+    find {{ item }} -type f -exec sha256sum {} \; > /opt/self-healing/configs/{{ item | basename }}.baseline 2>/dev/null || true
+  loop:
+    - "{{ powerdns_config_dir }}"
+    - /etc/mysql
+    - /etc/haproxy
+    - /etc/keepalived
+  changed_when: false
+
+- name: Schedule drift detection
+  cron:
+    name: "Configuration Drift Detection"
+    cron_file: drift-detection
+    user: root
+    minute: "*/15"
+    job: "/opt/self-healing/scripts/drift-detector.sh"
+    state: present
+  when: drift_detection_enabled | default(true)
+
+- name: Schedule service health monitoring
+  cron:
+    name: "Service Health Monitoring"
+    cron_file: service-health
+    user: root
+    minute: "*/5"
+    job: "/opt/self-healing/scripts/service-health-monitor.sh"
+    state: present
+  when: service_health_monitoring_enabled | default(true)
+
+- name: Create self-healing notification script
+  template:
+    src: self-healing-notify.sh.j2
+    dest: /opt/self-healing/scripts/self-healing-notify.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Configure logrotate for self-healing logs
+  template:
+    src: self-healing-logrotate.j2
+    dest: /etc/logrotate.d/self-healing
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Create Ansible pull configuration for GitOps
+  template:
+    src: ansible-pull.conf.j2
+    dest: /opt/self-healing/ansible-pull.conf
+    owner: root
+    group: root
+    mode: '0600'
+  when: gitops_enabled | default(false)
+
+- name: Schedule Ansible pull for GitOps
+  cron:
+    name: "Ansible Pull GitOps"
+    cron_file: ansible-pull-gitops
+    user: root
+    minute: "0"
+    hour: "*/4"
+    job: "ansible-pull -U {{ gitops_repo_url }} -C {{ gitops_branch | default('main') }} -i {{ gitops_inventory_path | default('inventory/hosts.yml') }} {{ gitops_playbook | default('powerdns-playbook.yml') }} >> /var/log/self-healing/ansible-pull.log 2>&1"
+    state: "{{ 'present' if gitops_enabled | default(false) else 'absent' }}"
+
+- name: Create performance monitoring script
+  template:
+    src: performance-monitor.sh.j2
+    dest: /opt/self-healing/scripts/performance-monitor.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Schedule performance monitoring
+  cron:
+    name: "Performance Monitoring"
+    cron_file: performance-monitor
+    user: root
+    minute: "*/10"
+    job: "/opt/self-healing/scripts/performance-monitor.sh"
+    state: present
+  when: performance_monitoring_enabled | default(true)
+
+- name: Create backup verification script
+  template:
+    src: backup-verifier.sh.j2
+    dest: /opt/self-healing/scripts/backup-verifier.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Schedule backup verification
+  cron:
+    name: "Backup Verification"
+    cron_file: backup-verification
+    user: root
+    minute: "0"
+    hour: "6"
+    job: "/opt/self-healing/scripts/backup-verifier.sh"
+    state: present
+  when: backup_verification_enabled | default(true)
+
+- name: Enable and start watchdog services
+  systemd:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  loop:
+    - powerdns-watchdog.timer
+    - mysql-watchdog.timer
+  when: watchdog_enabled | default(true)
+
+- name: Create self-healing dashboard script
+  template:
+    src: self-healing-dashboard.sh.j2
+    dest: /opt/self-healing/scripts/self-healing-dashboard.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create self-healing status check
+  template:
+    src: self-healing-status.sh.j2
+    dest: /usr/local/bin/self-healing-status.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Test self-healing functionality
+  command: /opt/self-healing/scripts/service-health-monitor.sh --test
+  register: self_healing_test
+  changed_when: false
+  ignore_errors: yes
+
+- name: Display self-healing test result
+  debug:
+    msg: "Self-healing test: {{ 'PASSED' if self_healing_test.rc == 0 else 'FAILED' }}"

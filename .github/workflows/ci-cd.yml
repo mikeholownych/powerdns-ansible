@@ -1,0 +1,208 @@
+name: PowerDNS Ansible CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run security scans weekly
+    - cron: '0 2 * * 1'
+
+env:
+  ANSIBLE_FORCE_COLOR: true
+  ANSIBLE_HOST_KEY_CHECKING: false
+
+jobs:
+  lint-and-validate:
+    name: Lint and Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible ansible-lint yamllint molecule[docker]
+          ansible-galaxy collection install community.mysql ansible.posix
+
+      - name: Run YAML lint
+        run: yamllint .
+
+      - name: Run Ansible lint
+        run: ansible-lint
+
+      - name: Validate playbook syntax
+        run: ansible-playbook --syntax-check powerdns-playbook.yml
+
+      - name: Check inventory
+        run: ansible-inventory --list
+
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run Bandit security linter
+        run: |
+          pip install bandit
+          bandit -r . -f json -o bandit-report.json || true
+
+  molecule-test:
+    name: Molecule Testing
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        distro:
+          - ubuntu2004
+          - ubuntu2204
+          - centos8
+          - rockylinux8
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install molecule[docker] ansible docker
+
+      - name: Run Molecule tests
+        run: molecule test
+        env:
+          MOLECULE_DISTRO: ${{ matrix.distro }}
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [lint-and-validate, security-scan]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Ansible
+        run: |
+          pip install ansible
+          ansible-galaxy collection install community.mysql ansible.posix
+
+      - name: Deploy to staging
+        run: |
+          if [ -z "$VAULT_PASSWORD" ]; then
+            echo "Error: VAULT_PASSWORD secret is not set." >&2
+            exit 1
+            fi
+            echo "$VAULT_PASSWORD" > .vault_pass
+            chmod 600 .vault_pass
+            ansible-playbook powerdns-playbook.yml -i inventory/staging.yml --check
+          env:
+            ANSIBLE_HOST_KEY_CHECKING: false
+            VAULT_PASSWORD: ${{ secrets.VAULT_PASSWORD }}
+
+      - name: Remove .vault_pass after deployment
+        run: |
+          if [ -f .vault_pass ]; then
+            rm .vault_pass
+          fi
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [lint-and-validate, security-scan, molecule-test]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Ansible
+        run: |
+          pip install ansible
+          ansible-galaxy collection install community.mysql ansible.posix
+
+      - name: Deploy to production
+        run: |
+          echo "${{ secrets.VAULT_PASSWORD }}" > .vault_pass
+          chmod 600 .vault_pass
+          ansible-playbook powerdns-playbook.yml --check
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: false
+
+      - name: Run post-deployment tests
+        run: |
+          ansible-playbook tests/post-deployment.yml
+
+  backup-validation:
+    name: Backup Validation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate backup procedures
+        run: |
+          ansible-playbook tests/backup-validation.yml
+
+  performance-test:
+    name: Performance Testing
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: github.ref == 'refs/heads/develop'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run DNS performance tests
+        run: |
+          ansible-playbook tests/performance-tests.yml
+
+  notification:
+    name: Notification
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: always()
+    steps:
+      - name: Notify deployment status
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#infrastructure'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          # Ensure SLACK_WEBHOOK is set in your repository's Secrets

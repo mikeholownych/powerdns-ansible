@@ -1,0 +1,377 @@
+---
+# PowerDNS Main Configuration Variables
+
+# Service configuration
+mysql_service_name: "{{ 'mysql' if ansible_os_family == 'Debian' else 'mariadb' }}"
+powerdns_service_name: pdns
+powerdns_config_file: /etc/powerdns/pdns.conf
+powerdns_backup_dir: /etc/powerdns/backups
+
+# Database configuration
+powerdns_db_name: powerdns
+powerdns_db_user: powerdns
+powerdns_db_host: localhost
+powerdns_db_port: 3306
+
+# Package names by distribution
+powerdns_packages:
+  Debian:
+    - pdns-server
+    - pdns-backend-mysql
+    - mysql-server
+    - mysql-client
+    - python3-pymysql
+  RedHat:
+    - pdns
+    - pdns-backend-mysql
+    - mariadb-server
+    - mariadb
+    - python3-PyMySQL
+
+mysql_packages:
+  Debian:
+    - mysql-server
+    - mysql-client
+    - python3-pymysql
+  RedHat:
+    - mariadb-server
+    - mariadb
+    - python3-PyMySQL
+
+# Security configuration
+powerdns_allowed_recursion:
+  - 127.0.0.1
+  - 192.168.0.0/16
+
+powerdns_webserver_allow_from:
+  - 127.0.0.1
+  - 192.168.0.0/16
+
+# Backup configuration
+backup_config:
+  enabled: true
+  retention_days: "{{ backup_retention_days | default(30) }}"
+  schedule: "{{ backup_schedule | default('0 2 * * *') }}"
+  compress: true
+  encrypt: false
+
+# Performance tuning
+performance_config:
+  max_tcp_connections: 20
+  max_queue_length: 5000
+  distributor_threads: 3
+  receiver_threads: 1
+  cache_ttl: "{{ powerdns_cache_ttl | default(20) }}"
+  negquery_cache_ttl: "{{ powerdns_negquery_cache_ttl | default(60) }}"
+  query_cache_ttl: "{{ powerdns_query_cache_ttl | default(20) }}"
+  recursive_cache_ttl: "{{ powerdns_recursive_cache_ttl | default(10) }}"
+
+# Logging configuration
+logging_config:
+  level: "{{ powerdns_loglevel | default(4) }}"
+  dns_details: "{{ powerdns_log_dns_details | default(true) }}"
+  dns_queries: "{{ powerdns_log_dns_queries | default(true) }}"
+  facility: 0
+  rotate_size: "100M"
+  rotate_count: 10
+
+# Zone configuration templates
+zone_templates:
+  primary:
+    soa_name: "ns1.{{ primary_domains[0] }}"
+    soa_mail: "admin.{{ primary_domains[0] }}"
+    refresh: 3600
+    retry: 1800
+    expire: 604800
+    minimum: 86400
+  secondary:
+    refresh: 3600
+    retry: 1800
+    expire: 604800
+
+# SSL/TLS configuration (for future HTTPS API)
+ssl_config:
+  enabled: false
+  cert_path: /etc/ssl/certs/powerdns.crt
+  key_path: /etc/ssl/private/powerdns.key
+  ca_path: /etc/ssl/certs/ca-certificates.crt
+
+# System tuning
+system_tuning:
+  enable_hugepages: false
+  tcp_keepalive: true
+  file_descriptors: 65536
+  core_dump: false
+  
+# Development/Testing flags
+development_mode: false
+debug_logging: false
+test_mode: false
+
+# Clean Install Configuration
+perform_clean_install: false  # Set to true to perform clean install (removes all data!)
+clean_install_force: false   # Set to true to skip confirmation prompt (dangerous!)
+clean_install_backup_before: false  # Set to true to backup before clean install
+
+# Clean install package lists (used by clean_install role)
+clean_install_packages:
+  Debian:
+    powerdns:
+      - pdns-server
+      - pdns-backend-mysql
+      - pdns-tools
+      - pdns-recursor
+    mysql:
+      - mysql-server
+      - mysql-client
+      - mysql-common
+      - mysql-server-core-*
+    monitoring:
+      - prometheus
+      - prometheus-node-exporter
+    haproxy:
+      - haproxy
+      - socat
+    keepalived:
+      - keepalived
+      - ipvsadm
+  RedHat:
+    powerdns:
+      - pdns
+      - pdns-backend-mysql
+      - pdns-tools
+      - pdns-recursor
+    mysql:
+      - mariadb-server
+      - mariadb
+      - mariadb-common
+    monitoring:
+      - prometheus
+      - prometheus-node-exporter
+    haproxy:
+      - haproxy
+      - socat
+    keepalived:
+      - keepalived
+      - ipvsadm
+
+#################################
+# HAProxy Configuration
+#################################
+
+haproxy_stats_packages:
+  Debian:
+    - socat
+    - netcat-openbsd
+  RedHat:
+    - socat
+    - nmap-ncat
+
+# HAProxy settings
+haproxy_stats_enabled: true
+haproxy_stats_port: 8404
+haproxy_stats_uri: "/stats"
+haproxy_stats_user: admin
+haproxy_stats_password: "{{ haproxy_admin_password | default('admin123') }}"
+
+haproxy_dns_port: 53
+haproxy_api_enabled: true
+haproxy_api_port: 8081
+haproxy_mysql_enabled: true
+haproxy_mysql_port: 3306
+haproxy_recursor_enabled: false
+haproxy_recursor_port: 5353
+haproxy_health_port: 8080
+
+haproxy_monitor_user: haproxy_monitor
+haproxy_monitor_password: "{{ haproxy_monitor_pass | default('monitor123') }}"
+haproxy_mysql_monitoring: true
+
+#################################
+# PowerDNS Recursor Configuration
+#################################
+
+recursor_packages:
+  Debian:
+    - pdns-recursor
+  RedHat:
+    - pdns-recursor
+
+# Recursor settings
+recursor_service_name: pdns-recursor
+recursor_config_dir: /etc/powerdns
+recursor_config_file: /etc/powerdns/recursor.conf
+recursor_backup_dir: /etc/powerdns/backups
+recursor_user: pdns-recursor
+recursor_group: pdns-recursor
+recursor_port: 5353
+
+# Recursor network configuration
+recursor_bind_address: "{{ ansible_default_ipv4.address }}"
+recursor_allowed_networks:
+  - 127.0.0.1/8
+  - 192.168.0.0/16
+  - 10.0.0.0/8
+
+# Recursor API configuration
+recursor_api_enabled: false
+recursor_api_port: 8082
+recursor_api_bind_address: "{{ ansible_default_ipv4.address }}"
+recursor_api_allowed_networks:
+  - 127.0.0.1/8
+  - 192.168.0.0/16
+recursor_api_key: "{{ recursor_api_secret | default('recursor123') }}"
+recursor_api_readonly: true
+
+# Recursor performance settings
+recursor_performance:
+  max_cache_entries: 1000000
+  max_negative_ttl: 3600
+  max_tcp_clients: 128
+  threads: 2
+  pdns_distributes_queries: "yes"
+  network_timeout: 1500
+  client_tcp_timeout: 2
+  server_down_max_fails: 64
+  server_down_throttle_time: 60
+
+# Recursor security settings
+recursor_dnssec_enabled: "validate"
+recursor_security:
+  spoof_nearmiss_max: 20
+  max_qperq: 60
+  max_total_msec: 7000
+
+# Recursor logging settings
+recursor_logging:
+  level: 4
+  facility: 0
+  quiet: "no"
+  log_common_errors: "yes"
+
+# Recursor advanced settings
+recursor_lua_config_enabled: false
+recursor_export_etc_hosts: "yes"
+recursor_serve_rfc1918: "yes"
+recursor_monitoring_enabled: true
+
+# Recursor integration settings
+recursor_auth_integration_enabled: true
+recursor_split_horizon_enabled: false
+
+# Recursor statistics
+recursor_stats:
+  ringbuffer_entries: 10000
+
+#################################
+# Keepalived Configuration
+#################################
+
+keepalived_tools:
+  Debian:
+    - ipvsadm
+    - conntrack
+  RedHat:
+    - ipvsadm
+    - conntrack-tools
+
+# Keepalived settings
+keepalived_interface: "{{ ansible_default_ipv4.interface }}"
+keepalived_router_id: 51
+keepalived_auth_pass: "{{ keepalived_password | default('keepalived123') }}"
+
+# Virtual IPs
+keepalived_vip: "{{ keepalived_virtual_ip | default('192.168.1.100') }}"
+keepalived_vip_netmask: 24
+keepalived_dns_vip_enabled: true
+keepalived_dns_vip: "{{ keepalived_dns_virtual_ip | default('192.168.1.101') }}"
+keepalived_mysql_vip_enabled: false
+keepalived_mysql_vip: "{{ keepalived_mysql_virtual_ip | default('192.168.1.102') }}"
+
+# Router IDs for different services
+keepalived_dns_router_id: 52
+keepalived_mysql_router_id: 53
+
+# Priorities by server role
+keepalived_priority:
+  primary: 110
+  secondary: 100
+
+keepalived_dns_priority:
+  primary: 105
+  secondary: 95
+
+keepalived_mysql_priority:
+  primary: 100
+  secondary: 90
+
+# Health check settings
+keepalived_check_interval: 5
+keepalived_check_fall: 2
+keepalived_check_rise: 2
+keepalived_preempt_delay: 60
+
+# Weight adjustments for health checks
+keepalived_powerdns_weight: -10
+keepalived_mysql_weight: -5
+keepalived_haproxy_weight: -15
+keepalived_haproxy_enabled: false
+
+# Monitoring settings
+keepalived_monitoring_enabled: true
+
+#################################
+# MySQL Replication & HA Configuration
+#################################
+
+# MySQL replication settings
+mysql_replication_enabled: false
+mysql_replication_user: replication
+mysql_replication_password: "{{ mysql_repl_password | default('replication123') }}"
+mysql_replication_host_pattern: "%"
+mysql_master_host: "{{ groups['powerdns_primary'][0] | default('localhost') }}"
+
+# MySQL replication config paths
+mysql_replication_config_path:
+  Debian: /etc/mysql/conf.d/replication.cnf
+  RedHat: /etc/my.cnf.d/replication.cnf
+
+# MySQL HA settings
+mysql_ha_enabled: false
+mysql_monitor_user: mysql_monitor
+mysql_monitor_password: "{{ mysql_monitor_pass | default('monitor123') }}"
+
+#################################
+# Enhanced Firewall Configuration
+#################################
+
+# Extended firewall ports for new services
+firewall_ports:
+  - { port: 53, proto: tcp, comment: "DNS TCP" }
+  - { port: 53, proto: udp, comment: "DNS UDP" }
+  - { port: 8081, proto: tcp, comment: "PowerDNS API", source: "192.168.0.0/16" }
+  - { port: 5353, proto: tcp, comment: "PowerDNS Recursor TCP", source: "192.168.0.0/16" }
+  - { port: 5353, proto: udp, comment: "PowerDNS Recursor UDP", source: "192.168.0.0/16" }
+  - { port: 8082, proto: tcp, comment: "PowerDNS Recursor API", source: "192.168.0.0/16" }
+  - { port: 8404, proto: tcp, comment: "HAProxy Stats", source: "192.168.0.0/16" }
+  - { port: 8080, proto: tcp, comment: "HAProxy Health Check", source: "192.168.0.0/16" }
+
+#################################
+# Enhanced Monitoring Configuration
+#################################
+
+# Extended monitoring for new services
+monitoring_config:
+  enabled: true
+  health_check_interval: "{{ health_check_interval | default(300) }}"
+  metrics_enabled: true
+  prometheus_port: 9153
+  alert_thresholds:
+    response_time_ms: 100
+    error_rate_percent: 5
+    memory_usage_percent: 80
+    cpu_usage_percent: 80
+    haproxy_backend_down: 1
+    keepalived_vip_missing: 1
+    mysql_replication_lag: 60
+    recursor_cache_hit_rate: 80

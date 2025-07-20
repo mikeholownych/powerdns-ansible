@@ -1,0 +1,46 @@
+---
+# Ansible Galaxy Collection Metadata
+namespace: community
+name: powerdns_ops
+version: 1.0.0
+readme: README.md
+authors:
+  - "PowerDNS Operations Collection Contributors"
+description: >-
+  Production-ready PowerDNS infrastructure automation with comprehensive
+  security, monitoring, self-healing, and operational excellence features.
+  Open-source enterprise-grade DNS management solution.
+license:
+  - MIT
+license_file: LICENSE
+tags:
+  - dns
+  - powerdns
+  - infrastructure
+  - security
+  - monitoring
+  - automation
+  - operations
+  - high_availability
+  - self_healing
+  - dnssec
+  - open_source
+dependencies:
+  "ansible.posix": ">=1.0.0"
+  "community.general": ">=3.0.0"
+  "community.mysql": ">=2.0.0"
+  "community.crypto": ">=1.0.0"
+repository: https://github.com/ansible-collections/community.powerdns_ops
+documentation: https://ansible-collections.github.io/community.powerdns_ops/
+homepage: https://github.com/ansible-collections/community.powerdns_ops
+issues: https://github.com/ansible-collections/community.powerdns_ops/issues
+build_ignore:
+  - "*.tar.gz"
+  - ".git"
+  - ".github"
+  - "tests/output"
+  - "molecule"
+  - ".molecule"
+  - "__pycache__"
+  - "*.pyc"
+  - ".pytest_cache"

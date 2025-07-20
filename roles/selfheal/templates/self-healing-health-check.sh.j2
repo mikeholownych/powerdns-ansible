@@ -1,0 +1,338 @@
+#!/bin/bash
+# Self-Healing Health Check Script
+# Automatically detects and corrects common issues
+
+set -euo pipefail
+
+# Configuration
+LOG_FILE="/var/log/powerdns-self-healing.log"
+ALERT_THRESHOLD=3
+RECOVERY_ACTIONS_FILE="/var/lib/powerdns-state/recovery-actions.log"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Logging function
+log_message() {
+    local level=$1
+    local message=$2
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "[$timestamp] [$level] $message" | tee -a "$LOG_FILE"
+}
+
+# Recovery action logging
+log_recovery_action() {
+    local action=$1
+    local result=$2
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "[$timestamp] ACTION: $action - RESULT: $result" >> "$RECOVERY_ACTIONS_FILE"
+}
+
+# Check and fix PowerDNS service
+check_powerdns() {
+    log_message "INFO" "Checking PowerDNS service health"
+    
+    if ! systemctl is-active --quiet pdns; then
+        log_message "ERROR" "PowerDNS service is not running"
+        
+        # Attempt automatic recovery
+        log_message "INFO" "Attempting PowerDNS recovery"
+        
+        # Check configuration first
+        if pdns_server --config-check 2>/dev/null; then
+            log_message "INFO" "PowerDNS configuration is valid"
+            
+            # Try to start the service
+            if systemctl start pdns; then
+                log_message "INFO" "PowerDNS service started successfully"
+                log_recovery_action "PowerDNS restart" "SUCCESS"
+                return 0
+            else
+                log_message "ERROR" "Failed to start PowerDNS service"
+                log_recovery_action "PowerDNS restart" "FAILED"
+            fi
+        else
+            log_message "ERROR" "PowerDNS configuration is invalid"
+            
+            # Attempt configuration fix
+            log_message "INFO" "Attempting to fix PowerDNS configuration"
+            
+            # Backup current config
+            cp /etc/powerdns/pdns.conf /etc/powerdns/pdns.conf.backup.$(date +%s)
+            
+            # Apply basic fixes
+            sed -i 's/^#daemon=yes/daemon=yes/' /etc/powerdns/pdns.conf
+            sed -i 's/^#guardian=yes/guardian=yes/' /etc/powerdns/pdns.conf
+            sed -i 's/^#setuid=pdns/setuid=pdns/' /etc/powerdns/pdns.conf
+            sed -i 's/^#setgid=pdns/setgid=pdns/' /etc/powerdns/pdns.conf
+            
+            # Test configuration again
+            if pdns_server --config-check 2>/dev/null; then
+                log_message "INFO" "PowerDNS configuration fixed"
+                
+                if systemctl start pdns; then
+                    log_message "INFO" "PowerDNS service started after configuration fix"
+                    log_recovery_action "PowerDNS config fix and restart" "SUCCESS"
+                    return 0
+                fi
+            fi
+            
+            log_recovery_action "PowerDNS config fix" "FAILED"
+        fi
+        
+        return 1
+    else
+        log_message "INFO" "PowerDNS service is running"
+        
+        # Check DNS resolution
+        if dig @localhost {{ primary_domains[0] | default('localhost') }} SOA +short >/dev/null 2>&1; then
+            log_message "INFO" "PowerDNS DNS resolution is working"
+        else
+            log_message "WARNING" "PowerDNS DNS resolution is not working properly"
+            
+            # Restart service to fix resolution issues
+            if systemctl restart pdns; then
+                log_message "INFO" "PowerDNS service restarted to fix resolution"
+                log_recovery_action "PowerDNS resolution fix restart" "SUCCESS"
+            else
+                log_recovery_action "PowerDNS resolution fix restart" "FAILED"
+            fi
+        fi
+    fi
+    
+    return 0
+}
+
+# Check and fix MySQL service
+check_mysql() {
+    {% if 'mysql' in dns_features %}
+    log_message "INFO" "Checking MySQL service health"
+    
+    if ! systemctl is-active --quiet {{ mysql_service_name }}; then
+        log_message "ERROR" "MySQL service is not running"
+        
+        # Attempt automatic recovery
+        log_message "INFO" "Attempting MySQL recovery"
+        
+        # Check for common issues
+        if [ ! -S /var/run/mysqld/mysqld.sock ]; then
+            log_message "INFO" "MySQL socket missing, attempting to start service"
+            
+            # Ensure MySQL directory permissions
+            chown -R mysql:mysql /var/lib/mysql /var/log/mysql
+            chmod 755 /var/lib/mysql /var/log/mysql
+            
+            if systemctl start {{ mysql_service_name }}; then
+                log_message "INFO" "MySQL service started successfully"
+                log_recovery_action "MySQL restart" "SUCCESS"
+                
+                # Wait for socket
+                sleep 5
+                
+                # Test connectivity
+                if mysql -u {{ powerdns_db_user }} -p{{ powerdns_db_password }} -h {{ powerdns_db_host }} -e "SELECT 1;" >/dev/null 2>&1; then
+                    log_message "INFO" "MySQL connectivity restored"
+                    log_recovery_action "MySQL connectivity test" "SUCCESS"
+                else
+                    log_message "WARNING" "MySQL started but connectivity test failed"
+                    log_recovery_action "MySQL connectivity test" "FAILED"
+                fi
+            else
+                log_message "ERROR" "Failed to start MySQL service"
+                log_recovery_action "MySQL restart" "FAILED"
+                return 1
+            fi
+        fi
+    else
+        log_message "INFO" "MySQL service is running"
+        
+        # Test database connectivity
+        if mysql -u {{ powerdns_db_user }} -p{{ powerdns_db_password }} -h {{ powerdns_db_host }} -e "SELECT 1;" >/dev/null 2>&1; then
+            log_message "INFO" "MySQL connectivity is working"
+        else
+            log_message "WARNING" "MySQL is running but connectivity test failed"
+            
+            # Restart MySQL to fix connectivity issues
+            if systemctl restart {{ mysql_service_name }}; then
+                log_message "INFO" "MySQL service restarted to fix connectivity"
+                log_recovery_action "MySQL connectivity fix restart" "SUCCESS"
+            else
+                log_recovery_action "MySQL connectivity fix restart" "FAILED"
+            fi
+        fi
+    fi
+    {% else %}
+    log_message "INFO" "MySQL feature not enabled, skipping check"
+    {% endif %}
+    
+    return 0
+}
+
+# Check system resources
+check_system_resources() {
+    log_message "INFO" "Checking system resources"
+    
+    # Check disk space
+    local disk_usage=$(df / | tail -1 | awk '{print $5}' | cut -d'%' -f1)
+    if [ "$disk_usage" -gt 90 ]; then
+        log_message "ERROR" "Disk usage critically high: ${disk_usage}%"
+        
+        # Attempt cleanup
+        log_message "INFO" "Attempting disk cleanup"
+        
+        # Clean old logs
+        find /var/log -name "*.log.*" -mtime +7 -delete 2>/dev/null || true
+        find /var/log -name "*.gz" -mtime +30 -delete 2>/dev/null || true
+        
+        # Clean package cache
+        if command -v apt-get >/dev/null; then
+            apt-get clean >/dev/null 2>&1 || true
+        elif command -v yum >/dev/null; then
+            yum clean all >/dev/null 2>&1 || true
+        fi
+        
+        # Check disk usage again
+        local new_disk_usage=$(df / | tail -1 | awk '{print $5}' | cut -d'%' -f1)
+        if [ "$new_disk_usage" -lt "$disk_usage" ]; then
+            log_message "INFO" "Disk cleanup successful: ${new_disk_usage}%"
+            log_recovery_action "Disk cleanup" "SUCCESS"
+        else
+            log_message "WARNING" "Disk cleanup had minimal effect"
+            log_recovery_action "Disk cleanup" "PARTIAL"
+        fi
+    else
+        log_message "INFO" "Disk usage is acceptable: ${disk_usage}%"
+    fi
+    
+    # Check memory usage
+    local mem_usage=$(free | grep Mem | awk '{printf "%.0f", $3/$2 * 100.0}')
+    if [ "$mem_usage" -gt 90 ]; then
+        log_message "WARNING" "Memory usage is high: ${mem_usage}%"
+        
+        # Clear caches if memory is critically high
+        if [ "$mem_usage" -gt 95 ]; then
+            log_message "INFO" "Clearing system caches due to critical memory usage"
+            sync
+            echo 3 > /proc/sys/vm/drop_caches
+            log_recovery_action "Memory cache clear" "SUCCESS"
+        fi
+    else
+        log_message "INFO" "Memory usage is acceptable: ${mem_usage}%"
+    fi
+}
+
+# Check network connectivity
+check_network() {
+    log_message "INFO" "Checking network connectivity"
+    
+    # Check if we can resolve DNS
+    if nslookup google.com >/dev/null 2>&1; then
+        log_message "INFO" "External DNS resolution is working"
+    else
+        log_message "WARNING" "External DNS resolution is not working"
+        
+        # Try to restart networking
+        if systemctl restart systemd-resolved 2>/dev/null; then
+            log_message "INFO" "Restarted systemd-resolved"
+            log_recovery_action "Network DNS fix" "SUCCESS"
+        else
+            log_recovery_action "Network DNS fix" "FAILED"
+        fi
+    fi
+}
+
+# Check configuration drift
+check_config_drift() {
+    log_message "INFO" "Checking for configuration drift"
+    
+    local config_files=(
+        "/etc/powerdns/pdns.conf"
+        "/etc/mysql/my.cnf"
+        "/etc/prometheus/prometheus.yml"
+    )
+    
+    for config_file in "${config_files[@]}"; do
+        if [ -f "$config_file" ]; then
+            local current_hash=$(sha256sum "$config_file" | cut -d' ' -f1)
+            local stored_hash_file="/var/lib/powerdns-state/configs/$(basename "$config_file").hash"
+            
+            if [ -f "$stored_hash_file" ]; then
+                local stored_hash=$(cat "$stored_hash_file")
+                
+                if [ "$current_hash" != "$stored_hash" ]; then
+                    log_message "WARNING" "Configuration drift detected in $config_file"
+                    log_recovery_action "Config drift detection" "DETECTED:$config_file"
+                    
+                    # Update stored hash
+                    echo "$current_hash" > "$stored_hash_file"
+                else
+                    log_message "INFO" "No drift detected in $config_file"
+                fi
+            else
+                # First time, store the hash
+                echo "$current_hash" > "$stored_hash_file"
+                log_message "INFO" "Stored initial hash for $config_file"
+            fi
+        fi
+    done
+}
+
+# Main health check function
+main() {
+    log_message "INFO" "Starting self-healing health check"
+    
+    # Create necessary directories
+    mkdir -p "$(dirname "$LOG_FILE")"
+    mkdir -p "$(dirname "$RECOVERY_ACTIONS_FILE")"
+    mkdir -p "/var/lib/powerdns-state/configs"
+    
+    local overall_status=0
+    
+    # Run all checks
+    check_powerdns || overall_status=1
+    check_mysql || overall_status=1
+    check_system_resources || overall_status=1
+    check_network || overall_status=1
+    check_config_drift || overall_status=1
+    
+    # Generate status report
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    cat > /var/lib/powerdns-state/health-check-status.json << EOF
+{
+    "timestamp": "$timestamp",
+    "hostname": "{{ inventory_hostname }}",
+    "overall_status": "$([ $overall_status -eq 0 ] && echo "HEALTHY" || echo "ISSUES_DETECTED")",
+    "checks_performed": [
+        "powerdns_service",
+        "mysql_service",
+        "system_resources",
+        "network_connectivity",
+        "config_drift"
+    ],
+    "log_file": "$LOG_FILE",
+    "recovery_actions_file": "$RECOVERY_ACTIONS_FILE"
+}
+EOF
+    
+    if [ $overall_status -eq 0 ]; then
+        log_message "INFO" "Self-healing health check completed successfully"
+    else
+        log_message "WARNING" "Self-healing health check completed with issues"
+    fi
+    
+    # Send notification if configured
+    {% if notify_on_changes | default(true) %}
+    if [ $overall_status -ne 0 ] && [ -x "/usr/local/bin/state-notifier.py" ]; then
+        /usr/local/bin/state-notifier.py --event "health_check_issues" --severity "warning" >/dev/null 2>&1 || true
+    fi
+    {% endif %}
+    
+    log_message "INFO" "Self-healing health check finished"
+    exit $overall_status
+}
+
+# Run main function
+main "$@"

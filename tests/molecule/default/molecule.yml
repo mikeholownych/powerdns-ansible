@@ -1,0 +1,93 @@
+---
+dependency:
+  name: galaxy
+  options:
+    requirements-file: requirements.yml
+
+driver:
+  name: docker
+
+platforms:
+  - name: powerdns-primary
+    image: "geerlingguy/docker-${MOLECULE_DISTRO:-ubuntu2004}-ansible:latest"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+    privileged: true
+    pre_build_image: true
+    groups:
+      - powerdns_servers
+      - powerdns_primary
+    networks:
+      - name: powerdns-network
+
+  - name: powerdns-secondary
+    image: "geerlingguy/docker-${MOLECULE_DISTRO:-ubuntu2004}-ansible:latest"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+    privileged: true
+    pre_build_image: true
+    groups:
+      - powerdns_servers
+      - powerdns_secondary
+    networks:
+      - name: powerdns-network
+
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      powerdns-primary:
+        server_role: primary
+        server_id: 1
+        ansible_host: powerdns-primary
+      powerdns-secondary:
+        server_role: secondary
+        server_id: 2
+        ansible_host: powerdns-secondary
+    group_vars:
+      powerdns_servers:
+        powerdns_version: "4.8"
+        powerdns_backend: mysql
+        powerdns_api_key: "test-api-key-for-molecule-testing-only"
+        powerdns_db_password: "test-db-password"
+        mysql_root_password: "test-root-password"
+        primary_domains:
+          - test.local
+          - molecule.test
+        backup_retention_days: 7
+        health_check_interval: 60
+        monitoring_config:
+          enabled: true
+          prometheus_port: 9153
+  config_options:
+    defaults:
+      interpreter_python: auto_silent
+      callback_whitelist: profile_tasks, timer, yaml
+      stdout_callback: yaml
+      ansible_python_interpreter: /usr/bin/python3
+  playbooks:
+    converge: ../../../powerdns-playbook.yml
+
+verifier:
+  name: ansible
+  playbooks:
+    verify: verify.yml
+
+scenario:
+  test_sequence:
+    - dependency
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - idempotence
+    - side_effect
+    - verify
+    - cleanup
+    - destroy

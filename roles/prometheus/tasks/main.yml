@@ -1,0 +1,237 @@
+---
+# Prometheus monitoring setup for PowerDNS
+
+- name: Create prometheus system user
+  user:
+    name: prometheus
+    system: yes
+    shell: /bin/false
+    home: /var/lib/prometheus
+    create_home: yes
+
+- name: Create prometheus directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: prometheus
+    group: prometheus
+    mode: '0755'
+  loop:
+    - /etc/prometheus
+    - /var/lib/prometheus
+    - /var/lib/prometheus/data
+    - /var/log/prometheus
+
+- name: Download and install Prometheus
+  unarchive:
+    src: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version | default('2.45.0') }}/prometheus-{{ prometheus_version | default('2.45.0') }}.linux-amd64.tar.gz"
+    dest: /tmp
+    remote_src: yes
+    creates: "/tmp/prometheus-{{ prometheus_version | default('2.45.0') }}.linux-amd64"
+
+- name: Copy Prometheus binaries
+  copy:
+    src: "/tmp/prometheus-{{ prometheus_version | default('2.45.0') }}.linux-amd64/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+  loop:
+    - prometheus
+    - promtool
+
+- name: Create Prometheus configuration
+  template:
+    src: prometheus.yml.j2
+    dest: /etc/prometheus/prometheus.yml
+    owner: prometheus
+    group: prometheus
+    mode: '0644'
+  notify: restart prometheus
+
+- name: Create Prometheus systemd service
+  template:
+    src: prometheus.service.j2
+    dest: /etc/systemd/system/prometheus.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart prometheus
+
+- name: Download and install PowerDNS Exporter
+  get_url:
+    url: "https://github.com/janeczku/powerdns_exporter/releases/download/v{{ powerdns_exporter_version | default('0.4.0') }}/powerdns_exporter-{{ powerdns_exporter_version | default('0.4.0') }}.linux-amd64.tar.gz"
+    dest: /tmp/powerdns_exporter.tar.gz
+
+- name: Extract PowerDNS Exporter
+  unarchive:
+    src: /tmp/powerdns_exporter.tar.gz
+    dest: /tmp
+    remote_src: yes
+
+- name: Install PowerDNS Exporter binary
+  copy:
+    src: "/tmp/powerdns_exporter-{{ powerdns_exporter_version | default('0.4.0') }}.linux-amd64/powerdns_exporter"
+    dest: /usr/local/bin/powerdns_exporter
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+
+- name: Create PowerDNS Exporter systemd service
+  template:
+    src: powerdns-exporter.service.j2
+    dest: /etc/systemd/system/powerdns-exporter.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart powerdns-exporter
+
+- name: Download and install Node Exporter
+  unarchive:
+    src: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version | default('1.6.1') }}/node_exporter-{{ node_exporter_version | default('1.6.1') }}.linux-amd64.tar.gz"
+    dest: /tmp
+    remote_src: yes
+
+- name: Install Node Exporter binary
+  copy:
+    src: "/tmp/node_exporter-{{ node_exporter_version | default('1.6.1') }}.linux-amd64/node_exporter"
+    dest: /usr/local/bin/node_exporter
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+
+- name: Create Node Exporter systemd service
+  template:
+    src: node-exporter.service.j2
+    dest: /etc/systemd/system/node-exporter.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart node-exporter
+
+- name: Install MySQL Exporter (if MySQL monitoring enabled)
+  block:
+    - name: Download MySQL Exporter
+      get_url:
+        url: "https://github.com/prometheus/mysqld_exporter/releases/download/v{{ mysql_exporter_version | default('0.15.0') }}/mysqld_exporter-{{ mysql_exporter_version | default('0.15.0') }}.linux-amd64.tar.gz"
+        dest: /tmp/mysqld_exporter.tar.gz
+
+    - name: Extract MySQL Exporter
+      unarchive:
+        src: /tmp/mysqld_exporter.tar.gz
+        dest: /tmp
+        remote_src: yes
+
+    - name: Install MySQL Exporter binary
+      copy:
+        src: "/tmp/mysqld_exporter-{{ mysql_exporter_version | default('0.15.0') }}.linux-amd64/mysqld_exporter"
+        dest: /usr/local/bin/mysqld_exporter
+        owner: root
+        group: root
+        mode: '0755'
+        remote_src: yes
+
+    - name: Create MySQL Exporter configuration
+      template:
+        src: mysql-exporter.cnf.j2
+        dest: /etc/prometheus/.my.cnf
+        owner: prometheus
+        group: prometheus
+        mode: '0600'
+
+    - name: Create MySQL Exporter systemd service
+      template:
+        src: mysql-exporter.service.j2
+        dest: /etc/systemd/system/mysql-exporter.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify:
+        - reload systemd
+        - restart mysql-exporter
+  when: mysql_monitoring_enabled | default(true)
+
+- name: Create Grafana dashboards directory
+  file:
+    path: /var/lib/grafana/dashboards
+    state: directory
+    owner: prometheus
+    group: prometheus
+    mode: '0755'
+
+- name: Install PowerDNS Grafana dashboard
+  template:
+    src: powerdns-dashboard.json.j2
+    dest: /var/lib/grafana/dashboards/powerdns-dashboard.json
+    owner: prometheus
+    group: prometheus
+    mode: '0644'
+
+- name: Configure firewall for Prometheus
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+    comment: "Prometheus monitoring"
+  loop:
+    - "{{ prometheus_port | default(9090) }}"
+    - "{{ powerdns_exporter_port | default(9120) }}"
+    - "{{ node_exporter_port | default(9100) }}"
+    - "{{ mysql_exporter_port | default(9104) }}"
+  when: 
+    - ansible_os_family == "Debian"
+    - firewall_enabled | default(true)
+
+- name: Enable and start monitoring services
+  systemd:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  loop:
+    - prometheus
+    - powerdns-exporter
+    - node-exporter
+    - mysql-exporter
+  ignore_errors: yes
+
+- name: Create monitoring health check script
+  template:
+    src: monitoring-health-check.sh.j2
+    dest: /usr/local/bin/monitoring-health-check.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Schedule monitoring health checks
+  cron:
+    name: "Monitoring Health Check"
+    cron_file: monitoring-health
+    user: root
+    minute: "*/5"
+    job: "/usr/local/bin/monitoring-health-check.sh"
+    state: present
+  when: monitoring_health_checks_enabled | default(true)
+
+- name: Verify Prometheus is accessible
+  uri:
+    url: "http://localhost:{{ prometheus_port | default(9090) }}/api/v1/status/config"
+    method: GET
+    status_code: 200
+  register: prometheus_status
+  retries: 3
+  delay: 10
+  ignore_errors: yes
+
+- name: Display Prometheus status
+  debug:
+    msg: "Prometheus status: {{ 'RUNNING' if prometheus_status.status == 200 else 'FAILED' }}"

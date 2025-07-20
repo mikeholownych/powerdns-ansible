@@ -1,0 +1,345 @@
+---
+# Integration Tests for PowerDNS Infrastructure
+
+- name: Display integration test start
+  debug:
+    msg: "=== Running PowerDNS Integration Tests ==="
+
+- name: Test end-to-end DNS resolution chain
+  block:
+    - name: Create test zone via API
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ powerdns_webserver_port | default(8081) }}/api/v1/servers/localhost/zones"
+        method: POST
+        headers:
+          X-API-Key: "{{ powerdns_api_key }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          name: "integration-test.local."
+          kind: "Native"
+          nameservers:
+            - "ns1.integration-test.local."
+        status_code: 201
+      register: test_zone_creation
+      when: "'api' in dns_features"
+
+    - name: Add test records via API
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ powerdns_webserver_port | default(8081) }}/api/v1/servers/localhost/zones/integration-test.local./rrsets"
+        method: PATCH
+        headers:
+          X-API-Key: "{{ powerdns_api_key }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          rrsets:
+            - name: "test.integration-test.local."
+              type: "A"
+              records:
+                - content: "192.168.1.100"
+                  disabled: false
+        status_code: 204
+      register: test_record_creation
+      when: "'api' in dns_features"
+
+    - name: Test DNS resolution of created record
+      command: dig @{{ ansible_default_ipv4.address }} test.integration-test.local A +short
+      register: integration_dns_test
+      failed_when: "'192.168.1.100' not in integration_dns_test.stdout"
+      changed_when: false
+      when: "'api' in dns_features"
+
+    - name: Clean up test zone
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ powerdns_webserver_port | default(8081) }}/api/v1/servers/localhost/zones/integration-test.local."
+        method: DELETE
+        headers:
+          X-API-Key: "{{ powerdns_api_key }}"
+        status_code: 204
+      register: test_zone_cleanup
+      when: "'api' in dns_features"
+
+  when: "'api' in dns_features"
+
+- name: Test database replication (if Galera enabled)
+  block:
+    - name: Create test data on primary
+      mysql_query:
+        login_user: "{{ powerdns_db_user }}"
+        login_password: "{{ powerdns_db_password }}"
+        login_host: "{{ powerdns_db_host }}"
+        login_db: "{{ powerdns_db_name }}"
+        query: |
+          INSERT INTO domains (name, type) VALUES ('replication-test.local', 'NATIVE')
+          ON DUPLICATE KEY UPDATE name=name;
+      register: replication_test_insert
+      when: server_role == 'primary'
+
+    - name: Wait for replication
+      pause:
+        seconds: 10
+      when: "'galera' in dns_features"
+
+    - name: Verify data on secondary
+      mysql_query:
+        login_user: "{{ powerdns_db_user }}"
+        login_password: "{{ powerdns_db_password }}"
+        login_host: "{{ powerdns_db_host }}"
+        login_db: "{{ powerdns_db_name }}"
+        query: "SELECT COUNT(*) as count FROM domains WHERE name = 'replication-test.local'"
+      register: replication_test_verify
+      failed_when: replication_test_verify.query_result[0]['count'] != 1
+      when: "'galera' in dns_features"
+
+    - name: Clean up replication test data
+      mysql_query:
+        login_user: "{{ powerdns_db_user }}"
+        login_password: "{{ powerdns_db_password }}"
+        login_host: "{{ powerdns_db_host }}"
+        login_db: "{{ powerdns_db_name }}"
+        query: "DELETE FROM domains WHERE name = 'replication-test.local'"
+      when: server_role == 'primary'
+
+  when: "'galera' in dns_features"
+
+- name: Test DNSSEC signing and validation
+  block:
+    - name: Sign test zone with DNSSEC
+      command: pdnsutil secure-zone {{ primary_domains[0] | default('example.com') }}
+      register: dnssec_signing_test
+      failed_when: dnssec_signing_test.rc != 0
+      changed_when: false
+
+    - name: Generate DNSSEC keys
+      command: pdnsutil generate-zone-key {{ primary_domains[0] | default('example.com') }} ksk
+      register: dnssec_key_generation
+      failed_when: dnssec_key_generation.rc != 0
+      changed_when: false
+
+    - name: Activate DNSSEC keys
+      command: pdnsutil activate-zone-key {{ primary_domains[0] | default('example.com') }} all
+      register: dnssec_key_activation
+      failed_when: dnssec_key_activation.rc != 0
+      changed_when: false
+
+    - name: Test DNSSEC validation
+      command: dig @{{ ansible_default_ipv4.address }} {{ primary_domains[0] | default('example.com') }} DNSKEY +dnssec
+      register: dnssec_validation_test
+      failed_when: "'RRSIG' not in dnssec_validation_test.stdout"
+      changed_when: false
+
+  when: 
+    - "'dnssec' in dns_features"
+    - server_role == 'primary'
+
+- name: Test load balancer functionality
+  block:
+    - name: Test DNSdist load balancing
+      command: dig @{{ ansible_default_ipv4.address }} {{ primary_domains[0] | default('example.com') }} SOA +short
+      register: dnsdist_lb_test
+      failed_when: dnsdist_lb_test.rc != 0
+      changed_when: false
+      loop: "{{ range(5) | list }}"
+
+    - name: Check DNSdist statistics
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ dnsdist_webserver_port | default(8083) }}/jsonstat"
+        method: GET
+        headers:
+          Authorization: "Basic {{ (dnsdist_webserver_password | default('admin123')) | b64encode }}"
+        status_code: 200
+      register: dnsdist_stats_test
+
+  when: 
+    - "'dnsdist' in dns_features"
+    - server_role == 'loadbalancer'
+
+- name: Test failover functionality
+  block:
+    - name: Check VIP assignment
+      command: ip addr show
+      register: vip_assignment_test
+      changed_when: false
+
+    - name: Test service failover simulation
+      systemd:
+        name: pdns
+        state: stopped
+      register: failover_test_stop
+
+    - name: Wait for failover
+      pause:
+        seconds: 30
+
+    - name: Check VIP migration
+      command: ip addr show
+      register: vip_migration_test
+      changed_when: false
+
+    - name: Restore service
+      systemd:
+        name: pdns
+        state: started
+      register: failover_test_restore
+
+  when: 
+    - keepalived_enabled | default(false)
+    - groups['powerdns_primary'] | default([]) | length > 1
+    - inventory_hostname == groups['powerdns_primary'][1]  # Test on secondary
+
+- name: Test monitoring and alerting
+  block:
+    - name: Test Prometheus metrics collection
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ prometheus_port | default(9090) }}/api/v1/query?query=powerdns_up"
+        method: GET
+        status_code: 200
+      register: prometheus_metrics_test
+
+    - name: Test PowerDNS exporter metrics
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ powerdns_exporter_port | default(9120) }}/metrics"
+        method: GET
+        status_code: 200
+      register: powerdns_exporter_test
+
+    - name: Test alert rules
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ prometheus_port | default(9090) }}/api/v1/rules"
+        method: GET
+        status_code: 200
+      register: alert_rules_test
+
+  when: "'monitoring' in dns_features"
+
+- name: Test backup and restore functionality
+  block:
+    - name: Create test backup
+      command: /usr/local/bin/backup-powerdns.sh --test-mode
+      register: backup_creation_test
+      failed_when: backup_creation_test.rc != 0
+      changed_when: false
+
+    - name: Verify backup files
+      stat:
+        path: "{{ powerdns_backup_dir }}/test_backup.tar.gz"
+      register: backup_file_test
+      failed_when: not backup_file_test.stat.exists
+
+    - name: Test backup restoration (dry run)
+      command: /usr/local/bin/restore-powerdns.sh --dry-run --backup test_backup.tar.gz
+      register: restore_test
+      failed_when: restore_test.rc != 0
+      changed_when: false
+
+  when: "'backup' in dns_features"
+
+- name: Test self-healing functionality
+  block:
+    - name: Trigger self-healing test
+      command: /opt/self-healing/scripts/service-health-monitor.sh --test
+      register: self_healing_trigger_test
+      failed_when: self_healing_trigger_test.rc != 0
+      changed_when: false
+
+    - name: Test drift detection
+      command: /usr/local/bin/drift-detector.py --test-mode
+      register: drift_detection_test
+      failed_when: drift_detection_test.rc != 0
+      changed_when: false
+
+    - name: Test auto-recovery simulation
+      command: /opt/self-healing/scripts/auto-recovery.sh --simulate
+      register: auto_recovery_test
+      failed_when: auto_recovery_test.rc != 0
+      changed_when: false
+
+  when: "'self_healing' in dns_features"
+
+- name: Test zones-as-code functionality
+  block:
+    - name: Validate zone templates
+      command: /opt/zones-as-code/scripts/zone-validator.py --validate-all
+      register: zone_template_validation
+      failed_when: zone_template_validation.rc != 0
+      changed_when: false
+
+    - name: Test zone deployment
+      command: /opt/zones-as-code/scripts/zone-deployer.py --dry-run --zone {{ zones_enabled[0] | default('example.com') }}
+      register: zone_deployment_test
+      failed_when: zone_deployment_test.rc != 0
+      changed_when: false
+
+    - name: Test zone synchronization
+      command: /opt/zones-as-code/scripts/zone-sync.py --test-mode
+      register: zone_sync_test
+      failed_when: zone_sync_test.rc != 0
+      changed_when: false
+
+  when: "'zone_templates' in dns_features"
+
+- name: Test performance under load
+  block:
+    - name: Run DNS query load test
+      command: >
+        for i in {1..100}; do
+          dig @{{ ansible_default_ipv4.address }} {{ primary_domains[0] | default('example.com') }} A +short > /dev/null &
+        done; wait
+      register: load_test
+      failed_when: load_test.rc != 0
+      changed_when: false
+
+    - name: Check system resources during load
+      command: top -b -n1 | grep pdns
+      register: resource_usage_test
+      changed_when: false
+
+  when: run_performance_tests | default(false)
+
+- name: Compile integration test results
+  set_fact:
+    integration_test_results:
+      api_functionality: "{{ 'PASS' if test_zone_creation is succeeded else 'FAIL' if 'api' in dns_features else 'SKIP' }}"
+      database_replication: "{{ 'PASS' if replication_test_verify is succeeded else 'FAIL' if 'galera' in dns_features else 'SKIP' }}"
+      dnssec_functionality: "{{ 'PASS' if dnssec_validation_test is succeeded else 'FAIL' if 'dnssec' in dns_features else 'SKIP' }}"
+      load_balancing: "{{ 'PASS' if dnsdist_lb_test is succeeded else 'FAIL' if 'dnsdist' in dns_features else 'SKIP' }}"
+      monitoring: "{{ 'PASS' if prometheus_metrics_test is succeeded else 'FAIL' if 'monitoring' in dns_features else 'SKIP' }}"
+      backup_restore: "{{ 'PASS' if backup_creation_test is succeeded else 'FAIL' if 'backup' in dns_features else 'SKIP' }}"
+      self_healing: "{{ 'PASS' if self_healing_trigger_test is succeeded else 'FAIL' if 'self_healing' in dns_features else 'SKIP' }}"
+      zones_as_code: "{{ 'PASS' if zone_template_validation is succeeded else 'FAIL' if 'zone_templates' in dns_features else 'SKIP' }}"
+
+- name: Display integration test results
+  debug:
+    msg:
+      - "=== Integration Test Results ==="
+      - "API Functionality: {{ integration_test_results.api_functionality }}"
+      - "Database Replication: {{ integration_test_results.database_replication }}"
+      - "DNSSEC Functionality: {{ integration_test_results.dnssec_functionality }}"
+      - "Load Balancing: {{ integration_test_results.load_balancing }}"
+      - "Monitoring: {{ integration_test_results.monitoring }}"
+      - "Backup/Restore: {{ integration_test_results.backup_restore }}"
+      - "Self-Healing: {{ integration_test_results.self_healing }}"
+      - "Zones-as-Code: {{ integration_test_results.zones_as_code }}"
+
+- name: Record integration test results
+  copy:
+    dest: /var/lib/powerdns-state/reports/integration-test-results.json
+    content: |
+      {
+        "timestamp": "{{ ansible_date_time.iso8601 }}",
+        "hostname": "{{ inventory_hostname }}",
+        "operation_mode": "{{ operation_mode }}",
+        "dns_features": {{ dns_features | to_json }},
+        "test_results": {{ integration_test_results | to_json }},
+        "overall_status": "{{ 'PASS' if integration_test_results.api_functionality != 'FAIL' and integration_test_results.monitoring != 'FAIL' else 'FAIL' }}"
+      }
+    mode: '0644'
+
+- name: Fail if critical integration tests failed
+  fail:
+    msg: "Critical integration tests failed. Check the results above."
+  when: >
+    (integration_test_results.api_functionality == 'FAIL' and 'api' in dns_features) or
+    (integration_test_results.database_replication == 'FAIL' and 'galera' in dns_features) or
+    (integration_test_results.monitoring == 'FAIL' and 'monitoring' in dns_features)

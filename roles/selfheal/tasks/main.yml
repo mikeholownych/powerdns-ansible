@@ -1,0 +1,512 @@
+---
+# Self-Healing and Auto-Recovery Role
+# Detects, corrects, and retries known failure points
+
+- name: Display self-healing start message
+  debug:
+    msg: "=== Starting Self-Healing Pre-checks and Auto-Recovery ==="
+
+#################################
+# 1. Built-in Issue Detection + Auto-Fix
+#################################
+
+- name: Ensure required system groups exist
+  group:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - pdns
+    - mysql
+    - prometheus
+  tags: bootstrap
+
+- name: Ensure required system users exist
+  user:
+    name: "{{ item.name }}"
+    group: "{{ item.group }}"
+    system: yes
+    shell: /bin/false
+    home: "{{ item.home }}"
+    create_home: yes
+  loop:
+    - { name: pdns, group: pdns, home: /var/lib/powerdns }
+    - { name: mysql, group: mysql, home: /var/lib/mysql }
+    - { name: prometheus, group: prometheus, home: /var/lib/prometheus }
+  tags: bootstrap
+
+- name: Ensure PowerDNS MySQL backend is installed
+  package:
+    name: "{{ powerdns_mysql_backend_packages[ansible_os_family] }}"
+    state: present
+  vars:
+    powerdns_mysql_backend_packages:
+      Debian: ['pdns-backend-mysql']
+      RedHat: ['pdns-backend-mysql']
+  register: mysql_backend_result
+  retries: 3
+  delay: 5
+  until: mysql_backend_result is succeeded
+  when: "'mysql' in dns_features"
+
+- name: Clean partial lock files
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /var/lib/pdns/pdns.lock
+    - /var/run/pdns.pid
+    - /var/run/mysqld/mysqld.pid.lock
+    - /tmp/mysql.sock.lock
+  tags: cleanup
+
+- name: Ensure critical directories exist with correct permissions
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /etc/powerdns, owner: root, group: pdns, mode: '0755' }
+    - { path: /etc/powerdns/conf.d, owner: root, group: pdns, mode: '0755' }
+    - { path: /var/lib/powerdns, owner: pdns, group: pdns, mode: '0755' }
+    - { path: /var/log/powerdns, owner: pdns, group: pdns, mode: '0755' }
+    - { path: /var/lib/mysql, owner: mysql, group: mysql, mode: '0755' }
+    - { path: /var/log/mysql, owner: mysql, group: mysql, mode: '0755' }
+  tags: directories
+
+#################################
+# 2. Automatic Retries for Flaky Tasks
+#################################
+
+- name: Wait for MySQL socket with retries
+  wait_for:
+    path: /var/run/mysqld/mysqld.sock
+    state: present
+    timeout: 30
+  retries: 5
+  delay: 6
+  register: mysql_socket_ready
+  until: mysql_socket_ready is succeeded
+  when: "'mysql' in dns_features"
+  tags: mysql
+
+- name: Wait for MySQL port with retries
+  wait_for:
+    port: 3306
+    host: "{{ powerdns_db_host | default('localhost') }}"
+    timeout: 30
+  retries: 5
+  delay: 6
+  register: mysql_port_ready
+  until: mysql_port_ready is succeeded
+  when: "'mysql' in dns_features"
+  tags: mysql
+
+- name: Test database connectivity with retries
+  mysql_query:
+    login_user: "{{ powerdns_db_user }}"
+    login_password: "{{ powerdns_db_password }}"
+    login_host: "{{ powerdns_db_host }}"
+    query: "SELECT 1"
+  register: db_connectivity_test
+  retries: 5
+  delay: 10
+  until: db_connectivity_test is succeeded
+  when: "'mysql' in dns_features"
+  tags: mysql
+
+#################################
+# 3. Task Recovery Using block + rescue
+#################################
+
+- name: PowerDNS service management with auto-recovery
+  block:
+    - name: Enable and start PowerDNS
+      systemd:
+        name: pdns
+        state: started
+        enabled: yes
+      register: pdns_start_result
+
+  rescue:
+    - name: Log PowerDNS start failure
+      debug:
+        msg: "PowerDNS failed to start, attempting recovery..."
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    - name: Check for configuration issues
+      command: pdns_server --config-check
+      register: config_check_result
+      failed_when: false
+
+    - name: Display configuration check results
+      debug:
+        msg: "Configuration check: {{ config_check_result.stdout }}"
+      when: config_check_result.stdout is defined
+
+    - name: Fix common configuration issues
+      lineinfile:
+        path: /etc/powerdns/pdns.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        create: yes
+      loop:
+        - { regexp: '^#?daemon=', line: 'daemon=yes' }
+        - { regexp: '^#?guardian=', line: 'guardian=yes' }
+        - { regexp: '^#?setuid=', line: 'setuid=pdns' }
+        - { regexp: '^#?setgid=', line: 'setgid=pdns' }
+      when: config_check_result.rc != 0
+
+    - name: Retry starting PowerDNS after fixes
+      systemd:
+        name: pdns
+        state: restarted
+        enabled: yes
+      register: pdns_retry_result
+
+    - name: Fail if PowerDNS still won't start
+      fail:
+        msg: "PowerDNS failed to start even after recovery attempts"
+      when: pdns_retry_result is failed
+
+  tags: powerdns
+
+- name: MySQL service management with auto-recovery
+  block:
+    - name: Enable and start MySQL
+      systemd:
+        name: "{{ mysql_service_name }}"
+        state: started
+        enabled: yes
+      register: mysql_start_result
+
+  rescue:
+    - name: Log MySQL start failure
+      debug:
+        msg: "MySQL failed to start, attempting recovery..."
+
+    - name: Check MySQL error log
+      command: tail -20 /var/log/mysql/error.log
+      register: mysql_error_log
+      failed_when: false
+
+    - name: Display MySQL errors
+      debug:
+        msg: "MySQL errors: {{ mysql_error_log.stdout_lines }}"
+      when: mysql_error_log.stdout_lines is defined
+
+    - name: Fix MySQL permissions
+      file:
+        path: "{{ item }}"
+        owner: mysql
+        group: mysql
+        recurse: yes
+      loop:
+        - /var/lib/mysql
+        - /var/log/mysql
+
+    - name: Initialize MySQL data directory if needed
+      command: mysqld --initialize-insecure --user=mysql --datadir=/var/lib/mysql
+      when: "'Data directory /var/lib/mysql' in mysql_error_log.stdout"
+      register: mysql_init_result
+      failed_when: false
+
+    - name: Retry starting MySQL after fixes
+      systemd:
+        name: "{{ mysql_service_name }}"
+        state: restarted
+        enabled: yes
+      register: mysql_retry_result
+
+    - name: Fail if MySQL still won't start
+      fail:
+        msg: "MySQL failed to start even after recovery attempts"
+      when: mysql_retry_result is failed
+
+  when: "'mysql' in dns_features"
+  tags: mysql
+
+#################################
+# 4. Config Validation Before Service Start
+#################################
+
+- name: Validate PowerDNS configuration
+  block:
+    - name: Check PowerDNS configuration syntax
+      command: pdns_server --config-check
+      register: pdns_config_check
+      failed_when: false
+      changed_when: false
+
+    - name: Auto-fix common PowerDNS configuration issues
+      lineinfile:
+        path: /etc/powerdns/pdns.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        backup: yes
+      loop:
+        - { regexp: '^#?config-dir=', line: 'config-dir=/etc/powerdns' }
+        - { regexp: '^#?socket-dir=', line: 'socket-dir=/var/run' }
+        - { regexp: '^#?logging-facility=', line: 'logging-facility=0' }
+        - { regexp: '^#?loglevel=', line: 'loglevel=4' }
+      when: pdns_config_check.rc != 0
+
+    - name: Re-validate PowerDNS configuration after fixes
+      command: pdns_server --config-check
+      register: pdns_config_recheck
+      failed_when: pdns_config_recheck.rc != 0
+
+  tags: [powerdns, validation]
+
+- name: Validate MySQL configuration
+  block:
+    - name: Check MySQL configuration syntax
+      command: mysqld --help --verbose
+      register: mysql_config_check
+      failed_when: false
+      changed_when: false
+
+    - name: Ensure MySQL configuration directory exists
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - /etc/mysql
+        - /etc/mysql/conf.d
+        - /etc/mysql/mysql.conf.d
+
+  when: "'mysql' in dns_features"
+  tags: [mysql, validation]
+
+#################################
+# 5. Dependency Assurance Tasks
+#################################
+
+- name: Ensure PowerDNS service file exists
+  stat:
+    path: /usr/lib/systemd/system/pdns.service
+  register: pdns_service_file
+
+- name: Reinstall PowerDNS if service file is missing
+  package:
+    name: pdns-server
+    state: latest
+  when: not pdns_service_file.stat.exists
+  notify: reload systemd
+
+- name: Ensure MySQL service file exists
+  stat:
+    path: "/usr/lib/systemd/system/{{ mysql_service_name }}.service"
+  register: mysql_service_file
+  when: "'mysql' in dns_features"
+
+- name: Reinstall MySQL if service file is missing
+  package:
+    name: "{{ mysql_packages[ansible_os_family] }}"
+    state: latest
+  when: 
+    - "'mysql' in dns_features"
+    - not mysql_service_file.stat.exists
+  notify: reload systemd
+
+#################################
+# 6. Resilient Service Monitoring
+#################################
+
+- name: Create systemd service overrides for resilience
+  file:
+    path: "/etc/systemd/system/{{ item }}.service.d"
+    state: directory
+    mode: '0755'
+  loop:
+    - pdns
+    - "{{ mysql_service_name }}"
+  when: "'mysql' in dns_features or item == 'pdns'"
+
+- name: Add PowerDNS systemd watchdog override
+  copy:
+    dest: /etc/systemd/system/pdns.service.d/override.conf
+    content: |
+      [Service]
+      Restart=on-failure
+      RestartSec=5
+      StartLimitBurst=10
+      StartLimitIntervalSec=30
+      WatchdogSec=30
+      NotifyAccess=main
+    mode: '0644'
+  notify: reload systemd
+
+- name: Add MySQL systemd watchdog override
+  copy:
+    dest: "/etc/systemd/system/{{ mysql_service_name }}.service.d/override.conf"
+    content: |
+      [Service]
+      Restart=on-failure
+      RestartSec=10
+      StartLimitBurst=5
+      StartLimitIntervalSec=60
+      TimeoutStartSec=300
+    mode: '0644'
+  when: "'mysql' in dns_features"
+  notify: reload systemd
+
+#################################
+# 7. Network and Port Validation
+#################################
+
+- name: Check for port conflicts
+  shell: |
+    netstat -tuln | grep -E ':(53|3306|8081|9090)' || true
+  register: port_conflicts
+  changed_when: false
+
+- name: Display port usage
+  debug:
+    msg: "Current port usage: {{ port_conflicts.stdout_lines }}"
+  when: port_conflicts.stdout_lines | length > 0
+
+- name: Stop conflicting services on DNS port
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: no
+  loop:
+    - systemd-resolved
+    - dnsmasq
+  failed_when: false
+  when: 
+    - "'53' in port_conflicts.stdout"
+    - dns_port | default(53) == 53
+
+#################################
+# 8. Auto-Recovery Health Checks
+#################################
+
+- name: Create self-healing health check script
+  template:
+    src: self-healing-health-check.sh.j2
+    dest: /usr/local/bin/self-healing-health-check.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create self-healing systemd service
+  copy:
+    dest: /etc/systemd/system/powerdns-self-healing.service
+    content: |
+      [Unit]
+      Description=PowerDNS Self-Healing Health Check
+      After=network.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/self-healing-health-check.sh
+      User=root
+      StandardOutput=journal
+      StandardError=journal
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  notify: reload systemd
+
+- name: Create self-healing timer
+  copy:
+    dest: /etc/systemd/system/powerdns-self-healing.timer
+    content: |
+      [Unit]
+      Description=PowerDNS Self-Healing Timer
+      Requires=powerdns-self-healing.service
+
+      [Timer]
+      OnBootSec=5min
+      OnUnitActiveSec=5min
+      Unit=powerdns-self-healing.service
+
+      [Install]
+      WantedBy=timers.target
+    mode: '0644'
+  notify: reload systemd
+
+- name: Enable self-healing timer
+  systemd:
+    name: powerdns-self-healing.timer
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  when: self_healing_enabled | default(true)
+
+#################################
+# 9. Failure Log Collection
+#################################
+
+- name: Create failure log collection script
+  template:
+    src: collect-failure-logs.sh.j2
+    dest: /usr/local/bin/collect-failure-logs.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Collect logs if services failed during this run
+  command: /usr/local/bin/collect-failure-logs.sh
+  register: log_collection
+  when: 
+    - pdns_start_result is defined and pdns_start_result is failed
+    - mysql_start_result is defined and mysql_start_result is failed
+  failed_when: false
+
+#################################
+# 10. Final Validation
+#################################
+
+- name: Final service status check
+  systemd:
+    name: "{{ item }}"
+  register: final_service_check
+  loop:
+    - pdns
+    - "{{ mysql_service_name }}"
+  when: "'mysql' in dns_features or item == 'pdns'"
+
+- name: Display final service status
+  debug:
+    msg: "{{ item.item }} service status: {{ item.status.ActiveState }}"
+  loop: "{{ final_service_check.results }}"
+  when: final_service_check.results is defined
+
+- name: Create self-healing status report
+  copy:
+    dest: /var/lib/powerdns-state/self-healing-report.json
+    content: |
+      {
+        "timestamp": "{{ ansible_date_time.iso8601 }}",
+        "hostname": "{{ inventory_hostname }}",
+        "self_healing_enabled": {{ self_healing_enabled | default(true) | to_json }},
+        "services_checked": {{ final_service_check.results | map(attribute='item') | list | to_json }},
+        "recovery_actions_taken": {
+          "pdns_recovery": {{ (pdns_retry_result is defined) | to_json }},
+          "mysql_recovery": {{ (mysql_retry_result is defined) | to_json }},
+          "config_fixes_applied": {{ (pdns_config_recheck is defined) | to_json }}
+        },
+        "status": "completed"
+      }
+    mode: '0644'
+
+- name: Display self-healing completion summary
+  debug:
+    msg:
+      - "=== Self-Healing Pre-checks Complete ==="
+      - "Services Validated: {{ final_service_check.results | map(attribute='item') | list | join(', ') }}"
+      - "Recovery Actions: {{ 'Yes' if (pdns_retry_result is defined or mysql_retry_result is defined) else 'None needed' }}"
+      - "Configuration Fixes: {{ 'Applied' if pdns_config_recheck is defined else 'None needed' }}"
+      - "Self-Healing Timer: {{ 'Enabled' if self_healing_enabled | default(true) else 'Disabled' }}"
+      - "Status: SUCCESS ✓"

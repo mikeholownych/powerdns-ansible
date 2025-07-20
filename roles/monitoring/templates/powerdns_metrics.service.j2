@@ -1,0 +1,12 @@
+[Unit]
+Description=PowerDNS Metrics Collection
+Documentation=https://prometheus.io/docs/instrumenting/writing_exporters/
+After=network.target
+
+[Service]
+Type=oneshot
+User=prometheus
+Group=prometheus
+ExecStart=/usr/local/bin/powerdns_exporter.sh
+StandardOutput=journal
+StandardError=journal

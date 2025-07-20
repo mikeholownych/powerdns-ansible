@@ -1,0 +1,11 @@
+[Unit]
+Description=PowerDNS Metrics Collection Timer
+Requires=powerdns_metrics.service
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=30sec
+AccuracySec=5sec
+
+[Install]
+WantedBy=timers.target

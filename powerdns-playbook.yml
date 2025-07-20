@@ -1,0 +1,97 @@
+---
+- name: PowerDNS Enterprise Setup with Split-Brain DNS and AD Integration
+  hosts: powerdns_servers
+  become: yes
+  gather_facts: yes
+  vars_files:
+    - vars/main.yml
+    - vault/secrets.yml
+  
+  pre_tasks:
+    - name: Validate required variables
+      assert:
+        that:
+          - powerdns_api_key is defined
+          - powerdns_db_password is defined
+          - server_role in ['primary', 'secondary']
+        fail_msg: "Required variables are not defined. Check vault/secrets.yml"
+    
+    - name: Set server role based on inventory group
+      set_fact:
+        server_role: "{{ 'primary' if inventory_hostname in groups['powerdns_primary'] else 'secondary' }}"
+      when: server_role is not defined
+    
+    - name: Display configuration summary
+      debug:
+        msg:
+          - "Server: {{ inventory_hostname }}"
+          - "Role: {{ server_role }}"
+          - "IP: {{ ansible_default_ipv4.address }}"
+          - "Distribution: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
+  roles:
+    - role: clean_install
+      tags: ['clean_install', 'cleanup']
+      when: perform_clean_install | default(false)
+    - role: common
+      tags: ['common', 'setup']
+    - role: mysql
+      tags: ['mysql', 'database']
+    - role: powerdns
+      tags: ['powerdns', 'dns']
+    - role: recursor
+      tags: ['recursor', 'dns']
+      when: "'powerdns_recursor' in group_names or recursor_enabled | default(false)"
+    - role: haproxy
+      tags: ['haproxy', 'loadbalancer']
+      when: "'haproxy_servers' in group_names or haproxy_enabled | default(false)"
+    - role: keepalived
+      tags: ['keepalived', 'failover']
+      when: keepalived_enabled | default(false)
+    - role: monitoring
+      tags: ['monitoring', 'health']
+    - role: prometheus
+      tags: ['prometheus', 'metrics']
+      when: prometheus_enabled | default(false)
+    - role: self_healing
+      tags: ['self_healing', 'automation']
+      when: self_healing_enabled | default(false)
+    - role: security
+      tags: ['security', 'hardening']
+
+  post_tasks:
+    - name: Run comprehensive health check
+      include_tasks: tasks/health_check.yml
+      tags: ['health', 'validation']
+    
+    - name: Display setup completion summary
+      debug:
+        msg:
+          - "=== PowerDNS Setup Complete ==="
+          - "Server Role: {{ server_role }}"
+          - "API Endpoint: http://{{ ansible_default_ipv4.address }}:8081"
+          - "Service Status: {{ powerdns_service_status.status.ActiveState }}"
+          - "Configuration: /etc/powerdns/pdns.conf"
+          - "Logs: journalctl -u pdns -f"
+
+  handlers:
+    - name: restart powerdns
+      systemd:
+        name: pdns
+        state: restarted
+        enabled: yes
+      listen: "restart powerdns"
+    
+    - name: restart mysql
+      systemd:
+        name: "{{ mysql_service_name }}"
+        state: restarted
+        enabled: yes
+      listen: "restart mysql"
+    
+    - name: reload firewall
+      systemd:
+        name: ufw
+        state: reloaded
+      listen: "reload firewall"
+      when: ansible_os_family == "Debian"

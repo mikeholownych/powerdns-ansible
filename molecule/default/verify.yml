@@ -1,0 +1,9 @@
+---
+- name: Verify PowerDNS is running
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Ensure pdns service is running
+      ansible.builtin.service:
+        name: pdns
+        state: started

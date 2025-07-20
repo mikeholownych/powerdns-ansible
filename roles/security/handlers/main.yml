@@ -1,0 +1,45 @@
+---
+# Handlers for security role
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+
+- name: restart fail2ban
+  systemd:
+    name: fail2ban
+    state: restarted
+    enabled: yes
+
+- name: restart firewalld
+  systemd:
+    name: firewalld
+    state: restarted
+    enabled: yes
+
+- name: reload firewall
+  systemd:
+    name: ufw
+    state: reloaded
+  when: ansible_os_family == "Debian"
+
+- name: restart ssh
+  systemd:
+    name: sshd
+    state: restarted
+
+- name: restart auditd
+  systemd:
+    name: auditd
+    state: restarted
+  when: ansible_os_family == "RedHat"
+
+- name: rebuild aide database
+  command: aide --init
+  register: aide_rebuild
+  changed_when: aide_rebuild.rc == 0
+  notify: move aide database
+
+- name: move aide database
+  command: mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
+  when: aide_rebuild is defined and aide_rebuild.rc == 0

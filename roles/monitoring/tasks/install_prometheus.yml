@@ -1,0 +1,148 @@
+---
+# Install and configure Prometheus Node Exporter
+
+- name: Check if Prometheus Node Exporter is already installed
+  stat:
+    path: /usr/local/bin/node_exporter
+  register: node_exporter_installed
+
+- name: Create prometheus user
+  user:
+    name: prometheus
+    system: yes
+    shell: /bin/false
+    home: /var/lib/prometheus
+    create_home: no
+    comment: "Prometheus monitoring user"
+  when: not node_exporter_installed.stat.exists
+
+- name: Create prometheus directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: prometheus
+    group: prometheus
+    mode: '0755'
+  loop:
+    - /var/lib/prometheus
+    - /etc/prometheus
+  when: not node_exporter_installed.stat.exists
+
+- name: Download Prometheus Node Exporter
+  get_url:
+    url: "https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz"
+    dest: /tmp/node_exporter.tar.gz
+    mode: '0644'
+  when: not node_exporter_installed.stat.exists
+
+- name: Extract Node Exporter
+  unarchive:
+    src: /tmp/node_exporter.tar.gz
+    dest: /tmp
+    remote_src: yes
+  when: not node_exporter_installed.stat.exists
+
+- name: Copy Node Exporter binary
+  copy:
+    src: /tmp/node_exporter-1.6.1.linux-amd64/node_exporter
+    dest: /usr/local/bin/node_exporter
+    owner: prometheus
+    group: prometheus
+    mode: '0755'
+    remote_src: yes
+  when: not node_exporter_installed.stat.exists
+
+- name: Create Node Exporter systemd service
+  template:
+    src: node_exporter.service.j2
+    dest: /etc/systemd/system/node_exporter.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: 
+    - reload systemd
+    - restart node_exporter
+
+- name: Create PowerDNS custom metrics script
+  template:
+    src: powerdns_exporter.sh.j2
+    dest: /usr/local/bin/powerdns_exporter.sh
+    owner: prometheus
+    group: prometheus
+    mode: '0755'
+
+- name: Create PowerDNS metrics collection service
+  template:
+    src: powerdns_metrics.service.j2
+    dest: /etc/systemd/system/powerdns_metrics.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload systemd
+
+- name: Create PowerDNS metrics collection timer
+  template:
+    src: powerdns_metrics.timer.j2
+    dest: /etc/systemd/system/powerdns_metrics.timer
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload systemd
+
+- name: Enable and start Node Exporter
+  systemd:
+    name: node_exporter
+    enabled: yes
+    state: started
+    daemon_reload: yes
+
+- name: Enable and start PowerDNS metrics collection
+  systemd:
+    name: powerdns_metrics.timer
+    enabled: yes
+    state: started
+    daemon_reload: yes
+
+- name: Configure firewall for Prometheus (if UFW is active)
+  ufw:
+    rule: allow
+    port: "{{ monitoring_config.prometheus_port }}"
+    proto: tcp
+    comment: "Prometheus Node Exporter"
+  when: ansible_os_family == "Debian"
+  ignore_errors: yes
+
+- name: Configure firewall for Prometheus (if firewalld is active)
+  firewalld:
+    port: "{{ monitoring_config.prometheus_port }}/tcp"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  when: ansible_os_family == "RedHat"
+  ignore_errors: yes
+
+- name: Clean up downloaded files
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/node_exporter.tar.gz
+    - /tmp/node_exporter-1.6.1.linux-amd64
+  when: not node_exporter_installed.stat.exists
+
+- name: Verify Node Exporter is running
+  uri:
+    url: "http://localhost:{{ monitoring_config.prometheus_port }}/metrics"
+    method: GET
+    status_code: 200
+  register: node_exporter_check
+  retries: 3
+  delay: 5
+
+- name: Display Prometheus setup status
+  debug:
+    msg:
+      - "Prometheus Node Exporter installed successfully"
+      - "Metrics endpoint: http://{{ ansible_default_ipv4.address }}:{{ monitoring_config.prometheus_port }}/metrics"
+      - "PowerDNS custom metrics: Enabled"
+  when: node_exporter_check.status == 200

@@ -1,0 +1,284 @@
+---
+# PowerDNS Operational Configuration
+# Advanced operational features for updates, upgrades, and feature toggles
+
+#################################
+# Operation Mode & Feature Toggles
+#################################
+
+# Operation modes: install, update, upgrade, maintenance
+operation_mode: "{{ ansible_operation_mode | default('install') }}"
+
+# DNS Features - Enable/disable specific functionality
+dns_features:
+  - base              # Core PowerDNS installation
+  - mysql             # MySQL backend
+  - api               # PowerDNS API
+  - logging           # Enhanced logging
+  - monitoring        # Prometheus monitoring
+  - security          # Security hardening
+  - backup            # Backup functionality
+  # Optional features (uncomment to enable)
+  # - dnssec          # DNSSEC support
+  # - zone_templates  # Zone template management
+  # - ssl             # SSL/TLS support
+  # - galera          # MySQL Galera cluster
+  # - dnsdist         # DNSdist load balancer
+  # - self_healing    # Self-healing automation
+  # - zones_as_code   # Zones-as-Code management
+
+# Zones to manage (only if zone_templates feature enabled)
+zones_enabled:
+  - "{{ primary_domains[0] | default('example.com') }}"
+  # Add more zones as needed
+
+# Package versions (leave empty for latest)
+powerdns_version: ""  # e.g., "4.8.3-4build3"
+mysql_version: ""
+prometheus_version: ""
+dnsdist_version: ""
+
+# Change detection and idempotency
+config_change_detection: true
+force_config_update: false
+restart_services_on_change: true
+
+#################################
+# Update and Upgrade Behavior
+#################################
+
+# Package management
+package_update_cache: "{{ operation_mode in ['install', 'upgrade'] }}"
+package_upgrade_all: "{{ operation_mode == 'upgrade' }}"
+package_autoremove: "{{ operation_mode == 'upgrade' }}"
+
+# Service management during updates
+stop_services_for_upgrade: true
+backup_before_upgrade: true
+validate_after_upgrade: true
+
+# Rollback configuration
+enable_rollback: true
+rollback_timeout: 300  # seconds
+keep_backup_count: 5
+
+#################################
+# Feature-Specific Toggles
+#################################
+
+# DNSSEC Configuration
+dnssec_auto_signing: "{{ 'dnssec' in dns_features }}"
+dnssec_key_rotation: "{{ 'dnssec' in dns_features }}"
+dnssec_validation: "{{ 'dnssec' in dns_features }}"
+
+# API Configuration
+api_readonly_mode: false
+api_rate_limiting: "{{ 'api' in dns_features }}"
+api_authentication: "{{ 'api' in dns_features }}"
+
+# Monitoring Configuration
+prometheus_auto_discovery: "{{ 'monitoring' in dns_features }}"
+grafana_dashboard_import: "{{ 'monitoring' in dns_features }}"
+alerting_enabled: "{{ 'monitoring' in dns_features }}"
+
+# Security Configuration
+firewall_auto_config: "{{ 'security' in dns_features }}"
+fail2ban_enabled: "{{ 'security' in dns_features }}"
+ssl_auto_renewal: "{{ 'ssl' in dns_features }}"
+
+# Backup Configuration
+automated_backups: "{{ 'backup' in dns_features }}"
+backup_encryption: "{{ 'backup' in dns_features }}"
+backup_compression: "{{ 'backup' in dns_features }}"
+
+#################################
+# Role-Aware Behavior
+#################################
+
+# Primary server specific
+primary_server_features:
+  - zone_management
+  - dnssec_signing
+  - api_write_access
+  - backup_source
+
+# Secondary server specific  
+secondary_server_features:
+  - zone_replication
+  - backup_target
+  - monitoring_client
+
+# Recursor specific
+recursor_server_features:
+  - recursive_queries
+  - cache_management
+  - forwarding_rules
+
+# Load balancer specific
+loadbalancer_features:
+  - health_checks
+  - traffic_distribution
+  - failover_detection
+
+#################################
+# State Management
+#################################
+
+# Configuration hashing
+track_config_changes: true
+config_hash_algorithm: "sha256"
+config_backup_on_change: true
+
+# State reporting
+generate_state_reports: true
+state_report_format: "json"  # json, yaml, xml
+state_report_location: "/var/log/powerdns/"
+
+# Drift detection
+drift_detection_enabled: true
+drift_detection_interval: 3600  # seconds
+drift_auto_correction: false
+
+#################################
+# Maintenance Windows
+#################################
+
+# Maintenance scheduling
+maintenance_window_enabled: false
+maintenance_window_start: "02:00"
+maintenance_window_end: "04:00"
+maintenance_window_timezone: "UTC"
+
+# Emergency procedures
+emergency_mode: false
+emergency_contact: ""
+emergency_procedures_enabled: true
+
+#################################
+# Version Management
+#################################
+
+# Version pinning
+pin_package_versions: false
+allowed_version_drift: "minor"  # major, minor, patch, none
+
+# Update policies
+auto_security_updates: true
+auto_minor_updates: false
+auto_major_updates: false
+
+# Testing requirements
+require_staging_validation: true
+require_manual_approval: "{{ operation_mode == 'upgrade' }}"
+
+#################################
+# Multi-Node Coordination
+#################################
+
+# Cluster coordination
+cluster_aware_updates: true
+rolling_update_enabled: true
+rolling_update_batch_size: 1
+rolling_update_delay: 60  # seconds
+
+# Quorum requirements
+require_quorum_for_changes: true
+minimum_healthy_nodes: 1
+
+# Leader election
+enable_leader_election: "{{ groups['powerdns_primary'] | length > 1 }}"
+leader_election_timeout: 30
+
+#################################
+# Validation and Testing
+#################################
+
+# Pre-deployment validation
+validate_before_deploy: true
+validation_timeout: 120
+validation_retries: 3
+
+# Post-deployment testing
+run_smoke_tests: true
+run_integration_tests: "{{ operation_mode in ['install', 'upgrade'] }}"
+test_timeout: 300
+
+# Health checks
+health_check_enabled: true
+health_check_interval: 30
+health_check_timeout: 10
+health_check_retries: 3
+
+#################################
+# Notification and Alerting
+#################################
+
+# Notification settings
+notify_on_changes: true
+notify_on_failures: true
+notify_on_success: false
+
+# Notification channels
+notification_channels:
+  - email
+  # - slack
+  # - webhook
+  # - sms
+
+# Alert thresholds
+alert_on_config_drift: true
+alert_on_service_failure: true
+alert_on_performance_degradation: true
+
+#################################
+# Compliance and Auditing
+#################################
+
+# Audit logging
+audit_all_changes: true
+audit_log_retention: 90  # days
+audit_log_encryption: true
+
+# Compliance requirements
+compliance_mode: false
+compliance_framework: ""  # pci-dss, sox, hipaa, etc.
+
+# Change approval
+require_change_approval: false
+change_approval_timeout: 3600  # seconds
+
+#################################
+# Performance Optimization
+#################################
+
+# Resource management
+optimize_for_performance: true
+optimize_for_memory: false
+optimize_for_storage: false
+
+# Caching strategies
+enable_aggressive_caching: false
+cache_optimization_level: "balanced"  # conservative, balanced, aggressive
+
+# Connection pooling
+optimize_connections: true
+connection_pool_size: "auto"
+
+#################################
+# Disaster Recovery
+#################################
+
+# DR configuration
+disaster_recovery_enabled: false
+dr_site_url: ""
+dr_sync_interval: 3600
+
+# Backup strategies
+backup_strategy: "incremental"  # full, incremental, differential
+backup_retention_policy: "30d"
+backup_verification: true
+
+# Recovery procedures
+automated_recovery: false
+recovery_time_objective: 3600  # seconds
+recovery_point_objective: 300   # seconds

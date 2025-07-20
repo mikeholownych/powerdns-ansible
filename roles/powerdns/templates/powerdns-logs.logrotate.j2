@@ -1,0 +1,24 @@
+/var/log/powerdns/*.log {
+    daily
+    missingok
+    rotate {{ logging_config.rotate_count | default(10) }}
+    compress
+    delaycompress
+    notifempty
+    create 0644 {{ powerdns_user }} {{ powerdns_group }}
+    postrotate
+        systemctl reload {{ powerdns_service_name }} > /dev/null 2>&1 || true
+    endscript
+    size {{ logging_config.rotate_size | default('100M') }}
+}
+
+/var/log/powerdns-config.log {
+    weekly
+    missingok
+    rotate 12
+    compress
+    delaycompress
+    notifempty
+    create 0644 root root
+    maxage 365
+}
