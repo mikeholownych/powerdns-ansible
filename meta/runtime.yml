@@ -1,0 +1,28 @@
+---
+# Collections must declare a minimum required ansible version.
+requires_ansible: '>=2.9.10'
+
+# Content that Ansible needs to load from another location or that has
+# been deprecated/removed
+action_groups:
+  powerdns:
+    - powerdns_zone
+    - powerdns_record
+    - powerdns_config
+
+plugin_routing:
+  # Use this section if your collection is redirecting some modules to use
+  # fully qualified collection names (FQCN)
+  modules: {}
+  
+  # Use this section if your collection is redirecting some action plugins
+  action: {}
+  
+  # Use this section if your collection is redirecting some lookup plugins
+  lookup: {}
+  
+  # Use this section if your collection is redirecting some filter plugins
+  filter: {}
+  
+  # Use this section if your collection is redirecting some test plugins
+  test: {}

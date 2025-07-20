@@ -5,11 +5,13 @@ name: powerdns_ops
 version: 1.0.0
 readme: README.md
 authors:
-  - "PowerDNS Operations Collection Contributors"
+  - "PowerDNS Operations Collection Contributors <maintainers@powerdns-ops.example.com>"
 description: >-
   Production-ready PowerDNS infrastructure automation with comprehensive
   security, monitoring, self-healing, and operational excellence features.
-  Open-source enterprise-grade DNS management solution.
+  Enterprise-grade DNS management solution for multi-node deployments with
+  DNSSEC automation, security hardening, high availability clustering,
+  and comprehensive monitoring capabilities.
 license:
   - MIT
 license_file: LICENSE
@@ -24,18 +26,24 @@ tags:
   - high_availability
   - self_healing
   - dnssec
-  - open_source
+  - clustering
+  - mysql
+  - mariadb
+  - haproxy
+  - networking
 dependencies:
-  "ansible.posix": ">=1.0.0"
-  "community.general": ">=3.0.0"
-  "community.mysql": ">=2.0.0"
-  "community.crypto": ">=1.0.0"
+  "ansible.posix": ">=1.3.0"
+  "community.general": ">=4.0.0"
+  "community.mysql": ">=3.0.0"
+  "community.crypto": ">=2.0.0"
 repository: https://github.com/ansible-collections/community.powerdns_ops
 documentation: https://ansible-collections.github.io/community.powerdns_ops/
 homepage: https://github.com/ansible-collections/community.powerdns_ops
 issues: https://github.com/ansible-collections/community.powerdns_ops/issues
 build_ignore:
   - "*.tar.gz"
+  - "*.deb"
+  - "*.rpm"
   - ".git"
   - ".github"
   - "tests/output"
@@ -44,3 +52,12 @@ build_ignore:
   - "__pycache__"
   - "*.pyc"
   - ".pytest_cache"
+  - ".vault_pass"
+  - "ansible.log"
+  - "retry/"
+  - "local/"
+  - ".local/"
+  - "packaging/"
+  - "scripts/"
+  - ".DS_Store"
+  - "Thumbs.db"

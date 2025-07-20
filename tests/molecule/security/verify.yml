@@ -1,0 +1,96 @@
+---
+- name: Verify Security Configuration
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check PowerDNS service is running
+      ansible.builtin.service_facts:
+      register: services
+
+    - name: Verify PowerDNS is active
+      ansible.builtin.assert:
+        that:
+          - services.ansible_facts.services['pdns.service'].state == 'running'
+        fail_msg: "PowerDNS service is not running"
+
+    - name: Check DNSSEC is enabled
+      ansible.builtin.command: pdns_control show dnssec
+      register: dnssec_status
+      changed_when: false
+
+    - name: Verify DNSSEC is active
+      ansible.builtin.assert:
+        that:
+          - "'yes' in dnssec_status.stdout"
+        fail_msg: "DNSSEC is not enabled"
+
+    - name: Check Fail2Ban is installed and running
+      ansible.builtin.service_facts:
+      register: fail2ban_service
+
+    - name: Verify Fail2Ban is active
+      ansible.builtin.assert:
+        that:
+          - fail2ban_service.ansible_facts.services['fail2ban.service'].state == 'running'
+        fail_msg: "Fail2Ban service is not running"
+
+    - name: Check firewall is active
+      ansible.builtin.command: ufw status
+      register: firewall_status
+      changed_when: false
+      failed_when: false
+
+    - name: Verify firewall is enabled
+      ansible.builtin.assert:
+        that:
+          - "'Status: active' in firewall_status.stdout"
+        fail_msg: "UFW firewall is not active"
+
+    - name: Check PowerDNS configuration security
+      ansible.builtin.stat:
+        path: /etc/powerdns/pdns.conf
+      register: pdns_config
+
+    - name: Verify configuration file permissions
+      ansible.builtin.assert:
+        that:
+          - pdns_config.stat.mode == '0640'
+        fail_msg: "PowerDNS configuration file has incorrect permissions"
+
+    - name: Check API security settings
+      ansible.builtin.lineinfile:
+        path: /etc/powerdns/pdns.conf
+        line: "api-readonly=yes"
+        state: present
+      check_mode: true
+      register: api_readonly
+
+    - name: Verify API is read-only
+      ansible.builtin.assert:
+        that:
+          - not api_readonly.changed
+        fail_msg: "PowerDNS API is not configured as read-only"
+
+    - name: Test DNS resolution
+      ansible.builtin.command: dig @localhost localhost
+      register: dns_test
+      changed_when: false
+
+    - name: Verify DNS resolution works
+      ansible.builtin.assert:
+        that:
+          - dns_test.rc == 0
+          - "'ANSWER SECTION' in dns_test.stdout"
+        fail_msg: "DNS resolution is not working"
+
+    - name: Check security monitoring scripts
+      ansible.builtin.stat:
+        path: /usr/local/bin/self-healing-health-check.sh
+      register: security_script
+
+    - name: Verify security monitoring is installed
+      ansible.builtin.assert:
+        that:
+          - security_script.stat.exists
+          - security_script.stat.executable
+        fail_msg: "Security monitoring scripts are not properly installed"

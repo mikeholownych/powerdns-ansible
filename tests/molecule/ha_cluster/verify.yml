@@ -1,0 +1,186 @@
+---
+- name: Verify HA Cluster Configuration
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check PowerDNS service is running on DNS servers
+      ansible.builtin.service_facts:
+      register: services
+      when: inventory_hostname in groups['powerdns_primary'] or inventory_hostname in groups['powerdns_secondary']
+
+    - name: Verify PowerDNS is active on DNS servers
+      ansible.builtin.assert:
+        that:
+          - services.ansible_facts.services['pdns.service'].state == 'running'
+        fail_msg: "PowerDNS service is not running on {{ inventory_hostname }}"
+      when: inventory_hostname in groups['powerdns_primary'] or inventory_hostname in groups['powerdns_secondary']
+
+    - name: Check MySQL service is running on database servers
+      ansible.builtin.service_facts:
+      register: mysql_services
+      when: inventory_hostname in groups['mysql_servers']
+
+    - name: Verify MySQL is active on database servers
+      ansible.builtin.assert:
+        that:
+          - mysql_services.ansible_facts.services['mysql.service'].state == 'running' or
+            mysql_services.ansible_facts.services['mariadb.service'].state == 'running'
+        fail_msg: "MySQL/MariaDB service is not running on {{ inventory_hostname }}"
+      when: inventory_hostname in groups['mysql_servers']
+
+    - name: Check HAProxy service is running on load balancer
+      ansible.builtin.service_facts:
+      register: haproxy_services
+      when: inventory_hostname in groups['haproxy_servers']
+
+    - name: Verify HAProxy is active on load balancer
+      ansible.builtin.assert:
+        that:
+          - haproxy_services.ansible_facts.services['haproxy.service'].state == 'running'
+        fail_msg: "HAProxy service is not running on {{ inventory_hostname }}"
+      when: inventory_hostname in groups['haproxy_servers']
+
+- name: Verify Primary DNS Server Configuration
+  hosts: powerdns_primary
+  gather_facts: false
+  tasks:
+    - name: Check primary server role configuration
+      ansible.builtin.command: grep "master=yes" /etc/powerdns/pdns.conf
+      register: primary_config
+      changed_when: false
+
+    - name: Verify primary configuration
+      ansible.builtin.assert:
+        that:
+          - primary_config.rc == 0
+        fail_msg: "Primary server is not configured correctly"
+
+    - name: Test zone creation capability
+      ansible.builtin.command: pdns_control list-zones
+      register: zone_list
+      changed_when: false
+
+    - name: Verify zone management works
+      ansible.builtin.assert:
+        that:
+          - zone_list.rc == 0
+        fail_msg: "Zone management is not working on primary server"
+
+- name: Verify Secondary DNS Server Configuration
+  hosts: powerdns_secondary
+  gather_facts: false
+  tasks:
+    - name: Check secondary server role configuration
+      ansible.builtin.command: grep "slave=yes" /etc/powerdns/pdns.conf
+      register: secondary_config
+      changed_when: false
+
+    - name: Verify secondary configuration
+      ansible.builtin.assert:
+        that:
+          - secondary_config.rc == 0
+        fail_msg: "Secondary server is not configured correctly"
+
+- name: Verify Load Balancer Configuration
+  hosts: haproxy_servers
+  gather_facts: false
+  tasks:
+    - name: Check HAProxy configuration
+      ansible.builtin.command: haproxy -c -f /etc/haproxy/haproxy.cfg
+      register: haproxy_config_check
+      changed_when: false
+
+    - name: Verify HAProxy configuration is valid
+      ansible.builtin.assert:
+        that:
+          - haproxy_config_check.rc == 0
+        fail_msg: "HAProxy configuration is invalid"
+
+    - name: Check HAProxy stats page
+      ansible.builtin.uri:
+        url: "http://localhost:8404/stats"
+        method: GET
+        status_code: 200
+      register: stats_page
+
+    - name: Verify HAProxy stats are accessible
+      ansible.builtin.assert:
+        that:
+          - stats_page.status == 200
+        fail_msg: "HAProxy stats page is not accessible"
+
+- name: Verify Database Replication
+  hosts: mysql_servers
+  gather_facts: false
+  tasks:
+    - name: Check MySQL replication status on master
+      ansible.builtin.command: mysql -e "SHOW MASTER STATUS\G"
+      register: master_status
+      changed_when: false
+      when: mysql_replication_role == 'master'
+
+    - name: Verify master has binary logging enabled
+      ansible.builtin.assert:
+        that:
+          - "'File:' in master_status.stdout"
+          - "'Position:' in master_status.stdout"
+        fail_msg: "MySQL master replication is not configured correctly"
+      when: mysql_replication_role == 'master'
+
+    - name: Check MySQL replication status on slave
+      ansible.builtin.command: mysql -e "SHOW SLAVE STATUS\G"
+      register: slave_status
+      changed_when: false
+      when: mysql_replication_role == 'slave'
+
+    - name: Verify slave replication is running
+      ansible.builtin.assert:
+        that:
+          - "'Slave_IO_Running: Yes' in slave_status.stdout"
+          - "'Slave_SQL_Running: Yes' in slave_status.stdout"
+        fail_msg: "MySQL slave replication is not running correctly"
+      when: mysql_replication_role == 'slave'
+
+- name: Verify DNS Resolution Across Cluster
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Test DNS resolution from each node
+      ansible.builtin.command: dig @localhost localhost
+      register: dns_resolution
+      changed_when: false
+
+    - name: Verify DNS resolution works from all nodes
+      ansible.builtin.assert:
+        that:
+          - dns_resolution.rc == 0
+          - "'ANSWER SECTION' in dns_resolution.stdout"
+        fail_msg: "DNS resolution failed on {{ inventory_hostname }}"
+
+- name: Verify Monitoring and Health Checks
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check health check scripts are installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/self-healing-health-check.sh
+      register: health_script
+
+    - name: Verify health monitoring is configured
+      ansible.builtin.assert:
+        that:
+          - health_script.stat.exists
+          - health_script.stat.executable
+        fail_msg: "Health check scripts are not properly installed on {{ inventory_hostname }}"
+
+    - name: Run health check
+      ansible.builtin.command: /usr/local/bin/self-healing-health-check.sh --check-only
+      register: health_check_result
+      changed_when: false
+      failed_when: false
+
+    - name: Verify health check runs successfully
+      ansible.builtin.assert:
+        that:
+          - health_check_result.rc == 0
+        fail_msg: "Health check failed on {{ inventory_hostname }}"

@@ -1,0 +1,82 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: powerdns-primary
+    image: quay.io/ansible/molecule-ubuntu:20.04
+    pre_build_image: true
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    tmpfs:
+      - /run
+      - /tmp
+    capabilities:
+      - SYS_ADMIN
+    command: /lib/systemd/systemd
+    groups:
+      - powerdns_primary
+      - mysql_servers
+  - name: powerdns-secondary
+    image: quay.io/ansible/molecule-ubuntu:20.04
+    pre_build_image: true
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    tmpfs:
+      - /run
+      - /tmp
+    capabilities:
+      - SYS_ADMIN
+    command: /lib/systemd/systemd
+    groups:
+      - powerdns_secondary
+      - mysql_servers
+  - name: haproxy-lb
+    image: quay.io/ansible/molecule-ubuntu:20.04
+    pre_build_image: true
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    tmpfs:
+      - /run
+      - /tmp
+    capabilities:
+      - SYS_ADMIN
+    command: /lib/systemd/systemd
+    groups:
+      - haproxy_servers
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      powerdns-primary:
+        server_role: primary
+        mysql_replication_role: master
+      powerdns-secondary:
+        server_role: secondary
+        mysql_replication_role: slave
+      haproxy-lb:
+        server_role: loadbalancer
+    group_vars:
+      all:
+        dns_features:
+          - base
+          - mysql
+          - haproxy
+          - keepalived
+          - monitoring
+        high_availability_enabled: true
+        mysql_replication_enabled: true
+  playbooks:
+    converge: ../../../powerdns-operational-playbook.yml
+  config_options:
+    defaults:
+      interpreter_python: auto_silent
+      callback_whitelist: profile_tasks, timer, yaml
+    ssh_connection:
+      pipelining: false
+verifier:
+  name: ansible

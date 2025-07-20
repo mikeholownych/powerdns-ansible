@@ -1,0 +1,41 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: powerdns-security-test
+    image: quay.io/ansible/molecule-ubuntu:20.04
+    pre_build_image: true
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    tmpfs:
+      - /run
+      - /tmp
+    capabilities:
+      - SYS_ADMIN
+    command: /lib/systemd/systemd
+    groups:
+      - powerdns_primary
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      powerdns-security-test:
+        server_role: primary
+        powerdns_api_readonly: true
+        security_hardening_enabled: true
+        dnssec_enabled: true
+        fail2ban_enabled: true
+        firewall_enabled: true
+  playbooks:
+    converge: ../../../powerdns-operational-playbook.yml
+  config_options:
+    defaults:
+      interpreter_python: auto_silent
+      callback_whitelist: profile_tasks, timer, yaml
+    ssh_connection:
+      pipelining: false
+verifier:
+  name: ansible
