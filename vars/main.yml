@@ -102,7 +102,7 @@ system_tuning:
   tcp_keepalive: true
   file_descriptors: 65536
   core_dump: false
-  
+
 # Development/Testing flags
 development_mode: false
 debug_logging: false
