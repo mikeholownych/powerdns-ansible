@@ -309,4 +309,3 @@
         - enable_rollback | default(true)
         - operation_mode == 'rollback'
       tags: ['rollback', 'validation']
-

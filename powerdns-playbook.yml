@@ -6,7 +6,7 @@
   vars_files:
     - vars/main.yml
     - vault/secrets.yml
-  
+
   pre_tasks:
     - name: Validate required variables
       assert:
@@ -15,12 +15,12 @@
           - powerdns_db_password is defined
           - server_role in ['primary', 'secondary']
         fail_msg: "Required variables are not defined. Check vault/secrets.yml"
-    
+
     - name: Set server role based on inventory group
       set_fact:
         server_role: "{{ 'primary' if inventory_hostname in groups['powerdns_primary'] else 'secondary' }}"
       when: server_role is not defined
-    
+
     - name: Display configuration summary
       debug:
         msg:
@@ -63,7 +63,7 @@
     - name: Run comprehensive health check
       include_tasks: tasks/health_check.yml
       tags: ['health', 'validation']
-    
+
     - name: Display setup completion summary
       debug:
         msg:
@@ -81,14 +81,14 @@
         state: restarted
         enabled: yes
       listen: "restart powerdns"
-    
+
     - name: restart mysql
       systemd:
         name: "{{ mysql_service_name }}"
         state: restarted
         enabled: yes
       listen: "restart mysql"
-    
+
     - name: reload firewall
       systemd:
         name: ufw

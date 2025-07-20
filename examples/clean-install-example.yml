@@ -5,7 +5,8 @@
 # To use this example:
 # 1. Copy this file to your inventory directory
 # 2. Modify the variables as needed
-# 3. Run: ansible-playbook powerdns-playbook.yml --extra-vars "@examples/clean-install-example.yml" --ask-vault-pass
+# 3. Run: ansible-playbook powerdns-playbook.yml \
+#        --extra-vars "@examples/clean-install-example.yml" --ask-vault-pass
 
 # DANGER: This will remove ALL existing PowerDNS and MySQL data!
 perform_clean_install: true
