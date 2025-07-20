@@ -1,8 +1,8 @@
 ---
 - name: PowerDNS Enterprise Setup with Split-Brain DNS and AD Integration
   hosts: powerdns_servers
-  become: yes
-  gather_facts: yes
+  become: true
+  gather_facts: true
   vars_files:
     - vars/main.yml
     - vault/secrets.yml
@@ -18,7 +18,12 @@
 
     - name: Set server role based on inventory group
       set_fact:
-        server_role: "{{ 'primary' if inventory_hostname in groups['powerdns_primary'] else 'secondary' }}"
+        server_role: >-
+          {{
+            'primary'
+            if inventory_hostname in groups['powerdns_primary']
+            else 'secondary'
+          }}
       when: server_role is not defined
 
     - name: Display configuration summary
@@ -27,7 +32,9 @@
           - "Server: {{ inventory_hostname }}"
           - "Role: {{ server_role }}"
           - "IP: {{ ansible_default_ipv4.address }}"
-          - "Distribution: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - >-
+              Distribution: {{ ansible_distribution }}
+              {{ ansible_distribution_version }}
 
   roles:
     - role: clean_install
@@ -41,10 +48,12 @@
       tags: ['powerdns', 'dns']
     - role: recursor
       tags: ['recursor', 'dns']
-      when: "'powerdns_recursor' in group_names or recursor_enabled | default(false)"
+      when: >-
+        'powerdns_recursor' in group_names or recursor_enabled | default(false)
     - role: haproxy
       tags: ['haproxy', 'loadbalancer']
-      when: "'haproxy_servers' in group_names or haproxy_enabled | default(false)"
+      when: >-
+        'haproxy_servers' in group_names or haproxy_enabled | default(false)
     - role: keepalived
       tags: ['keepalived', 'failover']
       when: keepalived_enabled | default(false)
@@ -79,14 +88,14 @@
       systemd:
         name: pdns
         state: restarted
-        enabled: yes
+        enabled: true
       listen: "restart powerdns"
 
     - name: restart mysql
       systemd:
         name: "{{ mysql_service_name }}"
         state: restarted
-        enabled: yes
+        enabled: true
       listen: "restart mysql"
 
     - name: reload firewall

@@ -1,8 +1,8 @@
 ---
 - name: PowerDNS Enterprise Infrastructure with Operational Excellence
   hosts: powerdns_servers
-  become: yes
-  gather_facts: yes
+  become: true
+  gather_facts: true
   vars_files:
     - vars/main.yml
     - vars/operational.yml
@@ -63,7 +63,7 @@
 
     - name: Update package cache
       package:
-        update_cache: yes
+        update_cache: true
       when: package_update_cache | default(false)
       tags: ['packages', 'update']
 
@@ -236,7 +236,7 @@
       systemd:
         name: pdns
         state: restarted
-        enabled: yes
+        enabled: true
       listen: "restart powerdns"
       when: restart_services_on_change | default(true)
 
@@ -244,7 +244,7 @@
       systemd:
         name: "{{ mysql_service_name }}"
         state: restarted
-        enabled: yes
+        enabled: true
       listen: "restart mysql"
       when: restart_services_on_change | default(true)
 
@@ -252,7 +252,7 @@
       systemd:
         name: dnsdist
         state: restarted
-        enabled: yes
+        enabled: true
       listen: "restart dnsdist"
       when: restart_services_on_change | default(true)
 
@@ -260,7 +260,7 @@
       systemd:
         name: haproxy
         state: restarted
-        enabled: yes
+        enabled: true
       listen: "restart haproxy"
       when: restart_services_on_change | default(true)
 
@@ -268,13 +268,13 @@
       systemd:
         name: keepalived
         state: restarted
-        enabled: yes
+        enabled: true
       listen: "restart keepalived"
       when: restart_services_on_change | default(true)
 
     - name: reload systemd
       systemd:
-        daemon_reload: yes
+        daemon_reload: true
       listen: "reload systemd"
 
     - name: reload firewall
@@ -287,8 +287,8 @@
 # Rollback playbook (separate play for rollback operations)
 - name: PowerDNS Rollback Operations
   hosts: powerdns_servers
-  become: yes
-  gather_facts: no
+  become: true
+  gather_facts: false
   vars_files:
     - vars/main.yml
     - vars/operational.yml
