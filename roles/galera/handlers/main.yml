@@ -1,23 +1,23 @@
 ---
 # handlers for galera role
 
-- name: restart mysql
+- name: Restart MySQL
   ansible.builtin.service:
     name: mysql
     state: restarted
   listen: restart mysql
 
-- name: restart galera-health-check
+- name: Restart Galera health check
   ansible.builtin.service:
     name: galera-health-check
     state: restarted
   listen: restart galera-health-check
 
-- name: start galera-health-check-timer
+- name: Start Galera health check timer
   ansible.builtin.service:
     name: galera-health-check.timer
     state: started
-    enabled: yes
+    enabled: true
   listen: start galera-health-check-timer
 
 - name: reload systemd
