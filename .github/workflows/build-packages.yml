@@ -1,13 +1,14 @@
+---
 name: Build and Publish Packages
 
 on:
   push:
-    branches: [ main, develop ]
-    tags: [ 'v*' ]
+    branches: [main, develop]
+    tags: ['v*']
   pull_request:
-    branches: [ main ]
+    branches: [main]
   release:
-    types: [ published ]
+    types: [published]
 
 env:
   PACKAGE_NAME: powerdns-ops-collection

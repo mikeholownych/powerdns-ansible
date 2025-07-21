@@ -5,7 +5,7 @@ name: powerdns_ops
 version: 1.0.0
 readme: README.md
 authors:
-  - "PowerDNS Operations Collection Contributors <maintainers@powerdns-ops.example.com>"
+  - "PowerDNS Ops Contributors <maintainers@powerdns-ops.example.com>"
 description: >-
   Production-ready PowerDNS infrastructure automation with comprehensive
   security, monitoring, self-healing, and operational excellence features.
