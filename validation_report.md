@@ -4,7 +4,6 @@
 - roles/dnsdist
 - roles/dnssec_automation
 - roles/haproxy
-- roles/keepalived
 - roles/monitoring
 - roles/mysql
 - roles/powerdns
@@ -22,15 +21,21 @@
 - galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'restart galera-health-check'
 - galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'restart mysql'
 - galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'start galera-health-check-timer'
+- keepalived: /workspace/powerdns-ansible/roles/keepalived/tasks/main.yml notifies undefined handler 'reload firewall'
+- keepalived: /workspace/powerdns-ansible/roles/keepalived/tasks/main.yml notifies undefined handler 'reload systemd'
+- keepalived: /workspace/powerdns-ansible/roles/keepalived/tasks/main.yml notifies undefined handler 'restart keepalived'
+- keepalived: /workspace/powerdns-ansible/roles/keepalived/tasks/main.yml notifies undefined handler 'restart keepalived-check'
+- keepalived: /workspace/powerdns-ansible/roles/keepalived/tasks/main.yml notifies undefined handler 'start keepalived-check-timer'
 
 ## ⚠️ Placeholders Detected
 - None
 
 ## 🛠 Fix Recommendations
 - Review tasks/handlers in roles/galera for missing tags or handlers
+- Review tasks/handlers in roles/keepalived for missing tags or handlers
 
 ## 📊 Score
-97/100
+92/100
 
 ## 🔜 Next Actions
 - Address missing directories and meta files

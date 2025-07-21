@@ -1,38 +1,39 @@
 ---
 # Keepalived handlers
 
-- name: restart keepalived
+- name: Restart keepalived
   ansible.builtin.systemd:
     name: keepalived
     state: restarted
-    enabled: yes
+    enabled: true
     daemon_reload: true
 
-- name: reload keepalived
+- name: Reload keepalived
   ansible.builtin.systemd:
     name: keepalived
     state: reloaded
 
-- name: reload systemd
+- name: Reload systemd
   ansible.builtin.systemd:
     daemon_reload: true
 
-- name: restart keepalived-check
+- name: Restart keepalived-check
   ansible.builtin.systemd:
     name: keepalived-check.service
     state: restarted
-    enabled: yes
+    enabled: true
     daemon_reload: true
 
-- name: start keepalived-check-timer
+- name: Start keepalived-check-timer
   ansible.builtin.systemd:
     name: keepalived-check.timer
     state: started
-    enabled: yes
+    enabled: true
     daemon_reload: true
 
-- name: reload firewall
+- name: Reload firewall
   ansible.builtin.systemd:
     name: ufw
     state: reloaded
   when: ansible_os_family == "Debian"
+
