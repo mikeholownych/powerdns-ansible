@@ -26,5 +26,5 @@
     state: stopped
 
 - name: reload systemd
-  ansible.builtin.service:
+  ansible.builtin.systemd:
     daemon_reload: yes
