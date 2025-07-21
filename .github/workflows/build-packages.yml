@@ -160,7 +160,14 @@ jobs:
       matrix:
         os: [centos-8, centos-9, fedora-37, fedora-38, rocky-8, rocky-9]
     container:
-      image: ${{ matrix.os == 'centos-8' && 'centos:8' || matrix.os == 'centos-9' && 'centos:stream9' || matrix.os == 'rocky-8' && 'rockylinux:8' || matrix.os == 'rocky-9' && 'rockylinux:9' || matrix.os == 'fedora-37' && 'fedora:37' || matrix.os == 'fedora-38' && 'fedora:38' || 'fedora:latest' }}
+      image: >-
+        ${{ matrix.os == 'centos-8' && 'centos:8' ||
+           matrix.os == 'centos-9' && 'centos:stream9' ||
+           matrix.os == 'rocky-8' && 'rockylinux:8' ||
+           matrix.os == 'rocky-9' && 'rockylinux:9' ||
+           matrix.os == 'fedora-37' && 'fedora:37' ||
+           matrix.os == 'fedora-38' && 'fedora:38' ||
+           'fedora:latest' }}
     steps:
       - name: Install build dependencies
         run: |
