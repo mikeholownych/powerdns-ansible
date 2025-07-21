@@ -1,0 +1,6 @@
+---
+# defaults for validate_config role
+
+dnssec_key_algorithm: "ECDSAP256SHA256"
+existing_pdns_config: {}
+pdns_config_hash: {}

@@ -1,118 +1,133 @@
----
-# Configure UFW firewall for Debian/Ubuntu systems
-
 - name: Reset UFW to defaults
   ufw:
     state: reset
   when: ansible_os_family == "Debian"
-
+  tags:
+  - security
 - name: Set UFW default policies
   ufw:
-    direction: "{{ item.direction }}"
-    policy: "{{ item.policy }}"
+    direction: '{{ item.direction }}'
+    policy: '{{ item.policy }}'
   loop:
-    - { direction: 'incoming', policy: 'deny' }
-    - { direction: 'outgoing', policy: 'allow' }
-    - { direction: 'routed', policy: 'deny' }
+  - direction: incoming
+    policy: deny
+  - direction: outgoing
+    policy: allow
+  - direction: routed
+    policy: deny
   when: ansible_os_family == "Debian"
-
+  tags:
+  - security
 - name: Allow SSH access
   ufw:
     rule: allow
     port: '22'
     proto: tcp
-    comment: 'SSH access'
+    comment: SSH access
   when: ansible_os_family == "Debian"
-
+  tags:
+  - security
 - name: Configure DNS firewall rules
   ufw:
     rule: allow
-    port: "{{ item.port }}"
-    proto: "{{ item.proto }}"
-    src: "{{ item.source | default('any') }}"
-    comment: "{{ item.comment }}"
-  loop: "{{ firewall_ports }}"
+    port: '{{ item.port }}'
+    proto: '{{ item.proto }}'
+    src: '{{ item.source | default(''any'') }}'
+    comment: '{{ item.comment }}'
+  loop: '{{ firewall_ports }}'
   when: ansible_os_family == "Debian"
-
+  tags:
+  - security
 - name: Allow PowerDNS API access from management networks
   ufw:
     rule: allow
-    port: "{{ powerdns_webserver_port | default(8081) }}"
+    port: '{{ powerdns_webserver_port | default(8081) }}'
     proto: tcp
-    src: "{{ item }}"
-    comment: "PowerDNS API access"
-  loop: "{{ powerdns_webserver_allow_from }}"
-  when: 
-    - ansible_os_family == "Debian"
-    - powerdns_webserver_port is defined
-    - powerdns_webserver_allow_from is defined
-
+    src: '{{ item }}'
+    comment: PowerDNS API access
+  loop: '{{ powerdns_webserver_allow_from }}'
+  when:
+  - ansible_os_family == "Debian"
+  - powerdns_webserver_port is defined
+  - powerdns_webserver_allow_from is defined
+  tags:
+  - security
 - name: Allow zone transfers between DNS servers
   ufw:
     rule: allow
     port: '53'
     proto: tcp
-    src: "{{ hostvars[item]['ansible_default_ipv4']['address'] }}"
-    comment: "Zone transfer from {{ item }}"
-  loop: "{{ groups['powerdns_servers'] }}"
-  when: 
-    - ansible_os_family == "Debian"
-    - item != inventory_hostname
-
+    src: '{{ hostvars[item][''ansible_default_ipv4''][''address''] }}'
+    comment: Zone transfer from {{ item }}
+  loop: '{{ groups[''powerdns_servers''] }}'
+  when:
+  - ansible_os_family == "Debian"
+  - item != inventory_hostname
+  tags:
+  - security
 - name: Allow database access from localhost
   ufw:
     rule: allow
-    port: "{{ powerdns_db_port }}"
+    port: '{{ powerdns_db_port }}'
     proto: tcp
-    src: '127.0.0.1'
-    comment: 'MySQL/MariaDB local access'
+    src: 127.0.0.1
+    comment: MySQL/MariaDB local access
   when: ansible_os_family == "Debian"
-
+  tags:
+  - security
 - name: Allow monitoring ports (if Prometheus is enabled)
   ufw:
     rule: allow
-    port: "{{ monitoring_config.prometheus_port }}"
+    port: '{{ monitoring_config.prometheus_port }}'
     proto: tcp
-    src: "{{ dns_network }}"
-    comment: 'Prometheus Node Exporter'
-  when: 
-    - ansible_os_family == "Debian"
-    - monitoring_config.prometheus_port is defined
-
+    src: '{{ dns_network }}'
+    comment: Prometheus Node Exporter
+  when:
+  - ansible_os_family == "Debian"
+  - monitoring_config.prometheus_port is defined
+  tags:
+  - security
 - name: Allow NTP
   ufw:
     rule: allow
     port: '123'
     proto: udp
-    comment: 'NTP time synchronization'
+    comment: NTP time synchronization
   when: ansible_os_family == "Debian"
-
+  tags:
+  - security
 - name: Deny all other incoming traffic
   ufw:
     rule: deny
     direction: in
-    comment: 'Deny all other incoming'
+    comment: Deny all other incoming
   when: ansible_os_family == "Debian"
-
+  tags:
+  - security
 - name: Enable UFW logging
   ufw:
-    logging: 'medium'
+    logging: medium
   when: ansible_os_family == "Debian"
-
+  tags:
+  - security
 - name: Enable UFW
   ufw:
     state: enabled
   when: ansible_os_family == "Debian"
-
+  tags:
+  - security
 - name: Check UFW status
   command: ufw status verbose
   register: ufw_status
   changed_when: false
   when: ansible_os_family == "Debian"
-
+  tags:
+  - security
 - name: Display UFW status
   debug:
     var: ufw_status.stdout_lines
-  when: 
-    - ansible_os_family == "Debian"
-    - ufw_status.stdout_lines is defined
+  when:
+  - ansible_os_family == "Debian"
+  - ufw_status.stdout_lines is defined
+  tags:
+  - security

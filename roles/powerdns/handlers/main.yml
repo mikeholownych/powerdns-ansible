@@ -1,0 +1,13 @@
+---
+# handlers for powerdns role
+
+- name: restart powerdns
+  ansible.builtin.service:
+    name: pdns
+    state: restarted
+  listen: restart powerdns
+
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: reload systemd

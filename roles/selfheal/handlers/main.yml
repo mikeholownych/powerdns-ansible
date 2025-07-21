@@ -2,21 +2,21 @@
 # Self-Healing Role Handlers
 
 - name: reload systemd
-  systemd:
-    daemon_reload: yes
+  ansible.builtin.systemd:
+    daemon_reload: true
   listen: "reload systemd"
 
 - name: restart powerdns-self-healing
-  systemd:
+  ansible.builtin.systemd:
     name: powerdns-self-healing.service
     state: restarted
     enabled: yes
   listen: "restart powerdns-self-healing"
 
 - name: start powerdns-self-healing-timer
-  systemd:
+  ansible.builtin.systemd:
     name: powerdns-self-healing.timer
     state: started
     enabled: yes
-    daemon_reload: yes
+    daemon_reload: true
   listen: "start powerdns-self-healing-timer"

@@ -1,0 +1,20 @@
+---
+# defaults for dnsdist role
+
+# Package names per OS family
+dnsdist_packages:
+  Debian:
+    - dnsdist
+  RedHat:
+    - dnsdist
+
+# Basic ports and web credentials
+dnsdist_port: 53
+dnsdist_console_port: 5199
+dnsdist_webserver_port: 8083
+
+# Example variables for templates
+domain: "example.com"
+zone: "example.com"
+geodns_rules: []
+dnsdist_custom_rules: []

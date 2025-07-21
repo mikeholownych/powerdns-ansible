@@ -1,81 +1,101 @@
----
-# Security hardening for PowerDNS servers
-
 - name: Install security packages
   package:
     name:
-      - ufw
-      - fail2ban
-      - aide
-      - rkhunter
-      - chkrootkit
+    - ufw
+    - fail2ban
+    - aide
+    - rkhunter
+    - chkrootkit
     state: present
   when: ansible_os_family == "Debian"
-
+  tags:
+  - security
 - name: Install security packages (RHEL)
   package:
     name:
-      - firewalld
-      - fail2ban
-      - aide
+    - firewalld
+    - fail2ban
+    - aide
     state: present
   when: ansible_os_family == "RedHat"
-
+  tags:
+  - security
 - name: Configure UFW firewall (Debian/Ubuntu)
   include_tasks: configure_ufw.yml
   when: ansible_os_family == "Debian"
-
+  tags:
+  - security
 - name: Configure firewalld (RHEL/CentOS)
   include_tasks: configure_firewalld.yml
   when: ansible_os_family == "RedHat"
-
+  tags:
+  - security
 - name: Configure fail2ban
   template:
-    src: "{{ item }}.j2"
-    dest: "/etc/fail2ban/{{ item }}"
+    src: '{{ item }}.j2'
+    dest: /etc/fail2ban/{{ item }}
     owner: root
     group: root
     mode: '0644'
   loop:
-    - jail.local
-    - filter.d/powerdns.conf
+  - jail.local
+  - filter.d/powerdns.conf
   notify: restart fail2ban
-
+  tags:
+  - security
 - name: Enable and start fail2ban
   systemd:
     name: fail2ban
-    enabled: yes
+    enabled: true
     state: started
-
+  tags:
+  - security
 - name: Configure SSH security
   lineinfile:
     path: /etc/ssh/sshd_config
-    regexp: "{{ item.regexp }}"
-    line: "{{ item.line }}"
-    backup: yes
+    regexp: '{{ item.regexp }}'
+    line: '{{ item.line }}'
+    backup: true
   loop:
-    - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
-    - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
-    - { regexp: '^#?X11Forwarding', line: 'X11Forwarding no' }
-    - { regexp: '^#?MaxAuthTries', line: 'MaxAuthTries 3' }
-    - { regexp: '^#?ClientAliveInterval', line: 'ClientAliveInterval 300' }
-    - { regexp: '^#?ClientAliveCountMax', line: 'ClientAliveCountMax 2' }
+  - regexp: ^#?PermitRootLogin
+    line: PermitRootLogin no
+  - regexp: ^#?PasswordAuthentication
+    line: PasswordAuthentication no
+  - regexp: ^#?X11Forwarding
+    line: X11Forwarding no
+  - regexp: ^#?MaxAuthTries
+    line: MaxAuthTries 3
+  - regexp: ^#?ClientAliveInterval
+    line: ClientAliveInterval 300
+  - regexp: ^#?ClientAliveCountMax
+    line: ClientAliveCountMax 2
   notify: restart ssh
-
+  tags:
+  - security
 - name: Set secure file permissions
   file:
-    path: "{{ item.path }}"
-    mode: "{{ item.mode }}"
-    owner: "{{ item.owner | default('root') }}"
-    group: "{{ item.group | default('root') }}"
+    path: '{{ item.path }}'
+    mode: '{{ item.mode }}'
+    owner: '{{ item.owner | default(''root'') }}'
+    group: '{{ item.group | default(''root'') }}'
   loop:
-    - { path: "{{ powerdns_config_file }}", mode: '0640', group: "{{ powerdns_group }}" }
-    - { path: "{{ powerdns_backup_dir }}", mode: '0750', group: "{{ powerdns_group }}" }
-    - { path: "/etc/ssh/sshd_config", mode: '0600' }
-    - { path: "/etc/crontab", mode: '0600' }
-    - { path: "/etc/passwd", mode: '0644' }
-    - { path: "/etc/shadow", mode: '0640', group: "shadow" }
-
+  - path: '{{ powerdns_config_file }}'
+    mode: '0640'
+    group: '{{ powerdns_group }}'
+  - path: '{{ powerdns_backup_dir }}'
+    mode: '0750'
+    group: '{{ powerdns_group }}'
+  - path: /etc/ssh/sshd_config
+    mode: '0600'
+  - path: /etc/crontab
+    mode: '0600'
+  - path: /etc/passwd
+    mode: '0644'
+  - path: /etc/shadow
+    mode: '0640'
+    group: shadow
+  tags:
+  - security
 - name: Configure system audit rules
   template:
     src: audit-powerdns.rules.j2
@@ -85,32 +105,49 @@
     mode: '0640'
   notify: restart auditd
   when: ansible_os_family == "RedHat"
-
+  tags:
+  - security
 - name: Install and configure AIDE (file integrity monitoring)
   include_tasks: configure_aide.yml
-
+  tags:
+  - security
 - name: Configure kernel security parameters
   sysctl:
-    name: "{{ item.name }}"
-    value: "{{ item.value }}"
+    name: '{{ item.name }}'
+    value: '{{ item.value }}'
     state: present
-    reload: yes
+    reload: true
   loop:
-    - { name: 'net.ipv4.ip_forward', value: '0' }
-    - { name: 'net.ipv4.conf.all.send_redirects', value: '0' }
-    - { name: 'net.ipv4.conf.default.send_redirects', value: '0' }
-    - { name: 'net.ipv4.conf.all.accept_redirects', value: '0' }
-    - { name: 'net.ipv4.conf.default.accept_redirects', value: '0' }
-    - { name: 'net.ipv4.conf.all.secure_redirects', value: '0' }
-    - { name: 'net.ipv4.conf.default.secure_redirects', value: '0' }
-    - { name: 'net.ipv4.conf.all.log_martians', value: '1' }
-    - { name: 'net.ipv4.conf.default.log_martians', value: '1' }
-    - { name: 'net.ipv4.icmp_echo_ignore_broadcasts', value: '1' }
-    - { name: 'net.ipv4.icmp_ignore_bogus_error_responses', value: '1' }
-    - { name: 'net.ipv4.tcp_syncookies', value: '1' }
-    - { name: 'kernel.dmesg_restrict', value: '1' }
-    - { name: 'kernel.kptr_restrict', value: '2' }
-
+  - name: net.ipv4.ip_forward
+    value: '0'
+  - name: net.ipv4.conf.all.send_redirects
+    value: '0'
+  - name: net.ipv4.conf.default.send_redirects
+    value: '0'
+  - name: net.ipv4.conf.all.accept_redirects
+    value: '0'
+  - name: net.ipv4.conf.default.accept_redirects
+    value: '0'
+  - name: net.ipv4.conf.all.secure_redirects
+    value: '0'
+  - name: net.ipv4.conf.default.secure_redirects
+    value: '0'
+  - name: net.ipv4.conf.all.log_martians
+    value: '1'
+  - name: net.ipv4.conf.default.log_martians
+    value: '1'
+  - name: net.ipv4.icmp_echo_ignore_broadcasts
+    value: '1'
+  - name: net.ipv4.icmp_ignore_bogus_error_responses
+    value: '1'
+  - name: net.ipv4.tcp_syncookies
+    value: '1'
+  - name: kernel.dmesg_restrict
+    value: '1'
+  - name: kernel.kptr_restrict
+    value: '2'
+  tags:
+  - security
 - name: Create security monitoring script
   template:
     src: security-monitor.sh.j2
@@ -118,16 +155,18 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - security
 - name: Schedule security monitoring
   cron:
-    name: "Security monitoring check"
+    name: Security monitoring check
     cron_file: security-monitor
     user: root
-    minute: "0"
-    hour: "*/6"
-    job: "/usr/local/bin/security-monitor.sh"
-
+    minute: '0'
+    hour: '*/6'
+    job: /usr/local/bin/security-monitor.sh
+  tags:
+  - security
 - name: Configure log monitoring
   template:
     src: logwatch-powerdns.conf.j2
@@ -136,40 +175,48 @@
     group: root
     mode: '0644'
   when: ansible_os_family == "Debian"
-
+  tags:
+  - security
 - name: Disable unnecessary services
   systemd:
-    name: "{{ item }}"
-    enabled: no
+    name: '{{ item }}'
+    enabled: false
     state: stopped
   loop:
-    - avahi-daemon
-    - cups
-    - bluetooth
-  ignore_errors: yes
-
+  - avahi-daemon
+  - cups
+  - bluetooth
+  ignore_errors: true
+  tags:
+  - security
 - name: Remove unnecessary packages
   package:
     name:
-      - telnet
-      - rsh-client
-      - rsh-redone-client
-      - talk
-      - ntalk
+    - telnet
+    - rsh-client
+    - rsh-redone-client
+    - talk
+    - ntalk
     state: absent
-  ignore_errors: yes
-
+  ignore_errors: true
+  tags:
+  - security
 - name: Configure password policies
   lineinfile:
     path: /etc/login.defs
-    regexp: "{{ item.regexp }}"
-    line: "{{ item.line }}"
+    regexp: '{{ item.regexp }}'
+    line: '{{ item.line }}'
   loop:
-    - { regexp: '^PASS_MAX_DAYS', line: 'PASS_MAX_DAYS 90' }
-    - { regexp: '^PASS_MIN_DAYS', line: 'PASS_MIN_DAYS 7' }
-    - { regexp: '^PASS_WARN_AGE', line: 'PASS_WARN_AGE 14' }
-    - { regexp: '^UMASK', line: 'UMASK 027' }
-
+  - regexp: ^PASS_MAX_DAYS
+    line: PASS_MAX_DAYS 90
+  - regexp: ^PASS_MIN_DAYS
+    line: PASS_MIN_DAYS 7
+  - regexp: ^PASS_WARN_AGE
+    line: PASS_WARN_AGE 14
+  - regexp: ^UMASK
+    line: UMASK 027
+  tags:
+  - security
 - name: Create security report
   template:
     src: security-report.sh.j2
@@ -177,14 +224,17 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - security
 - name: Display security status
   debug:
     msg:
-      - "Security hardening completed"
-      - "Firewall: Configured and enabled"
-      - "Fail2ban: Configured for PowerDNS protection"
-      - "SSH: Hardened configuration"
-      - "File permissions: Secured"
-      - "Kernel parameters: Hardened"
-      - "Monitoring: Security scripts installed"
+    - Security hardening completed
+    - 'Firewall: Configured and enabled'
+    - 'Fail2ban: Configured for PowerDNS protection'
+    - 'SSH: Hardened configuration'
+    - 'File permissions: Secured'
+    - 'Kernel parameters: Hardened'
+    - 'Monitoring: Security scripts installed'
+  tags:
+  - security
