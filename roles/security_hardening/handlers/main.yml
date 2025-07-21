@@ -1,0 +1,6 @@
+---
+# Handlers for security hardening role
+
+- name: reload apparmor
+  ansible.builtin.command: systemctl reload apparmor
+  listen: "reload apparmor"

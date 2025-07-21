@@ -1,0 +1,10 @@
+[Unit]
+Description=PowerDNS Exporter
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/powerdns_exporter
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=MySQL Watchdog Timer
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+Unit=mysql-watchdog.service
+
+[Install]
+WantedBy=timers.target

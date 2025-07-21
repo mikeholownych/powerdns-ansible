@@ -1,0 +1,39 @@
+---
+# Handlers for Prometheus role
+
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  listen: "reload systemd"
+
+- name: restart prometheus
+  ansible.builtin.systemd:
+    name: prometheus
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+  listen: "restart prometheus"
+
+- name: restart powerdns-exporter
+  ansible.builtin.systemd:
+    name: powerdns-exporter
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+  listen: "restart powerdns-exporter"
+
+- name: restart node-exporter
+  ansible.builtin.systemd:
+    name: node-exporter
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+  listen: "restart node-exporter"
+
+- name: restart mysql-exporter
+  ansible.builtin.systemd:
+    name: mysql-exporter
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+  listen: "restart mysql-exporter"
