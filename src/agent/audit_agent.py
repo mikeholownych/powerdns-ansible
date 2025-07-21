@@ -24,8 +24,10 @@ class AuditAgent:
         self.placeholders = config["audit"].get("placeholder_keywords", [])
         self.report_lines: List[str] = []
 
-    def run(self) -> str:
+    def run(self, report_path: str | None = None) -> str:
         self.logger.info("Starting audit", extra={"root": self.root_dir})
+        if report_path is None:
+            report_path = os.path.join(self.root_dir, "validation_report.md")
         self.report_lines.append("## ✅ Valid Items")
         valid_items: List[str] = []
         missing_items: List[str] = []
@@ -38,7 +40,6 @@ class AuditAgent:
             self.report_lines.append("## ❌ Missing or Broken")
             self.report_lines.append(f"- {roles_dir} — Missing directory")
             report = "\n".join(self.report_lines)
-            report_path = os.path.join(self.root_dir, "validation_report.md")
             with open(report_path, "w", encoding="utf-8") as f:
                 f.write(report)
             return report_path
@@ -60,7 +61,6 @@ class AuditAgent:
         self._write_section("## 🛠 Fix Recommendations", suggestions)
 
         report = "\n".join(self.report_lines)
-        report_path = os.path.join(self.root_dir, "validation_report.md")
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(report)
         self.logger.info("Report written", extra={"path": report_path})

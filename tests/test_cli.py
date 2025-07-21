@@ -17,6 +17,28 @@ def test_cli_run(tmp_path, monkeypatch):
     assert (tmpdir / "validation_report.md").is_file()
 
 
+def test_cli_run_custom_report(tmp_path, monkeypatch):
+    tmpdir = create_role(tmp_path)
+    report = tmpdir / "custom.md"
+    config = Path("config/config.yml")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "cli.py",
+            "run",
+            "--root",
+            str(tmpdir),
+            "--config",
+            str(config),
+            "--report",
+            str(report),
+        ],
+    )
+    cli.main()
+    assert report.is_file()
+
+
 def test_cli_serve(monkeypatch):
     monkeypatch.setattr(
         sys,

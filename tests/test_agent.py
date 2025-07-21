@@ -22,7 +22,8 @@ def test_agent_generates_report(tmp_path):
     tmpdir = create_role(tmp_path)
     config = yaml.safe_load(Path("config/config.yml").read_text())
     agent = AuditAgent(str(tmpdir), config)
-    report = agent.run()
+    report_file = tmpdir / "out.md"
+    report = agent.run(str(report_file))
     assert Path(report).is_file()
     content = Path(report).read_text()
     assert "roles/sample" in content
