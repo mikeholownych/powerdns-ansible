@@ -1,0 +1,6 @@
+---
+galaxy_info:
+  author: codex
+  description: Skeleton for self_healing role
+  min_ansible_version: 2.15
+dependencies: []
