@@ -4,7 +4,6 @@
 - roles/dnsdist
 - roles/dnssec_automation
 - roles/haproxy
-- roles/monitoring
 - roles/mysql
 - roles/powerdns
 - roles/prometheus
@@ -18,24 +17,27 @@
 - roles/zones_as_code
 
 ## ❌ Missing or Broken
-- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'restart galera-health-check'
-- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'restart mysql'
-- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'start galera-health-check-timer'
 - keepalived: /workspace/powerdns-ansible/roles/keepalived/tasks/main.yml notifies undefined handler 'reload firewall'
 - keepalived: /workspace/powerdns-ansible/roles/keepalived/tasks/main.yml notifies undefined handler 'reload systemd'
 - keepalived: /workspace/powerdns-ansible/roles/keepalived/tasks/main.yml notifies undefined handler 'restart keepalived'
 - keepalived: /workspace/powerdns-ansible/roles/keepalived/tasks/main.yml notifies undefined handler 'restart keepalived-check'
 - keepalived: /workspace/powerdns-ansible/roles/keepalived/tasks/main.yml notifies undefined handler 'start keepalived-check-timer'
+- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'restart galera-health-check'
+- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'restart mysql'
+- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'start galera-health-check-timer'
+- monitoring: /workspace/powerdns-ansible/roles/monitoring/tasks/install_prometheus.yml notifies undefined handler 'reload systemd'
+- monitoring: /workspace/powerdns-ansible/roles/monitoring/tasks/install_prometheus.yml notifies undefined handler 'restart node_exporter'
 
 ## ⚠️ Placeholders Detected
 - None
 
 ## 🛠 Fix Recommendations
-- Review tasks/handlers in roles/galera for missing tags or handlers
 - Review tasks/handlers in roles/keepalived for missing tags or handlers
+- Review tasks/handlers in roles/galera for missing tags or handlers
+- Review tasks/handlers in roles/monitoring for missing tags or handlers
 
 ## 📊 Score
-92/100
+90/100
 
 ## 🔜 Next Actions
 - Address missing directories and meta files
