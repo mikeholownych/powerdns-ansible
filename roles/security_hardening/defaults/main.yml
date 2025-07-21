@@ -1,0 +1,5 @@
+---
+# defaults for security_hardening role
+
+ssl_cert_path: "/etc/ssl/certs/powerdns.pem"
+ssl_key_path: "/etc/ssl/private/powerdns.key"

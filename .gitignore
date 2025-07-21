@@ -167,3 +167,6 @@ private/
 # Logs
 logs/
 *.log.*
+
+# Audit outputs
+audit_output.yaml

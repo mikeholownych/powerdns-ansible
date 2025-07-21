@@ -1,136 +1,176 @@
----
-# Create initial zones for primary server
-
 - name: Create primary domains
   community.mysql.mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
-    login_db: "{{ powerdns_db_name }}"
-    query: |
-      INSERT IGNORE INTO domains (name, type, master, account)
-      VALUES ('{{ item }}', 'NATIVE', NULL, 'ansible');
-  loop: "{{ primary_domains }}"
-  when: primary_domains is defined
+    login_password: '{{ mysql_root_password | default(omit) }}'
+    login_db: '{{ powerdns_db_name }}'
+    query: 'INSERT IGNORE INTO domains (name, type, master, account)
 
+      VALUES (''{{ item }}'', ''NATIVE'', NULL, ''ansible'');
+
+      '
+  loop: '{{ primary_domains }}'
+  when: primary_domains is defined
+  tags:
+  - powerdns
 - name: Create reverse zones
   community.mysql.mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
-    login_db: "{{ powerdns_db_name }}"
-    query: |
-      INSERT IGNORE INTO domains (name, type, master, account)
-      VALUES ('{{ item }}', 'NATIVE', NULL, 'ansible');
-  loop: "{{ reverse_zones }}"
-  when: reverse_zones is defined
+    login_password: '{{ mysql_root_password | default(omit) }}'
+    login_db: '{{ powerdns_db_name }}'
+    query: 'INSERT IGNORE INTO domains (name, type, master, account)
 
+      VALUES (''{{ item }}'', ''NATIVE'', NULL, ''ansible'');
+
+      '
+  loop: '{{ reverse_zones }}'
+  when: reverse_zones is defined
+  tags:
+  - powerdns
 - name: Get domain IDs for primary domains
   community.mysql.mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
-    login_db: "{{ powerdns_db_name }}"
-    query: "SELECT id, name FROM domains WHERE account = 'ansible' AND type = 'NATIVE';"
+    login_password: '{{ mysql_root_password | default(omit) }}'
+    login_db: '{{ powerdns_db_name }}'
+    query: SELECT id, name FROM domains WHERE account = 'ansible' AND type = 'NATIVE';
   register: domain_ids
-
+  tags:
+  - powerdns
 - name: Create SOA records for primary domains
   community.mysql.mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
-    login_db: "{{ powerdns_db_name }}"
-    query: |
-      INSERT IGNORE INTO records (domain_id, name, type, content, ttl, prio, auth)
-      VALUES (
-        {{ item.id }},
-        '{{ item.name }}',
-        'SOA',
-        '{{ zone_templates.primary.soa_name | default("ns1." + item.name) }} \
-        {{ zone_templates.primary.soa_mail | default("admin." + item.name) }} \
-        {{ ansible_date_time.epoch }} \
-        {{ zone_templates.primary.refresh | default(3600) }} \
-        {{ zone_templates.primary.retry | default(1800) }} \
-        {{ zone_templates.primary.expire | default(604800) }} \
-        {{ zone_templates.primary.minimum | default(86400) }}',
-        3600,
-        0,
-        1
-      );
-  loop: "{{ domain_ids.query_result }}"
+    login_password: '{{ mysql_root_password | default(omit) }}'
+    login_db: '{{ powerdns_db_name }}'
+    query: "INSERT IGNORE INTO records (domain_id, name, type, content, ttl, prio,\
+      \ auth)\nVALUES (\n  {{ item.id }},\n  '{{ item.name }}',\n  'SOA',\n  '{{ zone_templates.primary.soa_name\
+      \ | default(\"ns1.\" + item.name) }} \\\n  {{ zone_templates.primary.soa_mail\
+      \ | default(\"admin.\" + item.name) }} \\\n  {{ ansible_date_time.epoch }} \\\
+      \n  {{ zone_templates.primary.refresh | default(3600) }} \\\n  {{ zone_templates.primary.retry\
+      \ | default(1800) }} \\\n  {{ zone_templates.primary.expire | default(604800)\
+      \ }} \\\n  {{ zone_templates.primary.minimum | default(86400) }}',\n  3600,\n\
+      \  0,\n  1\n);\n"
+  loop: '{{ domain_ids.query_result }}'
   when: domain_ids.query_result is defined
-
+  tags:
+  - powerdns
 - name: Create NS records for primary domains
   community.mysql.mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
-    login_db: "{{ powerdns_db_name }}"
-    query: |
-      INSERT IGNORE INTO records (domain_id, name, type, content, ttl, prio, auth)
-      VALUES
-      ({{ item.id }}, '{{ item.name }}', 'NS', 'ns1.{{ item.name }}', 3600, 0, 1),
-      ({{ item.id }}, '{{ item.name }}', 'NS', 'ns2.{{ item.name }}', 3600, 0, 1);
-  loop: "{{ domain_ids.query_result }}"
-  when: domain_ids.query_result is defined
+    login_password: '{{ mysql_root_password | default(omit) }}'
+    login_db: '{{ powerdns_db_name }}'
+    query: 'INSERT IGNORE INTO records (domain_id, name, type, content, ttl, prio,
+      auth)
 
+      VALUES
+
+      ({{ item.id }}, ''{{ item.name }}'', ''NS'', ''ns1.{{ item.name }}'', 3600,
+      0, 1),
+
+      ({{ item.id }}, ''{{ item.name }}'', ''NS'', ''ns2.{{ item.name }}'', 3600,
+      0, 1);
+
+      '
+  loop: '{{ domain_ids.query_result }}'
+  when: domain_ids.query_result is defined
+  tags:
+  - powerdns
 - name: Create A records for nameservers
   community.mysql.mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
-    login_db: "{{ powerdns_db_name }}"
-    query: |
-      INSERT IGNORE INTO records (domain_id, name, type, content, ttl, prio, auth)
-      VALUES
-      ({{ item.id }}, 'ns1.{{ item.name }}', 'A', '{{ ns1_ip | default(ansible_default_ipv4.address) }}', 3600, 0, 1),
-      ({{ item.id }}, 'ns2.{{ item.name }}', 'A', '{{ ns2_ip | default("192.168.1.98") }}', 3600, 0, 1);
-  loop: "{{ domain_ids.query_result }}"
-  when: domain_ids.query_result is defined
+    login_password: '{{ mysql_root_password | default(omit) }}'
+    login_db: '{{ powerdns_db_name }}'
+    query: 'INSERT IGNORE INTO records (domain_id, name, type, content, ttl, prio,
+      auth)
 
+      VALUES
+
+      ({{ item.id }}, ''ns1.{{ item.name }}'', ''A'', ''{{ ns1_ip | default(ansible_default_ipv4.address)
+      }}'', 3600, 0, 1),
+
+      ({{ item.id }}, ''ns2.{{ item.name }}'', ''A'', ''{{ ns2_ip | default("192.168.1.98")
+      }}'', 3600, 0, 1);
+
+      '
+  loop: '{{ domain_ids.query_result }}'
+  when: domain_ids.query_result is defined
+  tags:
+  - powerdns
 - name: Create basic A records for primary domains
   community.mysql.mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
-    login_db: "{{ powerdns_db_name }}"
-    query: |
-      INSERT IGNORE INTO records (domain_id, name, type, content, ttl, prio, auth)
-      VALUES
-      ({{ item.id }}, '{{ item.name }}', 'A', '{{ ansible_default_ipv4.address }}', 3600, 0, 1),
-      ({{ item.id }}, 'www.{{ item.name }}', 'A', '{{ ansible_default_ipv4.address }}', 3600, 0, 1);
-  loop: "{{ domain_ids.query_result }}"
-  when: domain_ids.query_result is defined and not item.name.endswith('.in-addr.arpa')
+    login_password: '{{ mysql_root_password | default(omit) }}'
+    login_db: '{{ powerdns_db_name }}'
+    query: 'INSERT IGNORE INTO records (domain_id, name, type, content, ttl, prio,
+      auth)
 
+      VALUES
+
+      ({{ item.id }}, ''{{ item.name }}'', ''A'', ''{{ ansible_default_ipv4.address
+      }}'', 3600, 0, 1),
+
+      ({{ item.id }}, ''www.{{ item.name }}'', ''A'', ''{{ ansible_default_ipv4.address
+      }}'', 3600, 0, 1);
+
+      '
+  loop: '{{ domain_ids.query_result }}'
+  when: domain_ids.query_result is defined and not item.name.endswith('.in-addr.arpa')
+  tags:
+  - powerdns
 - name: Create MX records for primary domains
   community.mysql.mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
-    login_db: "{{ powerdns_db_name }}"
-    query: |
-      INSERT IGNORE INTO records (domain_id, name, type, content, ttl, prio, auth)
-      VALUES ({{ item.id }}, '{{ item.name }}', 'MX', 'mail.{{ item.name }}', 3600, 10, 1);
-  loop: "{{ domain_ids.query_result }}"
-  when: domain_ids.query_result is defined and not item.name.endswith('.in-addr.arpa')
+    login_password: '{{ mysql_root_password | default(omit) }}'
+    login_db: '{{ powerdns_db_name }}'
+    query: 'INSERT IGNORE INTO records (domain_id, name, type, content, ttl, prio,
+      auth)
 
+      VALUES ({{ item.id }}, ''{{ item.name }}'', ''MX'', ''mail.{{ item.name }}'',
+      3600, 10, 1);
+
+      '
+  loop: '{{ domain_ids.query_result }}'
+  when: domain_ids.query_result is defined and not item.name.endswith('.in-addr.arpa')
+  tags:
+  - powerdns
 - name: Create TXT records for primary domains
   community.mysql.mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
-    login_db: "{{ powerdns_db_name }}"
-    query: |
-      INSERT IGNORE INTO records (domain_id, name, type, content, ttl, prio, auth)
-      VALUES ({{ item.id }}, '{{ item.name }}', 'TXT', '"v=spf1 mx a ~all"', 3600, 0, 1);
-  loop: "{{ domain_ids.query_result }}"
-  when: domain_ids.query_result is defined and not item.name.endswith('.in-addr.arpa')
+    login_password: '{{ mysql_root_password | default(omit) }}'
+    login_db: '{{ powerdns_db_name }}'
+    query: 'INSERT IGNORE INTO records (domain_id, name, type, content, ttl, prio,
+      auth)
 
+      VALUES ({{ item.id }}, ''{{ item.name }}'', ''TXT'', ''"v=spf1 mx a ~all"'',
+      3600, 0, 1);
+
+      '
+  loop: '{{ domain_ids.query_result }}'
+  when: domain_ids.query_result is defined and not item.name.endswith('.in-addr.arpa')
+  tags:
+  - powerdns
 - name: Create PTR records for reverse zones
   community.mysql.mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
-    login_db: "{{ powerdns_db_name }}"
-    query: |
-      INSERT IGNORE INTO records (domain_id, name, type, content, ttl, prio, auth)
-      VALUES
-      ({{ item.id }}, '97.{{ item.name }}', 'PTR', 'ns1.{{ primary_domains[0] | default("home.lan") }}', 3600, 0, 1),
-      ({{ item.id }}, '98.{{ item.name }}', 'PTR', 'ns2.{{ primary_domains[0] | default("home.lan") }}', 3600, 0, 1);
-  loop: "{{ domain_ids.query_result }}"
-  when: domain_ids.query_result is defined and item.name.endswith('.in-addr.arpa')
+    login_password: '{{ mysql_root_password | default(omit) }}'
+    login_db: '{{ powerdns_db_name }}'
+    query: 'INSERT IGNORE INTO records (domain_id, name, type, content, ttl, prio,
+      auth)
 
+      VALUES
+
+      ({{ item.id }}, ''97.{{ item.name }}'', ''PTR'', ''ns1.{{ primary_domains[0]
+      | default("home.lan") }}'', 3600, 0, 1),
+
+      ({{ item.id }}, ''98.{{ item.name }}'', ''PTR'', ''ns2.{{ primary_domains[0]
+      | default("home.lan") }}'', 3600, 0, 1);
+
+      '
+  loop: '{{ domain_ids.query_result }}'
+  when: domain_ids.query_result is defined and item.name.endswith('.in-addr.arpa')
+  tags:
+  - powerdns
 - name: Display created zones
   ansible.builtin.debug:
-    msg: "Created {{ domain_ids.query_result | length }} zones for primary server"
+    msg: Created {{ domain_ids.query_result | length }} zones for primary server
   when: domain_ids.query_result is defined
+  tags:
+  - powerdns

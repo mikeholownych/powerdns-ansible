@@ -1,26 +1,27 @@
----
-# PowerDNS installation and configuration
-
 - name: Install PowerDNS packages
   ansible.builtin.package:
-    name: "{{ powerdns_packages[ansible_os_family] }}"
+    name: '{{ powerdns_packages[ansible_os_family] }}'
     state: present
-
+  tags:
+  - powerdns
 - name: Ensure PowerDNS MySQL backend .so exists
   ansible.builtin.stat:
-    path: /usr/lib/x86_64-linux-gnu/pdns/libmysqlbackend.so
+    path: /usr/lib/x86_64-linux-gnu/pdns/libgmysqlbackend.so
   register: pdns_backend_lib
-
+  tags:
+  - powerdns
 - name: Fail if PowerDNS MySQL backend is missing
   ansible.builtin.fail:
-    msg: libmysqlbackend.so is missing — pdns-backend-mysql may have failed to install
+    msg: libgmysqlbackend.so is missing — pdns-backend-mysql may have failed to install
   when: not pdns_backend_lib.stat.exists
-
+  tags:
+  - powerdns
 - name: Ensure PowerDNS MySQL backend is installed
   ansible.builtin.apt:
     name: pdns-backend-mysql
     state: present
-
+  tags:
+  - powerdns
 - name: Ensure PowerDNS config directory exists
   ansible.builtin.file:
     path: /etc/powerdns/conf.d
@@ -28,39 +29,44 @@
     owner: pdns
     group: pdns
     mode: '0755'
-
+  tags:
+  - powerdns
 - name: Stop PowerDNS service for initial configuration
   ansible.builtin.systemd:
-    name: "{{ powerdns_service_name }}"
+    name: '{{ powerdns_service_name }}'
     state: stopped
   failed_when: false
-
+  tags:
+  - powerdns
 - name: Create PowerDNS configuration backup
   ansible.builtin.copy:
-    src: "{{ powerdns_config_file }}"
-    dest: "{{ powerdns_backup_dir }}/pdns.conf.backup.{{ ansible_date_time.epoch }}"
+    src: '{{ powerdns_config_file }}'
+    dest: '{{ powerdns_backup_dir }}/pdns.conf.backup.{{ ansible_date_time.epoch }}'
     remote_src: true
     owner: root
     group: root
     mode: '0640'
   when: ansible_stat.stat.exists is defined and ansible_stat.stat.exists
   failed_when: false
-
+  tags:
+  - powerdns
 - name: Check if PowerDNS config exists
   ansible.builtin.stat:
-    path: "{{ powerdns_config_file }}"
+    path: '{{ powerdns_config_file }}'
   register: pdns_config_stat
-
+  tags:
+  - powerdns
 - name: Generate PowerDNS configuration
   ansible.builtin.template:
     src: pdns.conf.j2
-    dest: "{{ powerdns_config_file }}"
+    dest: '{{ powerdns_config_file }}'
     owner: root
-    group: "{{ powerdns_group }}"
+    group: '{{ powerdns_group }}'
     mode: '0640'
     backup: true
   notify: restart powerdns
-
+  tags:
+  - powerdns
 - name: Create PowerDNS systemd override directory
   ansible.builtin.file:
     path: /etc/systemd/system/{{ powerdns_service_name }}.service.d
@@ -68,7 +74,8 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - powerdns
 - name: Configure PowerDNS systemd service overrides
   ansible.builtin.template:
     src: pdns-override.conf.j2
@@ -77,77 +84,90 @@
     group: root
     mode: '0644'
   notify:
-    - reload systemd
-    - restart powerdns
-
+  - reload systemd
+  - restart powerdns
+  tags:
+  - powerdns
 - name: Enable and start PowerDNS service
   ansible.builtin.systemd:
-    name: "{{ powerdns_service_name }}"
+    name: '{{ powerdns_service_name }}'
     enabled: true
     state: started
     daemon_reload: true
-
+  tags:
+  - powerdns
 - name: Wait for PowerDNS to start
   ansible.builtin.wait_for:
     port: 53
-    host: "{{ ansible_default_ipv4.address }}"
+    host: '{{ ansible_default_ipv4.address }}'
     delay: 5
     timeout: 30
-
+  tags:
+  - powerdns
 - name: Wait for PowerDNS API to start
   ansible.builtin.wait_for:
-    port: "{{ powerdns_webserver_port | default(8081) }}"
-    host: "{{ ansible_default_ipv4.address }}"
+    port: '{{ powerdns_webserver_port | default(8081) }}'
+    host: '{{ ansible_default_ipv4.address }}'
     delay: 5
     timeout: 30
   when: powerdns_api_readonly is defined
-
+  tags:
+  - powerdns
 - name: Check PowerDNS service status
   ansible.builtin.systemd:
-    name: "{{ powerdns_service_name }}"
+    name: '{{ powerdns_service_name }}'
   register: powerdns_service_status
-
+  tags:
+  - powerdns
 - name: Display PowerDNS service status
   ansible.builtin.debug:
-    msg: "PowerDNS service is {{ powerdns_service_status.status.ActiveState }}"
-
+    msg: PowerDNS service is {{ powerdns_service_status.status.ActiveState }}
+  tags:
+  - powerdns
 - name: Dry-run PowerDNS config check before enable/start
   ansible.builtin.command: pdns_server --daemon=no --guardian=no --config-check
   register: pdns_config_check
   failed_when: pdns_config_check.rc != 0
   changed_when: false
-
+  tags:
+  - powerdns
 - name: Display PowerDNS config validation result
   ansible.builtin.debug:
-    msg: "PowerDNS configuration validation: {{ 'PASSED' if pdns_config_check.rc == 0 else 'FAILED' }}"
-
+    msg: 'PowerDNS configuration validation: {{ ''PASSED'' if pdns_config_check.rc
+      == 0 else ''FAILED'' }}'
+  tags:
+  - powerdns
 - name: Create initial zones for primary server
   ansible.builtin.include_tasks: create_zones.yml
   when: server_role == 'primary'
-
+  tags:
+  - powerdns
 - name: Configure secondary server zones
   ansible.builtin.include_tasks: configure_secondary.yml
   when: server_role == 'secondary'
-
+  tags:
+  - powerdns
 - name: Install PowerDNS utilities
   ansible.builtin.package:
     name:
-      - pdns-tools
+    - pdns-tools
     state: present
   failed_when: false
-
+  tags:
+  - powerdns
 - name: Create PowerDNS management scripts
   ansible.builtin.template:
-    src: "{{ item }}.j2"
-    dest: "/usr/local/bin/{{ item }}"
+    src: '{{ item }}.j2'
+    dest: /usr/local/bin/{{ item }}
     owner: root
     group: root
     mode: '0755'
   loop:
-    - pdns-zone-manager.sh
-    - pdns-stats.sh
-    - pdns-maintenance.sh
-
+  - pdns-zone-manager.sh
+  - pdns-stats.sh
+  - pdns-maintenance.sh
+  tags:
+  - powerdns
 - name: Configure PowerDNS log rotation
   ansible.builtin.template:
     src: powerdns-logs.logrotate.j2
@@ -155,113 +175,119 @@
     owner: root
     group: root
     mode: '0644'
-
+  tags:
+  - powerdns
 - name: Create PowerDNS monitoring user (if API enabled)
   community.mysql.mysql_user:
     name: pdns_monitor
-    password: "{{ monitoring_api_token | default('monitor123') }}"
-    priv: "{{ powerdns_db_name }}.*:SELECT"
+    password: '{{ monitoring_api_token | default(''monitor123'') }}'
+    priv: '{{ powerdns_db_name }}.*:SELECT'
     host: localhost
     state: present
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
+    login_password: '{{ mysql_root_password | default(omit) }}'
   when: monitoring_config.enabled | default(true)
-
+  tags:
+  - powerdns
 - name: Verify PowerDNS is responding to queries
   ansible.builtin.command: dig @{{ ansible_default_ipv4.address }} localhost
   register: dns_test
   changed_when: false
   failed_when: false
-
+  tags:
+  - powerdns
 - name: Display DNS test result
   ansible.builtin.debug:
-    msg: "DNS query test: {{ 'PASSED' if dns_test.rc == 0 else 'FAILED' }}"
-
-#################################
-# DNSSEC Configuration
-#################################
-
+    msg: 'DNS query test: {{ ''PASSED'' if dns_test.rc == 0 else ''FAILED'' }}'
+  tags:
+  - powerdns
 - name: Install DNSSEC utilities
   ansible.builtin.package:
     name:
-      - pdns-tools
-      - bind9-dnsutils
+    - pdns-tools
+    - bind9-dnsutils
     state: present
-
+  tags:
+  - powerdns
 - name: Enable DNSSEC for primary domains
   ansible.builtin.command: pdnsutil secure-zone {{ item }}
-  loop: "{{ primary_domains }}"
+  loop: '{{ primary_domains }}'
   register: dnssec_enable
   failed_when: dnssec_enable.rc != 0 and 'already secured' not in dnssec_enable.stderr
-  changed_when: "'secured' in dnssec_enable.stdout"
+  changed_when: '''secured'' in dnssec_enable.stdout'
   when:
-    - server_role == 'primary'
-    - dnssec_enabled | default(true)
-
+  - server_role == 'primary'
+  - dnssec_enabled | default(true)
+  tags:
+  - powerdns
 - name: Generate DNSSEC keys for domains
   ansible.builtin.command: pdnsutil generate-zone-key {{ item }} ksk
-  loop: "{{ primary_domains }}"
+  loop: '{{ primary_domains }}'
   register: dnssec_ksk
   failed_when: dnssec_ksk.rc != 0 and 'already has keys' not in dnssec_ksk.stderr
-  changed_when: "'Generated' in dnssec_ksk.stdout"
+  changed_when: '''Generated'' in dnssec_ksk.stdout'
   when:
-    - server_role == 'primary'
-    - dnssec_enabled | default(true)
-
+  - server_role == 'primary'
+  - dnssec_enabled | default(true)
+  tags:
+  - powerdns
 - name: Generate DNSSEC ZSK keys for domains
   ansible.builtin.command: pdnsutil generate-zone-key {{ item }} zsk
-  loop: "{{ primary_domains }}"
+  loop: '{{ primary_domains }}'
   register: dnssec_zsk
   failed_when: dnssec_zsk.rc != 0 and 'already has keys' not in dnssec_zsk.stderr
-  changed_when: "'Generated' in dnssec_zsk.stdout"
+  changed_when: '''Generated'' in dnssec_zsk.stdout'
   when:
-    - server_role == 'primary'
-    - dnssec_enabled | default(true)
-
+  - server_role == 'primary'
+  - dnssec_enabled | default(true)
+  tags:
+  - powerdns
 - name: Activate DNSSEC keys
   ansible.builtin.command: pdnsutil activate-zone-key {{ item }} all
-  loop: "{{ primary_domains }}"
+  loop: '{{ primary_domains }}'
   register: dnssec_activate
-  changed_when: "'Activated' in dnssec_activate.stdout"
+  changed_when: '''Activated'' in dnssec_activate.stdout'
   when:
-    - server_role == 'primary'
-    - dnssec_enabled | default(true)
-
+  - server_role == 'primary'
+  - dnssec_enabled | default(true)
+  tags:
+  - powerdns
 - name: Set up automatic DNSSEC key rollover
   ansible.builtin.cron:
-    name: "DNSSEC Key Rollover for {{ item }}"
-    cron_file: "dnssec-rollover-{{ item | replace('.', '-') }}"
+    name: DNSSEC Key Rollover for {{ item }}
+    cron_file: dnssec-rollover-{{ item | replace('.', '-') }}
     user: root
-    minute: "0"
-    hour: "3"
-    day: "1"
-    job: "/usr/bin/pdnsutil generate-zone-key {{ item }} zsk && /usr/bin/pdnsutil activate-zone-key {{ item }} all"
-    state: "{{ 'present' if dnssec_enabled | default(true) else 'absent' }}"
-  loop: "{{ primary_domains }}"
+    minute: '0'
+    hour: '3'
+    day: '1'
+    job: /usr/bin/pdnsutil generate-zone-key {{ item }} zsk && /usr/bin/pdnsutil activate-zone-key
+      {{ item }} all
+    state: '{{ ''present'' if dnssec_enabled | default(true) else ''absent'' }}'
+  loop: '{{ primary_domains }}'
   when: server_role == 'primary'
-
+  tags:
+  - powerdns
 - name: Verify DNSSEC status
   ansible.builtin.command: pdnsutil show-zone {{ item }}
-  loop: "{{ primary_domains }}"
+  loop: '{{ primary_domains }}'
   register: dnssec_status
   changed_when: false
   when:
-    - server_role == 'primary'
-    - dnssec_enabled | default(true)
-
+  - server_role == 'primary'
+  - dnssec_enabled | default(true)
+  tags:
+  - powerdns
 - name: Display DNSSEC status
   ansible.builtin.debug:
-    msg: "DNSSEC status for {{ item.item }}: {{ 'ENABLED' if 'Secured: 1' in item.stdout else 'DISABLED' }}"
-  loop: "{{ dnssec_status.results }}"
+    msg: 'DNSSEC status for {{ item.item }}: {{ ''ENABLED'' if ''Secured: 1'' in item.stdout
+      else ''DISABLED'' }}'
+  loop: '{{ dnssec_status.results }}'
   when:
-    - server_role == 'primary'
-    - dnssec_enabled | default(true)
-    - dnssec_status is defined
-
-#################################
-# Zone Validation
-#################################
-
+  - server_role == 'primary'
+  - dnssec_enabled | default(true)
+  - dnssec_status is defined
+  tags:
+  - powerdns
 - name: Create zone validation script
   ansible.builtin.template:
     src: zone-validator.sh.j2
@@ -269,27 +295,27 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - powerdns
 - name: Validate zones after creation
   ansible.builtin.command: /usr/local/bin/zone-validator.sh {{ item }}
-  loop: "{{ primary_domains }}"
+  loop: '{{ primary_domains }}'
   register: zone_validation
   failed_when: zone_validation.rc != 0
   changed_when: false
   when: server_role == 'primary'
-
+  tags:
+  - powerdns
 - name: Display zone validation results
   ansible.builtin.debug:
-    msg: "Zone validation for {{ item.item }}: {{ 'PASSED' if item.rc == 0 else 'FAILED' }}"
-  loop: "{{ zone_validation.results }}"
+    msg: 'Zone validation for {{ item.item }}: {{ ''PASSED'' if item.rc == 0 else
+      ''FAILED'' }}'
+  loop: '{{ zone_validation.results }}'
   when:
-    - server_role == 'primary'
-    - zone_validation is defined
-
-#################################
-# API Configuration and Security
-#################################
-
+  - server_role == 'primary'
+  - zone_validation is defined
+  tags:
+  - powerdns
 - name: Create PowerDNS API management script
   ansible.builtin.template:
     src: pdns-api-manager.sh.j2
@@ -298,19 +324,25 @@
     group: root
     mode: '0755'
   when: powerdns_api_readonly is defined
-
+  tags:
+  - powerdns
 - name: Test PowerDNS API connectivity
   ansible.builtin.uri:
-    url: "http://{{ ansible_default_ipv4.address }}:{{ powerdns_webserver_port | default(8081) }}/api/v1/servers"
+    url: http://{{ ansible_default_ipv4.address }}:{{ powerdns_webserver_port | default(8081)
+      }}/api/v1/servers
     method: GET
     headers:
-      X-API-Key: "{{ powerdns_api_key }}"
+      X-API-Key: '{{ powerdns_api_key }}'
     status_code: 200
   register: api_test
   when: powerdns_api_readonly is defined
   failed_when: false
-
+  tags:
+  - powerdns
 - name: Display API test result
   ansible.builtin.debug:
-    msg: "PowerDNS API test: {{ 'PASSED' if api_test.status == 200 else 'FAILED' }}"
+    msg: 'PowerDNS API test: {{ ''PASSED'' if api_test.status == 200 else ''FAILED''
+      }}'
   when: powerdns_api_readonly is defined
+  tags:
+  - powerdns
