@@ -9,7 +9,6 @@ import api.server as server
 
 def setup_module(module):
     os.environ["AGENT_API_KEY"] = "test"
-    server.startup()
 
 
 def setup_function(function):
@@ -26,13 +25,13 @@ def test_audit_endpoint(tmp_path):
     )
     (role / "defaults" / "main.yml").write_text(yaml.safe_dump({"msg": "hi"}))
 
-    client = TestClient(server.app)
-    resp = client.post(
-        "/audit", params={"root": str(tmp_path)}, headers={"x-api-key": "test"}
-    )
-    assert resp.status_code == 200
-    report_path = Path(resp.json()["report"])
-    assert report_path.exists()
+    with TestClient(server.app) as client:
+        resp = client.post(
+            "/audit", params={"root": str(tmp_path)}, headers={"x-api-key": "test"}
+        )
+        assert resp.status_code == 200
+        report_path = Path(resp.json()["report"])
+        assert report_path.exists()
 
 
 def test_rate_limit(tmp_path):
@@ -44,13 +43,14 @@ def test_rate_limit(tmp_path):
     )
     (role / "defaults" / "main.yml").write_text(yaml.safe_dump({"msg": "hi"}))
 
-    client = TestClient(server.app)
-    for _ in range(5):
+    with TestClient(server.app) as client:
+        for _ in range(5):
+            r = client.post(
+                "/audit", params={"root": str(tmp_path)}, headers={"x-api-key": "test"}
+            )
+            assert r.status_code == 200
         r = client.post(
             "/audit", params={"root": str(tmp_path)}, headers={"x-api-key": "test"}
         )
-        assert r.status_code == 200
-    r = client.post(
-        "/audit", params={"root": str(tmp_path)}, headers={"x-api-key": "test"}
-    )
-    assert r.status_code == 429
+        assert r.status_code == 429
+

@@ -22,7 +22,10 @@ def main() -> None:
     config = load_config(args.config)
 
     if args.command == "run":
-        root = os.path.abspath(args.root)
+        root = os.path.abspath(os.path.expanduser(args.root))
+        if not os.path.isdir(root):
+            logger.error("Root path not found", extra={"root": root})
+            raise SystemExit(1)
         agent = AuditAgent(root, config)
         report_path = agent.run()
         logger.info("Audit complete", extra={"report": report_path})

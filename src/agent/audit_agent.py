@@ -16,6 +16,8 @@ class AuditAgent:
 
     def __init__(self, root_dir: str, config: Dict[str, any]):
         self.root_dir = os.path.abspath(root_dir)
+        if not os.path.isdir(self.root_dir):
+            raise ValueError(f"Root path not found: {self.root_dir}")
         self.config = config
         self.logger = get_logger(self.__class__.__name__)
         self.required_dirs = config["audit"]["required_role_dirs"]
@@ -79,6 +81,16 @@ class AuditAgent:
             dir_path = os.path.join(role_path, directory)
             if not os.path.isdir(dir_path):
                 missing.append(f"{role_path}/{directory} — Missing directory")
+        meta_main = os.path.join(role_path, "meta", "main.yml")
+        if not os.path.isfile(meta_main):
+            missing.append(f"{meta_main} — Missing file")
+        else:
+            try:
+                with open(meta_main, "r", encoding="utf-8") as f:
+                    yaml.safe_load(f)
+            except yaml.YAMLError as exc:
+                missing.append(f"{meta_main} — Invalid YAML: {exc}")
+        self._validate_yaml_files(role_path, missing)
         return missing
 
     def _check_placeholders(self, role_path: str, results: List[str]) -> None:
@@ -140,3 +152,14 @@ class AuditAgent:
                         "Invalid YAML", extra={"file": vf, "error": str(exc)}
                     )
         return variables
+
+    def _validate_yaml_files(self, role_path: str, errors: List[str]) -> None:
+        for root, _, files in os.walk(role_path):
+            for fname in files:
+                if fname.endswith((".yml", ".yaml")):
+                    path = os.path.join(root, fname)
+                    try:
+                        with open(path, "r", encoding="utf-8") as f:
+                            yaml.safe_load(f)
+                    except (OSError, yaml.YAMLError) as exc:
+                        errors.append(f"{path} — Invalid YAML: {exc}")
