@@ -2,9 +2,9 @@ name: PowerDNS Ansible CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   schedule:
     # Run security scans weekly
     - cron: '0 2 * * 1'

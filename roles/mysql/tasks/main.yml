@@ -31,10 +31,9 @@
   tags:
   - mysql
 - name: Verify Python MySQL module availability
-  command: '{{ ansible_python_interpreter }} -c ''import pymysql; print("PyMySQL available:",
-    pymysql.__version__)'''
+  ansible.builtin.command: '{{ ansible_python_interpreter }} -c "import pymysql; print(\"PyMySQL available:\", pymysql.__version__)"'
   register: pymysql_check
-  ignore_errors: true
+  failed_when: false
   tags:
   - mysql
 - name: Display Python MySQL module status
@@ -65,7 +64,7 @@
     login_unix_socket: /var/run/mysqld/mysqld.sock
     state: present
   when: mysql_root_password is defined
-  ignore_errors: true
+  failed_when: false
   tags:
   - mysql
 - name: Create MySQL configuration file for root
@@ -153,9 +152,9 @@
   - files:
     - /usr/share/pdns-backend-mysql/schema/schema.mysql.sql
     - /usr/share/doc/pdns-backend-mysql/schema.mysql.sql
-    - /usr/share/powerdns/schema.mysql.sql
-    skip: true
-  ignore_errors: true
+  - /usr/share/powerdns/schema.mysql.sql
+  skip: true
+  failed_when: false
   tags:
   - mysql
 - name: Create custom PowerDNS schema if standard not found

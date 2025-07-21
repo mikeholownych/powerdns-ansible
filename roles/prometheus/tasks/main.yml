@@ -231,7 +231,7 @@
   - powerdns-exporter
   - node-exporter
   - mysql-exporter
-  ignore_errors: true
+  failed_when: false
   tags:
   - prometheus
 - name: Create monitoring health check script
@@ -262,7 +262,7 @@
   register: prometheus_status
   retries: 3
   delay: 10
-  ignore_errors: true
+  failed_when: false
   tags:
   - prometheus
 - name: Display Prometheus status

@@ -1,30 +1,37 @@
 - name: Install HAProxy
-  package:
+  ansible.builtin.package:
     name: haproxy
     state: present
   tags:
-  - haproxy
+    - haproxy
 - name: Install HAProxy stats packages
-  package:
+  ansible.builtin.package:
     name: '{{ haproxy_stats_packages[ansible_os_family] | default([]) }}'
     state: present
   when: haproxy_stats_packages[ansible_os_family] is defined
   tags:
-  - haproxy
+    - haproxy
+
+- name: Check HAProxy config exists
+  ansible.builtin.stat:
+    path: /etc/haproxy/haproxy.cfg
+  register: haproxy_config
+  tags:
+    - haproxy
 - name: Create HAProxy configuration backup
-  copy:
+  ansible.builtin.copy:
     src: /etc/haproxy/haproxy.cfg
     dest: /etc/haproxy/haproxy.cfg.backup.{{ ansible_date_time.epoch }}
     remote_src: true
     owner: root
     group: root
     mode: '0644'
-  when: ansible_stat.stat.exists is defined and ansible_stat.stat.exists
-  ignore_errors: true
+  when: haproxy_config.stat.exists
+  failed_when: false
   tags:
-  - haproxy
+    - haproxy
 - name: Generate HAProxy configuration
-  template:
+  ansible.builtin.template:
     src: haproxy.cfg.j2
     dest: /etc/haproxy/haproxy.cfg
     owner: root
@@ -33,30 +40,30 @@
     backup: true
   notify: restart haproxy
   tags:
-  - haproxy
+    - haproxy
 - name: Create HAProxy systemd override directory
-  file:
+  ansible.builtin.file:
     path: /etc/systemd/system/haproxy.service.d
     state: directory
     owner: root
     group: root
     mode: '0755'
   tags:
-  - haproxy
+    - haproxy
 - name: Configure HAProxy systemd service overrides
-  template:
+  ansible.builtin.template:
     src: haproxy-override.conf.j2
     dest: /etc/systemd/system/haproxy.service.d/override.conf
     owner: root
     group: root
     mode: '0644'
   notify:
-  - reload systemd
-  - restart haproxy
+    - reload systemd
+    - restart haproxy
   tags:
-  - haproxy
+    - haproxy
 - name: Create HAProxy stats user
-  user:
+  ansible.builtin.user:
     name: haproxy-stats
     system: true
     shell: /bin/false
@@ -64,66 +71,66 @@
     create_home: false
   when: haproxy_stats_enabled | default(true)
   tags:
-  - haproxy
+    - haproxy
 - name: Configure HAProxy log rotation
-  template:
+  ansible.builtin.template:
     src: haproxy-logrotate.j2
     dest: /etc/logrotate.d/haproxy
     owner: root
     group: root
     mode: '0644'
   tags:
-  - haproxy
+    - haproxy
 - name: Create HAProxy management scripts
-  template:
+  ansible.builtin.template:
     src: '{{ item }}.j2'
     dest: /usr/local/bin/{{ item }}
     owner: root
     group: root
     mode: '0755'
   loop:
-  - haproxy-stats.sh
-  - haproxy-health-check.sh
-  - haproxy-reload.sh
+    - haproxy-stats.sh
+    - haproxy-health-check.sh
+    - haproxy-reload.sh
   tags:
-  - haproxy
+    - haproxy
 - name: Enable and start HAProxy service
-  systemd:
+  ansible.builtin.systemd:
     name: haproxy
     enabled: true
     state: started
     daemon_reload: true
   tags:
-  - haproxy
+    - haproxy
 - name: Wait for HAProxy to start
-  wait_for:
+  ansible.builtin.wait_for:
     port: '{{ haproxy_stats_port | default(8404) }}'
     host: '{{ ansible_default_ipv4.address }}'
     delay: 5
     timeout: 30
   when: haproxy_stats_enabled | default(true)
   tags:
-  - haproxy
+    - haproxy
 - name: Check HAProxy service status
-  systemd:
+  ansible.builtin.systemd:
     name: haproxy
   register: haproxy_service_status
   tags:
-  - haproxy
+    - haproxy
 - name: Display HAProxy service status
-  debug:
+  ansible.builtin.debug:
     msg: HAProxy service is {{ haproxy_service_status.status.ActiveState }}
   tags:
-  - haproxy
+    - haproxy
 - name: Test HAProxy configuration
-  command: haproxy -c -f /etc/haproxy/haproxy.cfg
+  ansible.builtin.command: haproxy -c -f /etc/haproxy/haproxy.cfg
   register: config_check
   failed_when: config_check.rc != 0
   changed_when: false
   tags:
-  - haproxy
+    - haproxy
 - name: Create HAProxy monitoring user for database
-  mysql_user:
+  community.mysql.mysql_user:
     name: haproxy_monitor
     password: '{{ haproxy_monitor_password | default(''monitor123'') }}'
     priv: '*.*:USAGE'
@@ -133,19 +140,17 @@
     login_password: '{{ mysql_root_password | default(omit) }}'
   when: haproxy_mysql_monitoring | default(true)
   tags:
-  - haproxy
+    - haproxy
 - name: Verify HAProxy is load balancing DNS
-  command: dig @{{ ansible_default_ipv4.address }} -p {{ haproxy_dns_port | default(53)
-    }} localhost
+  ansible.builtin.command: dig @{{ ansible_default_ipv4.address }} -p {{ haproxy_dns_port | default(53) }} localhost
   register: dns_lb_test
   failed_when: dns_lb_test.rc != 0
   changed_when: false
-  ignore_errors: true
   tags:
-  - haproxy
+    - haproxy
 - name: Display DNS load balancing test result
-  debug:
+  ansible.builtin.debug:
     msg: 'DNS load balancing test: {{ ''PASSED'' if dns_lb_test.rc == 0 else ''FAILED''
       }}'
   tags:
-  - haproxy
+    - haproxy
