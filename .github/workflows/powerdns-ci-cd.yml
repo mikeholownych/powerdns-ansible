@@ -1,10 +1,11 @@
+---
 name: PowerDNS Infrastructure CI/CD
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -42,7 +43,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ansible ansible-lint yamllint molecule[docker] pytest-testinfra
+          pip install ansible ansible-lint yamllint \
+            molecule[docker] pytest-testinfra
           pip install jmespath netaddr
 
       - name: Lint YAML files
@@ -66,7 +68,8 @@ jobs:
       - name: Check for security issues
         run: |
           # Check for hardcoded passwords or secrets
-          if grep -r "password.*=" . --include="*.yml" --include="*.yaml" | grep -v "password.*{{" | grep -v "#"; then
+          if grep -r "password.*=" . --include="*.yml" --include="*.yaml" \
+            | grep -v "password.*{{" | grep -v "#"; then
             echo "WARNING: Potential hardcoded passwords found"
             exit 1
           fi
@@ -136,7 +139,7 @@ jobs:
             "*.env"
             ".env.*"
           )
-          
+
           for pattern in "${sensitive_files[@]}"; do
             if find . -name "$pattern" -not -path "./.git/*" | grep -q .; then
               echo "WARNING: Sensitive files found matching pattern: $pattern"
@@ -148,7 +151,10 @@ jobs:
     name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: [lint-and-validate, molecule-test, security-scan]
-    if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging')
+    if: >-
+      github.ref == 'refs/heads/develop' ||
+      (github.event_name == 'workflow_dispatch' &&
+      inputs.environment == 'staging')
     environment: staging
     steps:
       - name: Checkout code
@@ -189,12 +195,12 @@ jobs:
         run: |
           # Test DNS resolution
           dig @${{ secrets.STAGING_HOST }} google.com
-          
+
           # Test PowerDNS API if enabled
-          if [ -n "${{ secrets.POWERDNS_API_KEY }}" ]; then
-            curl -H "X-API-Key: ${{ secrets.POWERDNS_API_KEY }}" \
-                 http://${{ secrets.STAGING_HOST }}:8081/api/v1/servers
-          fi
+            if [ -n "${{ secrets.POWERDNS_API_KEY }}" ]; then
+              curl -H "X-API-Key: ${{ secrets.POWERDNS_API_KEY }}" \
+                http://${{ secrets.STAGING_HOST }}:8081/api/v1/servers
+            fi
 
       - name: Cleanup
         if: always()
@@ -205,7 +211,10 @@ jobs:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: [lint-and-validate, molecule-test, security-scan]
-    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'production')
+    if: >-
+      github.ref == 'refs/heads/main' ||
+      (github.event_name == 'workflow_dispatch' &&
+      inputs.environment == 'production')
     environment: production
     steps:
       - name: Checkout code
@@ -248,7 +257,7 @@ jobs:
             --extra-vars "environment=production" \
             --diff \
             --check-mode
-          
+
           # If check mode passes, run the actual deployment
           if [ $? -eq 0 ]; then
             ansible-playbook -i inventory/production.yml powerdns-playbook.yml \
@@ -269,11 +278,11 @@ jobs:
             echo "Testing DNS on $host"
             dig @$host google.com
             dig @$host example.com
-            
+
             # Test DNSSEC if enabled
             dig @$host +dnssec google.com
           done
-          
+
           # Test PowerDNS API
           if [ -n "${{ secrets.POWERDNS_API_KEY }}" ]; then
             for host in ${{ secrets.PRODUCTION_HOSTS }}; do
@@ -281,7 +290,7 @@ jobs:
                    http://$host:8081/api/v1/servers
             done
           fi
-          
+
           # Test HAProxy if enabled
           if [ -n "${{ secrets.HAPROXY_STATS_URL }}" ]; then
             curl -f ${{ secrets.HAPROXY_STATS_URL }}
@@ -340,10 +349,10 @@ jobs:
           release_name: PowerDNS Release v${{ github.run_number }}
           body: |
             Automated release from successful production deployment.
-            
+
             Commit: ${{ github.sha }}
             Branch: ${{ github.ref }}
-            
+
             Changes in this release:
             ${{ github.event.head_commit.message }}
           draft: false

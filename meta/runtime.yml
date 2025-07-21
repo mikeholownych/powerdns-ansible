@@ -14,15 +14,15 @@ plugin_routing:
   # Use this section if your collection is redirecting some modules to use
   # fully qualified collection names (FQCN)
   modules: {}
-  
+
   # Use this section if your collection is redirecting some action plugins
   action: {}
-  
+
   # Use this section if your collection is redirecting some lookup plugins
   lookup: {}
-  
+
   # Use this section if your collection is redirecting some filter plugins
   filter: {}
-  
+
   # Use this section if your collection is redirecting some test plugins
   test: {}

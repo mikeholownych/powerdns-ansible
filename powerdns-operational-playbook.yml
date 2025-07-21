@@ -1,30 +1,39 @@
 ---
 - name: PowerDNS Enterprise Infrastructure with Operational Excellence
   hosts: powerdns_servers
-  become: yes
-  gather_facts: yes
+  become: true
+  gather_facts: true
   vars_files:
     - vars/main.yml
     - vars/operational.yml
     - vault/secrets.yml
-  
+
   pre_tasks:
     - name: Load operational configuration
-      include_vars: vars/operational.yml
+      ansible.builtin.include_vars: vars/operational.yml
       tags: always
 
     - name: Set default operation mode
-      set_fact:
+      ansible.builtin.set_fact:
         operation_mode: "{{ operation_mode | default('install') }}"
       tags: always
 
     - name: Set default DNS features
-      set_fact:
-        dns_features: "{{ dns_features | default(['base', 'mysql', 'api', 'logging', 'monitoring', 'security', 'backup']) }}"
+      ansible.builtin.set_fact:
+        dns_features: >-
+          {{ dns_features | default([
+            'base',
+            'mysql',
+            'api',
+            'logging',
+            'monitoring',
+            'security',
+            'backup'
+          ]) }}
       tags: always
 
     - name: Display operation summary
-      debug:
+      ansible.builtin.debug:
         msg:
           - "=== PowerDNS Operational Deployment ==="
           - "Operation Mode: {{ operation_mode }}"
@@ -36,21 +45,32 @@
       tags: always
 
     - name: Auto-detect server role if not defined
-      set_fact:
-        server_role: "{{ 'primary' if inventory_hostname in groups['powerdns_primary'] | default([]) else 'secondary' if inventory_hostname in groups['powerdns_secondary'] | default([]) else 'recursor' if inventory_hostname in groups['powerdns_recursor'] | default([]) else 'loadbalancer' if inventory_hostname in groups['haproxy_servers'] | default([]) else 'primary' }}"
+      ansible.builtin.set_fact:
+        server_role: >-
+          {{
+            'primary'
+            if inventory_hostname in groups['powerdns_primary'] | default([])
+            else 'secondary'
+            if inventory_hostname in groups['powerdns_secondary'] | default([])
+            else 'recursor'
+            if inventory_hostname in groups['powerdns_recursor'] | default([])
+            else 'loadbalancer'
+            if inventory_hostname in groups['haproxy_servers'] | default([])
+            else 'primary'
+          }}
       when: server_role is not defined
       tags: always
 
     - name: Update package cache
-      package:
-        update_cache: yes
+      ansible.builtin.package:
+        update_cache: true
       when: package_update_cache | default(false)
       tags: ['packages', 'update']
 
     - name: Upgrade all packages (if upgrade mode)
-      package:
+      ansible.builtin.package:
         upgrade: dist
-      when: 
+      when:
         - operation_mode == 'upgrade'
         - package_upgrade_all | default(false)
       tags: ['packages', 'upgrade']
@@ -72,7 +92,7 @@
     # Clean install (only if explicitly requested)
     - role: clean_install
       tags: ['clean_install', 'cleanup']
-      when: 
+      when:
         - perform_clean_install | default(false)
         - operation_mode == 'install'
 
@@ -87,38 +107,40 @@
 
     - role: galera
       tags: ['galera', 'cluster']
-      when: 
+      when:
         - "'galera' in dns_features"
         - groups['galera_cluster'] is defined
         - inventory_hostname in groups['galera_cluster']
 
     - role: powerdns
       tags: ['powerdns', 'dns', 'authoritative']
-      when: 
+      when:
         - "'base' in dns_features"
         - server_role in ['primary', 'secondary']
 
     - role: recursor
       tags: ['recursor', 'dns', 'recursive']
-      when: 
+      when:
         - server_role == 'recursor' or "'powerdns_recursor' in group_names"
         - "'base' in dns_features"
 
     - role: dnsdist
       tags: ['dnsdist', 'loadbalancer']
-      when: 
+      when:
         - "'dnsdist' in dns_features"
         - server_role == 'loadbalancer' or "'dnsdist_servers' in group_names"
 
     - role: haproxy
       tags: ['haproxy', 'loadbalancer']
-      when: 
+      when:
         - "'haproxy_servers' in group_names or server_role == 'loadbalancer'"
-        - "'dnsdist' not in dns_features"  # Use either DNSdist or HAProxy, not both
+        - >-
+          'dnsdist' not in dns_features
+        # Use either DNSdist or HAProxy, not both
 
     - role: keepalived
       tags: ['keepalived', 'failover', 'vrrp']
-      when: 
+      when:
         - keepalived_enabled | default(false)
         - groups['powerdns_primary'] | default([]) | length > 1
 
@@ -133,7 +155,7 @@
 
     - role: prometheus
       tags: ['prometheus', 'metrics']
-      when: 
+      when:
         - "'monitoring' in dns_features"
         - prometheus_enabled | default(false)
 
@@ -147,18 +169,20 @@
 
   post_tasks:
     - name: Wait for services to stabilize
-      pause:
+      ansible.builtin.pause:
         seconds: 30
       when: restart_services_on_change | default(true)
       tags: ['validation', 'stabilization']
 
     - name: Run comprehensive health check
-      include_tasks: tasks/health_check.yml
+      ansible.builtin.include_tasks: tasks/health_check.yml
       tags: ['health', 'validation']
       when: validate_after_upgrade | default(true)
 
     - name: Generate final state report
-      command: /usr/local/bin/state-report-generator.py --format json --output /var/lib/powerdns-state/reports/final-state.json
+      ansible.builtin.command: >-
+        /usr/local/bin/state-report-generator.py --format json
+        --output /var/lib/powerdns-state/reports/final-state.json
       register: final_state_report
       changed_when: final_state_report.rc == 0
       failed_when: false
@@ -166,19 +190,21 @@
       tags: ['reporting', 'state']
 
     - name: Run smoke tests
-      include_tasks: tasks/smoke_tests.yml
+      ansible.builtin.include_tasks: tasks/smoke_tests.yml
       when: run_smoke_tests | default(true)
       tags: ['testing', 'validation']
 
     - name: Run integration tests
-      include_tasks: tasks/integration_tests.yml
-      when: 
+      ansible.builtin.include_tasks: tasks/integration_tests.yml
+      when:
         - run_integration_tests | default(false)
         - operation_mode in ['install', 'upgrade']
       tags: ['testing', 'integration']
 
     - name: Send completion notification
-      command: /usr/local/bin/state-notifier.py --event "deployment_complete" --operation "{{ operation_mode }}" --status "success"
+      ansible.builtin.command: >-
+        /usr/local/bin/state-notifier.py --event deployment_complete
+        --operation "{{ operation_mode }}" --status success
       register: completion_notification
       changed_when: completion_notification.rc == 0
       failed_when: false
@@ -186,14 +212,18 @@
       tags: ['notification']
 
     - name: Display deployment completion summary
-      debug:
+      ansible.builtin.debug:
         msg:
           - "=== PowerDNS Deployment Complete ==="
           - "Operation: {{ operation_mode | upper }}"
           - "Server Role: {{ server_role }}"
           - "Features Deployed: {{ dns_features | join(', ') }}"
           - "API Endpoint: http://{{ ansible_default_ipv4.address }}:8081"
-          - "Monitoring: {{ 'http://' + ansible_default_ipv4.address + ':9090' if 'monitoring' in dns_features else 'Disabled' }}"
+          - >-
+            Monitoring: {{
+              'http://' + ansible_default_ipv4.address + ':9090'
+              if 'monitoring' in dns_features else 'Disabled'
+            }}
           - "State Reports: /var/lib/powerdns-state/reports/"
           - "Management CLI: powerdns-state --help"
           - "Configuration: /etc/powerdns/pdns.conf"
@@ -202,51 +232,51 @@
       tags: always
 
   handlers:
-    - name: restart powerdns
-      systemd:
+    - name: Restart PowerDNS
+      ansible.builtin.systemd:
         name: pdns
         state: restarted
-        enabled: yes
+        enabled: true
       listen: "restart powerdns"
       when: restart_services_on_change | default(true)
-    
-    - name: restart mysql
-      systemd:
+
+    - name: Restart MySQL
+      ansible.builtin.systemd:
         name: "{{ mysql_service_name }}"
         state: restarted
-        enabled: yes
+        enabled: true
       listen: "restart mysql"
       when: restart_services_on_change | default(true)
-    
-    - name: restart dnsdist
-      systemd:
+
+    - name: Restart dnsdist
+      ansible.builtin.systemd:
         name: dnsdist
         state: restarted
-        enabled: yes
+        enabled: true
       listen: "restart dnsdist"
       when: restart_services_on_change | default(true)
-    
-    - name: restart haproxy
-      systemd:
+
+    - name: Restart HAProxy
+      ansible.builtin.systemd:
         name: haproxy
         state: restarted
-        enabled: yes
+        enabled: true
       listen: "restart haproxy"
       when: restart_services_on_change | default(true)
-    
+
     - name: restart keepalived
       systemd:
         name: keepalived
         state: restarted
-        enabled: yes
+        enabled: true
       listen: "restart keepalived"
       when: restart_services_on_change | default(true)
-    
+
     - name: reload systemd
       systemd:
-        daemon_reload: yes
+        daemon_reload: true
       listen: "reload systemd"
-    
+
     - name: reload firewall
       systemd:
         name: ufw
@@ -257,27 +287,25 @@
 # Rollback playbook (separate play for rollback operations)
 - name: PowerDNS Rollback Operations
   hosts: powerdns_servers
-  become: yes
-  gather_facts: no
+  become: true
+  gather_facts: false
   vars_files:
     - vars/main.yml
     - vars/operational.yml
     - vault/secrets.yml
-  
+
   tasks:
     - name: Execute rollback
       command: /usr/local/bin/rollback-prepare.py --execute-rollback
       register: rollback_execution
-      when: 
+      when:
         - enable_rollback | default(true)
         - operation_mode == 'rollback'
       tags: ['rollback']
 
     - name: Verify rollback success
       include_tasks: tasks/health_check.yml
-      when: 
+      when:
         - enable_rollback | default(true)
         - operation_mode == 'rollback'
       tags: ['rollback', 'validation']
-
-  when: operation_mode == 'rollback'
