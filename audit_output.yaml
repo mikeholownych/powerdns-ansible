@@ -1,0 +1,384 @@
+missing:
+- security:
+  - defaults directory
+  - vars directory
+  - files directory
+  - meta directory
+- keepalived:
+  - defaults directory
+  - vars directory
+  - files directory
+  - meta directory
+- prometheus:
+  - defaults directory
+  - vars directory
+  - files directory
+  - meta directory
+- galera:
+  - defaults directory
+  - vars directory
+  - handlers directory
+  - files directory
+  - meta directory
+- common:
+  - defaults directory
+  - vars directory
+  - files directory
+  - meta directory
+- self_healing:
+  - defaults directory
+  - vars directory
+  - files directory
+  - meta directory
+- mysql:
+  - defaults directory
+  - vars directory
+  - files directory
+  - meta directory
+- recursor:
+  - defaults directory
+  - vars directory
+  - files directory
+  - meta directory
+- monitoring:
+  - defaults directory
+  - vars directory
+  - files directory
+  - meta directory
+- state_management:
+  - defaults directory
+  - vars directory
+  - handlers directory
+  - files directory
+  - meta directory
+- haproxy:
+  - defaults directory
+  - vars directory
+  - files directory
+  - meta directory
+- selfheal:
+  - defaults directory
+  - vars directory
+  - files directory
+  - meta directory
+- powerdns:
+  - defaults directory
+  - vars directory
+  - handlers directory
+  - files directory
+  - meta directory
+- dnsdist:
+  - defaults directory
+  - vars directory
+  - handlers directory
+  - files directory
+  - meta directory
+- zones_as_code:
+  - defaults directory
+  - vars directory
+  - handlers directory
+  - templates directory
+  - files directory
+  - meta directory
+- security_hardening:
+  - defaults directory
+  - vars directory
+  - files directory
+  - meta directory
+- dnssec_automation:
+  - defaults directory
+  - vars directory
+  - handlers directory
+  - templates directory
+  - files directory
+  - meta directory
+- validate_config:
+  - defaults directory
+  - vars directory
+  - handlers directory
+  - templates directory
+  - files directory
+  - meta directory
+- clean_install:
+  - defaults directory
+  - vars directory
+  - templates directory
+  - files directory
+  - meta directory
+placeholders: []
+undefined_vars:
+- security:
+  - alert_email
+  - alert_webhook_url
+  - ansible_date_time.iso8601
+  - ansible_default_ipv4.address
+  - ansible_fqdn
+  - dns_network
+  - groups['powerdns_servers']
+  - hostvars[item]["ansible_default_ipv4"]["address"]
+  - hostvars[item]['ansible_default_ipv4']['address']
+  - item
+  - item.comment
+  - item.direction
+  - item.line
+  - item.mode
+  - item.name
+  - item.path
+  - item.policy
+  - item.port
+  - item.proto
+  - item.regexp
+  - item.value
+  - monitoring_config.prometheus_port
+  - powerdns_config_dir
+  - powerdns_db_password
+  - powerdns_group
+  - powerdns_webserver_port
+  - server_role
+- keepalived:
+  - alert_email
+  - ansible_date_time.epoch
+  - ansible_date_time.iso8601
+  - ansible_default_ipv4.address
+  - instance.name
+  - instance.router_id
+  - instance.vip
+  - inventory_hostname
+  - item
+  - item.comment
+  - item.name
+  - item.proto
+  - item.value
+  - keepalived_service_status.status.ActiveState
+  - keepalived_webhook_url
+  - powerdns_db_password
+  - script
+  - server_role
+  - vrrp_state.stdout
+- prometheus:
+  - ansible_date_time.iso8601
+  - ansible_default_ipv4.address
+  - hostvars[host]['ansible_default_ipv4']['address']
+  - item
+  - powerdns_api_key
+  - prometheus_remote_write_password
+  - prometheus_remote_write_url
+  - prometheus_remote_write_username
+- galera:
+  - ansible_date_time.epoch
+  - ansible_default_ipv4.address
+  - galera_config_path[ansible_os_family]
+  - galera_packages[ansible_os_family]
+  - hostvars[groups['galera_cluster'][0]]['ansible_default_ipv4']['address']
+  - inventory_hostname
+  - item
+  - mysql_galera_config_path[ansible_os_family]
+- common:
+  - alert_email
+  - item
+  - item.name
+  - item.value
+  - powerdns_config_dir
+  - powerdns_db_password
+  - powerdns_group
+  - powerdns_user
+- self_healing:
+  - ansible_default_ipv4.address
+  - gitops_repo_url
+  - item
+  - powerdns_api_key
+  - powerdns_config_dir
+  - powerdns_db_password
+- mysql:
+  - ansible_date_time.iso8601
+  - ansible_default_ipv4.address
+  - ansible_python_interpreter
+  - db_tables.rowcount[0]
+  - hostvars[mysql_master_host]['mysql_master_status']['query_result'][0]['File']
+  - hostvars[mysql_master_host]['mysql_master_status']['query_result'][0]['Position']
+  - item
+  - item.name
+  - item.value
+  - mysql_packages[ansible_os_family]
+  - mysql_replication_config_path[ansible_os_family]
+  - mysql_root_password
+  - powerdns_db_password
+- recursor:
+  - ansible_date_time.epoch
+  - ansible_date_time.iso8601
+  - ansible_default_ipv4.address
+  - domain
+  - item
+  - item.comment
+  - item.port
+  - item.proto
+  - key
+  - record
+  - recursor_packages[ansible_os_family]
+  - recursor_service_status.status.ActiveState
+  - value
+  - zone
+- monitoring:
+  - alert_email
+  - alert_webhook_url
+  - ansible_date_time.iso8601
+  - ansible_default_ipv4.address
+  - domain
+  - hostvars[host]['ansible_default_ipv4']['address']
+  - item
+  - loop.index
+  - monitoring_config.prometheus_port
+  - powerdns_api_key
+  - powerdns_db_password
+  - powerdns_webserver_port
+  - server_role
+  - zone
+- state_management:
+  - ansible_date_time.epoch
+  - ansible_date_time.iso8601
+  - ansible_default_ipv4.address
+  - ansible_distribution
+  - ansible_distribution_version
+  - ansible_kernel
+  - ansible_user_id
+  - ansible_version.full
+  - inventory_hostname
+  - item
+  - server_role
+- haproxy:
+  - ansible_date_time.epoch
+  - ansible_date_time.iso8601
+  - ansible_default_ipv4.address
+  - haproxy_service_status.status.ActiveState
+  - hostvars[host]['ansible_default_ipv4']['address']
+  - hostvars[host]['inventory_hostname']
+  - item
+- selfheal:
+  - ansible_date_time.iso8601
+  - ansible_default_ipv4.address
+  - config_check_result.stdout
+  - final_service_check.results
+  - inventory_hostname
+  - item
+  - item.group
+  - item.home
+  - item.item
+  - item.line
+  - item.mode
+  - item.name
+  - item.owner
+  - item.path
+  - item.regexp
+  - item.status.ActiveState
+  - mysql_error_log.stdout_lines
+  - mysql_packages[ansible_os_family]
+  - port_conflicts.stdout_lines
+  - powerdns_api_key
+  - powerdns_db_password
+  - powerdns_mysql_backend_packages[ansible_os_family]
+- powerdns:
+  - ad_domains
+  - ansible_date_time.epoch
+  - ansible_date_time.iso8601
+  - ansible_default_ipv4.address
+  - dnssec_status.results
+  - domain
+  - domain_ids.query_result
+  - item
+  - item.id
+  - item.item
+  - item.name
+  - logging_config.facility
+  - logging_config.level
+  - performance_config.cache_ttl
+  - performance_config.distributor_threads
+  - performance_config.max_queue_length
+  - performance_config.max_tcp_connections
+  - performance_config.negquery_cache_ttl
+  - performance_config.query_cache_ttl
+  - performance_config.receiver_threads
+  - performance_config.recursive_cache_ttl
+  - powerdns_api_key
+  - powerdns_backend
+  - powerdns_config_dir
+  - powerdns_db_password
+  - powerdns_group
+  - powerdns_packages[ansible_os_family]
+  - powerdns_service_status.status.ActiveState
+  - powerdns_user
+  - primary_domains
+  - record.name
+  - record.type
+  - record.value
+  - reverse_zones
+  - server_role
+  - slave_domain_count.query_result[0].count
+  - zone_transfer_status.query_result
+  - zone_validation.results
+- dnsdist:
+  - ansible_date_time.iso8601
+  - ansible_default_ipv4.address
+  - dnsdist_packages[ansible_os_family]
+  - domain
+  - geo_rule.country
+  - geo_rule.pool
+  - hostvars[host]['ansible_default_ipv4']['address']
+  - item
+  - loop.index
+  - rule.lua_code
+  - zone
+- zones_as_code:
+  - item
+  - zones_git_repo
+- security_hardening:
+  - ansible_date_time.iso8601
+  - ansible_fqdn
+  - hostvars[item]['ansible_default_ipv4']['address']
+  - inventory_hostname
+  - item
+  - item.comment
+  - item.direction
+  - item.mode
+  - item.name
+  - item.owner
+  - item.path
+  - item.policy
+  - item.port
+  - item.proto
+  - item.src
+  - item.value
+  - ssl_cert_path
+  - ssl_key_path
+- dnssec_automation:
+  - ansible_date_time.iso8601
+  - ansible_default_ipv4.address
+  - inventory_hostname
+  - item
+  - item.item.name
+  - item.name
+  - item.stdout
+  - powerdns_db_password
+  - server_role
+- validate_config:
+  - ansible_date_time.iso8601
+  - ansible_default_ipv4.address
+  - ansible_distribution
+  - ansible_distribution_version
+  - ansible_memtotal_mb
+  - ansible_mounts
+  - ansible_processor_vcpus
+  - backup_config.retention_days
+  - dnssec_key_algorithm
+  - existing_pdns_config.stat.exists
+  - inventory_hostname
+  - item
+  - item.mount
+  - pdns_config_hash
+  - prometheus_port
+  - server_role
+- clean_install:
+  - item
+  - mysql_packages[ansible_os_family]
+  - powerdns_packages[ansible_os_family]
+valid: []
+
