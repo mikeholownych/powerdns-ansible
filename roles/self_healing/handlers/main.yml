@@ -2,12 +2,12 @@
 # Handlers for self_healing role
 
 - name: reload systemd
-  systemd:
+  ansible.builtin.systemd:
     daemon_reload: yes
   listen: "reload systemd"
 
 - name: restart powerdns-watchdog
-  systemd:
+  ansible.builtin.systemd:
     name: powerdns-watchdog.service
     state: restarted
     enabled: yes
@@ -15,7 +15,7 @@
   listen: "restart powerdns-watchdog"
 
 - name: start powerdns-watchdog-timer
-  systemd:
+  ansible.builtin.systemd:
     name: powerdns-watchdog.timer
     state: started
     enabled: yes
@@ -23,7 +23,7 @@
   listen: "start powerdns-watchdog-timer"
 
 - name: restart mysql-watchdog
-  systemd:
+  ansible.builtin.systemd:
     name: mysql-watchdog.service
     state: restarted
     enabled: yes
@@ -31,7 +31,7 @@
   listen: "restart mysql-watchdog"
 
 - name: start mysql-watchdog-timer
-  systemd:
+  ansible.builtin.systemd:
     name: mysql-watchdog.timer
     state: started
     enabled: yes

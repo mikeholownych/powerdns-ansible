@@ -1,0 +1,10 @@
+[Unit]
+Description=PowerDNS Watchdog
+After=network.target
+
+[Service]
+ExecStart=/opt/self-healing/scripts/service-health-monitor.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
