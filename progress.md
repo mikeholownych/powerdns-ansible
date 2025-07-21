@@ -1,5 +1,5 @@
-progress.md updated
-# Validation Score: 100/100
+# Progress Tracker
+## Validation Score: 100/100
 ## ansible-lint Violations: 1274
 
 ### Top Violations
