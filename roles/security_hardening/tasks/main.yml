@@ -1,499 +1,505 @@
----
-# Security Hardening Role
-# Enterprise-grade security for PowerDNS infrastructure
-
 - name: Display security hardening start
   debug:
-    msg: "=== Starting Security Hardening ==="
-
-#################################
-# Fail2Ban Integration
-#################################
-
+    msg: === Starting Security Hardening ===
+  tags:
+  - security_hardening
 - name: Install Fail2Ban
   package:
     name: fail2ban
     state: present
   when: fail2ban_enabled | default(true)
-
+  tags:
+  - security_hardening
 - name: Create PowerDNS Fail2Ban filter
   copy:
     dest: /etc/fail2ban/filter.d/powerdns.conf
-    content: |
-      # PowerDNS filter for Fail2Ban
-      [Definition]
-      failregex = ^.*\[.*\] \(tcp\) \((?:(?:::ffff:)?(?P<host>\S+))\) \S+ packet parse error.*$
-                  ^.*\[.*\] \(udp\) \((?:(?:::ffff:)?(?P<host>\S+))\) \S+ packet parse error.*$
-                  ^.*\[.*\] \((?:tcp|udp)\) \((?:(?:::ffff:)?(?P<host>\S+))\) \S+ query rate limit exceeded.*$
-                  ^.*\[.*\] Denied AXFR of .* from (?:(?:::ffff:)?(?P<host>\S+)).*$
-      ignoreregex =
+    content: "# PowerDNS filter for Fail2Ban\n[Definition]\nfailregex = ^.*\\[.*\\\
+      ] \\(tcp\\) \\((?:(?:::ffff:)?(?P<host>\\S+))\\) \\S+ packet parse error.*$\n\
+      \            ^.*\\[.*\\] \\(udp\\) \\((?:(?:::ffff:)?(?P<host>\\S+))\\) \\S+\
+      \ packet parse error.*$\n            ^.*\\[.*\\] \\((?:tcp|udp)\\) \\((?:(?:::ffff:)?(?P<host>\\\
+      S+))\\) \\S+ query rate limit exceeded.*$\n            ^.*\\[.*\\] Denied AXFR\
+      \ of .* from (?:(?:::ffff:)?(?P<host>\\S+)).*$\nignoreregex =\n"
     mode: '0644'
   notify: restart fail2ban
   when: fail2ban_enabled | default(true)
-
+  tags:
+  - security_hardening
 - name: Create PowerDNS API Fail2Ban filter
   copy:
     dest: /etc/fail2ban/filter.d/powerdns-api.conf
-    content: |
-      # PowerDNS API filter for Fail2Ban
-      [Definition]
-      failregex = ^.*\[.*\] HTTP API request from (?:(?:::ffff:)?(?P<host>\S+)) denied.*$
-                  ^.*\[.*\] Invalid API key from (?:(?:::ffff:)?(?P<host>\S+)).*$
-                  ^.*\[.*\] API rate limit exceeded from (?:(?:::ffff:)?(?P<host>\S+)).*$
-      ignoreregex =
+    content: "# PowerDNS API filter for Fail2Ban\n[Definition]\nfailregex = ^.*\\\
+      [.*\\] HTTP API request from (?:(?:::ffff:)?(?P<host>\\S+)) denied.*$\n    \
+      \        ^.*\\[.*\\] Invalid API key from (?:(?:::ffff:)?(?P<host>\\S+)).*$\n\
+      \            ^.*\\[.*\\] API rate limit exceeded from (?:(?:::ffff:)?(?P<host>\\\
+      S+)).*$\nignoreregex =\n"
     mode: '0644'
   notify: restart fail2ban
-  when: 
-    - fail2ban_enabled | default(true)
-    - "'api' in dns_features"
-
+  when:
+  - fail2ban_enabled | default(true)
+  - '''api'' in dns_features'
+  tags:
+  - security_hardening
 - name: Configure Fail2Ban jail for PowerDNS
   copy:
     dest: /etc/fail2ban/jail.d/powerdns.conf
-    content: |
-      [powerdns]
-      enabled = true
-      port = 53
-      protocol = udp
-      filter = powerdns
-      logpath = /var/log/powerdns/*.log
-      maxretry = {{ fail2ban_powerdns_maxretry | default(10) }}
-      findtime = {{ fail2ban_powerdns_findtime | default(600) }}
-      bantime = {{ fail2ban_powerdns_bantime | default(3600) }}
-      action = iptables-multiport[name=powerdns, port="53", protocol=udp]
-               iptables-multiport[name=powerdns, port="53", protocol=tcp]
-
-      [powerdns-api]
-      enabled = {{ 'true' if 'api' in dns_features else 'false' }}
-      port = {{ powerdns_webserver_port | default(8081) }}
-      protocol = tcp
-      filter = powerdns-api
-      logpath = /var/log/powerdns/*.log
-      maxretry = {{ fail2ban_api_maxretry | default(5) }}
-      findtime = {{ fail2ban_api_findtime | default(300) }}
-      bantime = {{ fail2ban_api_bantime | default(7200) }}
-      action = iptables-multiport[name=powerdns-api, port="{{ powerdns_webserver_port | default(8081) }}", protocol=tcp]
-
-      [dns-abuse]
-      enabled = true
-      port = 53
-      protocol = udp
-      filter = dns-abuse
-      logpath = /var/log/powerdns/*.log
-      maxretry = {{ fail2ban_abuse_maxretry | default(50) }}
-      findtime = {{ fail2ban_abuse_findtime | default(3600) }}
-      bantime = {{ fail2ban_abuse_bantime | default(86400) }}
-      action = iptables-multiport[name=dns-abuse, port="53", protocol=udp]
+    content: "[powerdns]\nenabled = true\nport = 53\nprotocol = udp\nfilter = powerdns\n\
+      logpath = /var/log/powerdns/*.log\nmaxretry = {{ fail2ban_powerdns_maxretry\
+      \ | default(10) }}\nfindtime = {{ fail2ban_powerdns_findtime | default(600)\
+      \ }}\nbantime = {{ fail2ban_powerdns_bantime | default(3600) }}\naction = iptables-multiport[name=powerdns,\
+      \ port=\"53\", protocol=udp]\n         iptables-multiport[name=powerdns, port=\"\
+      53\", protocol=tcp]\n\n[powerdns-api]\nenabled = {{ 'true' if 'api' in dns_features\
+      \ else 'false' }}\nport = {{ powerdns_webserver_port | default(8081) }}\nprotocol\
+      \ = tcp\nfilter = powerdns-api\nlogpath = /var/log/powerdns/*.log\nmaxretry\
+      \ = {{ fail2ban_api_maxretry | default(5) }}\nfindtime = {{ fail2ban_api_findtime\
+      \ | default(300) }}\nbantime = {{ fail2ban_api_bantime | default(7200) }}\n\
+      action = iptables-multiport[name=powerdns-api, port=\"{{ powerdns_webserver_port\
+      \ | default(8081) }}\", protocol=tcp]\n\n[dns-abuse]\nenabled = true\nport =\
+      \ 53\nprotocol = udp\nfilter = dns-abuse\nlogpath = /var/log/powerdns/*.log\n\
+      maxretry = {{ fail2ban_abuse_maxretry | default(50) }}\nfindtime = {{ fail2ban_abuse_findtime\
+      \ | default(3600) }}\nbantime = {{ fail2ban_abuse_bantime | default(86400) }}\n\
+      action = iptables-multiport[name=dns-abuse, port=\"53\", protocol=udp]\n"
     mode: '0644'
   notify: restart fail2ban
   when: fail2ban_enabled | default(true)
-
+  tags:
+  - security_hardening
 - name: Create DNS abuse filter
   copy:
     dest: /etc/fail2ban/filter.d/dns-abuse.conf
-    content: |
-      # DNS abuse filter for excessive queries
+    content: '# DNS abuse filter for excessive queries
+
       [Definition]
+
       failregex = ^.*\[.*\] \((?:tcp|udp)\) \((?:(?:::ffff:)?(?P<host>\S+))\) .*$
+
       ignoreregex =
+
+      '
     mode: '0644'
   notify: restart fail2ban
   when: fail2ban_enabled | default(true)
-
+  tags:
+  - security_hardening
 - name: Enable and start Fail2Ban
   systemd:
     name: fail2ban
-    enabled: yes
+    enabled: true
     state: started
   when: fail2ban_enabled | default(true)
-
-#################################
-# AppArmor/SELinux Hardening
-#################################
-
+  tags:
+  - security_hardening
 - name: Install AppArmor utilities (Debian/Ubuntu)
   package:
-    name: "{{ item }}"
+    name: '{{ item }}'
     state: present
   loop:
-    - apparmor-utils
-    - apparmor-profiles
-    - apparmor-profiles-extra
-  when: 
-    - ansible_os_family == "Debian"
-    - apparmor_enabled | default(true)
-
+  - apparmor-utils
+  - apparmor-profiles
+  - apparmor-profiles-extra
+  when:
+  - ansible_os_family == "Debian"
+  - apparmor_enabled | default(true)
+  tags:
+  - security_hardening
 - name: Install SELinux utilities (RHEL/CentOS)
   package:
-    name: "{{ item }}"
+    name: '{{ item }}'
     state: present
   loop:
-    - policycoreutils-python-utils
-    - selinux-policy-devel
-    - setroubleshoot-server
-  when: 
-    - ansible_os_family == "RedHat"
-    - selinux_enabled | default(true)
-
+  - policycoreutils-python-utils
+  - selinux-policy-devel
+  - setroubleshoot-server
+  when:
+  - ansible_os_family == "RedHat"
+  - selinux_enabled | default(true)
+  tags:
+  - security_hardening
 - name: Create PowerDNS AppArmor profile
   copy:
     dest: /etc/apparmor.d/usr.sbin.pdns_server
-    content: |
-      # PowerDNS AppArmor profile
-      #include <tunables/global>
-
-      /usr/sbin/pdns_server {
-        #include <abstractions/base>
-        #include <abstractions/nameservice>
-        #include <abstractions/mysql>
-
-        capability net_bind_service,
-        capability setuid,
-        capability setgid,
-        capability chown,
-        capability dac_override,
-
-        network inet dgram,
-        network inet stream,
-        network inet6 dgram,
-        network inet6 stream,
-
-        /usr/sbin/pdns_server mr,
-        /etc/powerdns/ r,
-        /etc/powerdns/** r,
-        /var/lib/powerdns/ rw,
-        /var/lib/powerdns/** rw,
-        /var/log/powerdns/ rw,
-        /var/log/powerdns/** rw,
-        /var/run/pdns.pid rw,
-        /var/run/pdns.controlsocket rw,
-
-        # MySQL socket access
-        /var/run/mysqld/mysqld.sock rw,
-        /tmp/mysql.sock rw,
-
-        # Lua scripts
-        /etc/powerdns/*.lua r,
-        /usr/share/powerdns/*.lua r,
-
-        # Deny dangerous capabilities
-        deny capability sys_admin,
-        deny capability sys_module,
-        deny /proc/sys/kernel/** w,
-        deny /sys/** w,
-      }
+    content: "# PowerDNS AppArmor profile\n#include <tunables/global>\n\n/usr/sbin/pdns_server\
+      \ {\n  #include <abstractions/base>\n  #include <abstractions/nameservice>\n\
+      \  #include <abstractions/mysql>\n\n  capability net_bind_service,\n  capability\
+      \ setuid,\n  capability setgid,\n  capability chown,\n  capability dac_override,\n\
+      \n  network inet dgram,\n  network inet stream,\n  network inet6 dgram,\n  network\
+      \ inet6 stream,\n\n  /usr/sbin/pdns_server mr,\n  /etc/powerdns/ r,\n  /etc/powerdns/**\
+      \ r,\n  /var/lib/powerdns/ rw,\n  /var/lib/powerdns/** rw,\n  /var/log/powerdns/\
+      \ rw,\n  /var/log/powerdns/** rw,\n  /var/run/pdns.pid rw,\n  /var/run/pdns.controlsocket\
+      \ rw,\n\n  # MySQL socket access\n  /var/run/mysqld/mysqld.sock rw,\n  /tmp/mysql.sock\
+      \ rw,\n\n  # Lua scripts\n  /etc/powerdns/*.lua r,\n  /usr/share/powerdns/*.lua\
+      \ r,\n\n  # Deny dangerous capabilities\n  deny capability sys_admin,\n  deny\
+      \ capability sys_module,\n  deny /proc/sys/kernel/** w,\n  deny /sys/** w,\n\
+      }\n"
     mode: '0644'
-  when: 
-    - ansible_os_family == "Debian"
-    - apparmor_enabled | default(true)
+  when:
+  - ansible_os_family == "Debian"
+  - apparmor_enabled | default(true)
   notify: reload apparmor
-
+  tags:
+  - security_hardening
 - name: Enable PowerDNS AppArmor profile
   command: aa-enforce /etc/apparmor.d/usr.sbin.pdns_server
   register: apparmor_enforce
   failed_when: false
-  changed_when: "'Setting' in apparmor_enforce.stdout"
-  when: 
-    - ansible_os_family == "Debian"
-    - apparmor_enabled | default(true)
-
+  changed_when: '''Setting'' in apparmor_enforce.stdout'
+  when:
+  - ansible_os_family == "Debian"
+  - apparmor_enabled | default(true)
+  tags:
+  - security_hardening
 - name: Create MySQL AppArmor profile enhancement
   copy:
     dest: /etc/apparmor.d/local/usr.sbin.mysqld
-    content: |
-      # Local MySQL AppArmor profile enhancements
-      # Restrict MySQL access for PowerDNS
-      /var/lib/mysql/powerdns/ rw,
-      /var/lib/mysql/powerdns/** rw,
-      deny /var/lib/mysql/mysql/ w,
-      deny /var/lib/mysql/information_schema/ w,
-      deny /var/lib/mysql/performance_schema/ w,
-    mode: '0644'
-  when: 
-    - ansible_os_family == "Debian"
-    - apparmor_enabled | default(true)
-    - "'mysql' in dns_features"
-  notify: reload apparmor
+    content: '# Local MySQL AppArmor profile enhancements
 
+      # Restrict MySQL access for PowerDNS
+
+      /var/lib/mysql/powerdns/ rw,
+
+      /var/lib/mysql/powerdns/** rw,
+
+      deny /var/lib/mysql/mysql/ w,
+
+      deny /var/lib/mysql/information_schema/ w,
+
+      deny /var/lib/mysql/performance_schema/ w,
+
+      '
+    mode: '0644'
+  when:
+  - ansible_os_family == "Debian"
+  - apparmor_enabled | default(true)
+  - '''mysql'' in dns_features'
+  notify: reload apparmor
+  tags:
+  - security_hardening
 - name: Configure SELinux for PowerDNS (RHEL/CentOS)
   block:
-    - name: Set SELinux booleans for PowerDNS
-      seboolean:
-        name: "{{ item }}"
-        state: yes
-        persistent: yes
-      loop:
-        - httpd_can_network_connect
-        - named_write_master_zones
-      when: "'api' in dns_features"
+  - name: Set SELinux booleans for PowerDNS
+    seboolean:
+      name: '{{ item }}'
+      state: true
+      persistent: true
+    loop:
+    - httpd_can_network_connect
+    - named_write_master_zones
+    when: '''api'' in dns_features'
+    tags:
+    - security_hardening
+  - name: Create custom SELinux policy for PowerDNS
+    copy:
+      dest: /tmp/powerdns.te
+      content: "module powerdns 1.0;\n\nrequire {\n    type named_t;\n    type mysqld_t;\n\
+        \    type http_port_t;\n    class tcp_socket name_connect;\n    class file\
+        \ { read write create unlink };\n}\n\n# Allow PowerDNS to connect to MySQL\n\
+        allow named_t mysqld_t:tcp_socket name_connect;\n\n# Allow PowerDNS API access\n\
+        allow named_t http_port_t:tcp_socket name_connect;\n"
+      mode: '0644'
+    tags:
+    - security_hardening
+  - name: Compile and install SELinux policy
+    shell: 'cd /tmp
 
-    - name: Create custom SELinux policy for PowerDNS
-      copy:
-        dest: /tmp/powerdns.te
-        content: |
-          module powerdns 1.0;
+      checkmodule -M -m -o powerdns.mod powerdns.te
 
-          require {
-              type named_t;
-              type mysqld_t;
-              type http_port_t;
-              class tcp_socket name_connect;
-              class file { read write create unlink };
-          }
+      semodule_package -o powerdns.pp -m powerdns.mod
 
-          # Allow PowerDNS to connect to MySQL
-          allow named_t mysqld_t:tcp_socket name_connect;
+      semodule -i powerdns.pp
 
-          # Allow PowerDNS API access
-          allow named_t http_port_t:tcp_socket name_connect;
-        mode: '0644'
-
-    - name: Compile and install SELinux policy
-      shell: |
-        cd /tmp
-        checkmodule -M -m -o powerdns.mod powerdns.te
-        semodule_package -o powerdns.pp -m powerdns.mod
-        semodule -i powerdns.pp
-      register: selinux_policy_install
-      changed_when: selinux_policy_install.rc == 0
-
-  when: 
-    - ansible_os_family == "RedHat"
-    - selinux_enabled | default(true)
-
-#################################
-# Firewall Hardening
-#################################
-
+      '
+    register: selinux_policy_install
+    changed_when: selinux_policy_install.rc == 0
+    tags:
+    - security_hardening
+  when:
+  - ansible_os_family == "RedHat"
+  - selinux_enabled | default(true)
+  tags:
+  - security_hardening
 - name: Configure UFW firewall (Debian/Ubuntu)
   block:
-    - name: Install UFW
-      package:
-        name: ufw
-        state: present
-
-    - name: Reset UFW to defaults
-      ufw:
-        state: reset
-      when: firewall_reset | default(false)
-
-    - name: Set UFW default policies
-      ufw:
-        direction: "{{ item.direction }}"
-        policy: "{{ item.policy }}"
-      loop:
-        - { direction: 'incoming', policy: 'deny' }
-        - { direction: 'outgoing', policy: 'allow' }
-
-    - name: Allow SSH access
-      ufw:
-        rule: allow
-        port: "{{ ssh_port | default(22) }}"
-        proto: tcp
-        comment: "SSH access"
-
-    - name: Allow DNS queries from trusted networks
-      ufw:
-        rule: allow
-        port: "53"
-        proto: "{{ item.proto }}"
-        src: "{{ item.src }}"
-        comment: "DNS queries from {{ item.src }}"
-      loop: "{{ dns_trusted_networks | default([{'src': 'any', 'proto': 'udp'}, {'src': 'any', 'proto': 'tcp'}]) }}"
-
-    - name: Allow PowerDNS API from management networks
-      ufw:
-        rule: allow
-        port: "{{ powerdns_webserver_port | default(8081) }}"
-        proto: tcp
-        src: "{{ item }}"
-        comment: "PowerDNS API from {{ item }}"
-      loop: "{{ api_management_networks | default(['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']) }}"
-      when: "'api' in dns_features"
-
-    - name: Allow MySQL access from PowerDNS servers
-      ufw:
-        rule: allow
-        port: "3306"
-        proto: tcp
-        src: "{{ hostvars[item]['ansible_default_ipv4']['address'] }}"
-        comment: "MySQL from {{ item }}"
-      loop: "{{ groups['powerdns_servers'] | default([]) }}"
-      when: "'mysql' in dns_features"
-
-    - name: Allow monitoring access
-      ufw:
-        rule: allow
-        port: "{{ item.port }}"
-        proto: tcp
-        src: "{{ item.src }}"
-        comment: "{{ item.comment }}"
-      loop:
-        - { port: "{{ prometheus_port | default(9090) }}", src: "{{ monitoring_network | default('10.0.0.0/8') }}", comment: "Prometheus" }
-        - { port: "{{ node_exporter_port | default(9100) }}", src: "{{ monitoring_network | default('10.0.0.0/8') }}", comment: "Node Exporter" }
-        - { port: "{{ powerdns_exporter_port | default(9120) }}", src: "{{ monitoring_network | default('10.0.0.0/8') }}", comment: "PowerDNS Exporter" }
-      when: "'monitoring' in dns_features"
-
-    - name: Enable UFW
-      ufw:
-        state: enabled
-
-  when: 
-    - ansible_os_family == "Debian"
-    - firewall_enabled | default(true)
-
+  - name: Install UFW
+    package:
+      name: ufw
+      state: present
+    tags:
+    - security_hardening
+  - name: Reset UFW to defaults
+    ufw:
+      state: reset
+    when: firewall_reset | default(false)
+    tags:
+    - security_hardening
+  - name: Set UFW default policies
+    ufw:
+      direction: '{{ item.direction }}'
+      policy: '{{ item.policy }}'
+    loop:
+    - direction: incoming
+      policy: deny
+    - direction: outgoing
+      policy: allow
+    tags:
+    - security_hardening
+  - name: Allow SSH access
+    ufw:
+      rule: allow
+      port: '{{ ssh_port | default(22) }}'
+      proto: tcp
+      comment: SSH access
+    tags:
+    - security_hardening
+  - name: Allow DNS queries from trusted networks
+    ufw:
+      rule: allow
+      port: '53'
+      proto: '{{ item.proto }}'
+      src: '{{ item.src }}'
+      comment: DNS queries from {{ item.src }}
+    loop: '{{ dns_trusted_networks | default([{''src'': ''any'', ''proto'': ''udp''},
+      {''src'': ''any'', ''proto'': ''tcp''}]) }}'
+    tags:
+    - security_hardening
+  - name: Allow PowerDNS API from management networks
+    ufw:
+      rule: allow
+      port: '{{ powerdns_webserver_port | default(8081) }}'
+      proto: tcp
+      src: '{{ item }}'
+      comment: PowerDNS API from {{ item }}
+    loop: '{{ api_management_networks | default([''10.0.0.0/8'', ''172.16.0.0/12'',
+      ''192.168.0.0/16'']) }}'
+    when: '''api'' in dns_features'
+    tags:
+    - security_hardening
+  - name: Allow MySQL access from PowerDNS servers
+    ufw:
+      rule: allow
+      port: '3306'
+      proto: tcp
+      src: '{{ hostvars[item][''ansible_default_ipv4''][''address''] }}'
+      comment: MySQL from {{ item }}
+    loop: '{{ groups[''powerdns_servers''] | default([]) }}'
+    when: '''mysql'' in dns_features'
+    tags:
+    - security_hardening
+  - name: Allow monitoring access
+    ufw:
+      rule: allow
+      port: '{{ item.port }}'
+      proto: tcp
+      src: '{{ item.src }}'
+      comment: '{{ item.comment }}'
+    loop:
+    - port: '{{ prometheus_port | default(9090) }}'
+      src: '{{ monitoring_network | default(''10.0.0.0/8'') }}'
+      comment: Prometheus
+    - port: '{{ node_exporter_port | default(9100) }}'
+      src: '{{ monitoring_network | default(''10.0.0.0/8'') }}'
+      comment: Node Exporter
+    - port: '{{ powerdns_exporter_port | default(9120) }}'
+      src: '{{ monitoring_network | default(''10.0.0.0/8'') }}'
+      comment: PowerDNS Exporter
+    when: '''monitoring'' in dns_features'
+    tags:
+    - security_hardening
+  - name: Enable UFW
+    ufw:
+      state: enabled
+    tags:
+    - security_hardening
+  when:
+  - ansible_os_family == "Debian"
+  - firewall_enabled | default(true)
+  tags:
+  - security_hardening
 - name: Configure FirewallD (RHEL/CentOS)
   block:
-    - name: Install FirewallD
-      package:
-        name: firewalld
-        state: present
-
-    - name: Start and enable FirewallD
-      systemd:
-        name: firewalld
-        state: started
-        enabled: yes
-
-    - name: Create PowerDNS firewall zone
-      firewalld:
-        zone: powerdns
-        state: present
-        permanent: yes
-        immediate: yes
-
-    - name: Configure PowerDNS zone
-      firewalld:
-        zone: powerdns
-        service: dns
-        permanent: yes
-        immediate: yes
-        state: enabled
-
-    - name: Allow PowerDNS API in custom zone
-      firewalld:
-        zone: powerdns
-        port: "{{ powerdns_webserver_port | default(8081) }}/tcp"
-        permanent: yes
-        immediate: yes
-        state: enabled
-      when: "'api' in dns_features"
-
-    - name: Add trusted networks to PowerDNS zone
-      firewalld:
-        zone: powerdns
-        source: "{{ item }}"
-        permanent: yes
-        immediate: yes
-        state: enabled
-      loop: "{{ dns_trusted_networks | default(['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']) }}"
-
-  when: 
-    - ansible_os_family == "RedHat"
-    - firewall_enabled | default(true)
-
-#################################
-# SSL/TLS Hardening
-#################################
-
+  - name: Install FirewallD
+    package:
+      name: firewalld
+      state: present
+    tags:
+    - security_hardening
+  - name: Start and enable FirewallD
+    systemd:
+      name: firewalld
+      state: started
+      enabled: true
+    tags:
+    - security_hardening
+  - name: Create PowerDNS firewall zone
+    firewalld:
+      zone: powerdns
+      state: present
+      permanent: true
+      immediate: true
+    tags:
+    - security_hardening
+  - name: Configure PowerDNS zone
+    firewalld:
+      zone: powerdns
+      service: dns
+      permanent: true
+      immediate: true
+      state: enabled
+    tags:
+    - security_hardening
+  - name: Allow PowerDNS API in custom zone
+    firewalld:
+      zone: powerdns
+      port: '{{ powerdns_webserver_port | default(8081) }}/tcp'
+      permanent: true
+      immediate: true
+      state: enabled
+    when: '''api'' in dns_features'
+    tags:
+    - security_hardening
+  - name: Add trusted networks to PowerDNS zone
+    firewalld:
+      zone: powerdns
+      source: '{{ item }}'
+      permanent: true
+      immediate: true
+      state: enabled
+    loop: '{{ dns_trusted_networks | default([''10.0.0.0/8'', ''172.16.0.0/12'', ''192.168.0.0/16''])
+      }}'
+    tags:
+    - security_hardening
+  when:
+  - ansible_os_family == "RedHat"
+  - firewall_enabled | default(true)
+  tags:
+  - security_hardening
 - name: Install SSL/TLS certificates
   block:
-    - name: Create SSL certificate directory
-      file:
-        path: /etc/powerdns/ssl
-        state: directory
-        owner: root
-        group: pdns
-        mode: '0750'
-
-    - name: Generate self-signed certificate (if no custom cert provided)
-      command: |
-        openssl req -x509 -nodes -days 365 -newkey rsa:2048 
-        -keyout /etc/powerdns/ssl/powerdns.key 
-        -out /etc/powerdns/ssl/powerdns.crt 
-        -subj "/C=US/ST=State/L=City/O=Organization/CN={{ ansible_fqdn }}"
-      args:
-        creates: /etc/powerdns/ssl/powerdns.crt
-      when: ssl_cert_path is not defined
-
-    - name: Copy custom SSL certificate
-      copy:
-        src: "{{ ssl_cert_path }}"
-        dest: /etc/powerdns/ssl/powerdns.crt
-        owner: root
-        group: pdns
-        mode: '0644'
-      when: ssl_cert_path is defined
-
-    - name: Copy custom SSL private key
-      copy:
-        src: "{{ ssl_key_path }}"
-        dest: /etc/powerdns/ssl/powerdns.key
-        owner: root
-        group: pdns
-        mode: '0600'
-      when: ssl_key_path is defined
-
-    - name: Set SSL certificate permissions
-      file:
-        path: "{{ item.path }}"
-        owner: "{{ item.owner }}"
-        group: pdns
-        mode: "{{ item.mode }}"
-      loop:
-        - { path: '/etc/powerdns/ssl/powerdns.crt', owner: 'root', mode: '0644' }
-        - { path: '/etc/powerdns/ssl/powerdns.key', owner: 'root', mode: '0600' }
-
-  when: "'ssl' in dns_features"
-
-#################################
-# System Hardening
-#################################
-
+  - name: Create SSL certificate directory
+    file:
+      path: /etc/powerdns/ssl
+      state: directory
+      owner: root
+      group: pdns
+      mode: '0750'
+    tags:
+    - security_hardening
+  - name: Generate self-signed certificate (if no custom cert provided)
+    command: "openssl req -x509 -nodes -days 365 -newkey rsa:2048 \n-keyout /etc/powerdns/ssl/powerdns.key\
+      \ \n-out /etc/powerdns/ssl/powerdns.crt \n-subj \"/C=US/ST=State/L=City/O=Organization/CN={{\
+      \ ansible_fqdn }}\"\n"
+    args:
+      creates: /etc/powerdns/ssl/powerdns.crt
+    when: ssl_cert_path is not defined
+    tags:
+    - security_hardening
+  - name: Copy custom SSL certificate
+    copy:
+      src: '{{ ssl_cert_path }}'
+      dest: /etc/powerdns/ssl/powerdns.crt
+      owner: root
+      group: pdns
+      mode: '0644'
+    when: ssl_cert_path is defined
+    tags:
+    - security_hardening
+  - name: Copy custom SSL private key
+    copy:
+      src: '{{ ssl_key_path }}'
+      dest: /etc/powerdns/ssl/powerdns.key
+      owner: root
+      group: pdns
+      mode: '0600'
+    when: ssl_key_path is defined
+    tags:
+    - security_hardening
+  - name: Set SSL certificate permissions
+    file:
+      path: '{{ item.path }}'
+      owner: '{{ item.owner }}'
+      group: pdns
+      mode: '{{ item.mode }}'
+    loop:
+    - path: /etc/powerdns/ssl/powerdns.crt
+      owner: root
+      mode: '0644'
+    - path: /etc/powerdns/ssl/powerdns.key
+      owner: root
+      mode: '0600'
+    tags:
+    - security_hardening
+  when: '''ssl'' in dns_features'
+  tags:
+  - security_hardening
 - name: Disable unnecessary services
   systemd:
-    name: "{{ item }}"
-    enabled: no
+    name: '{{ item }}'
+    enabled: false
     state: stopped
-  loop: "{{ services_to_disable | default(['avahi-daemon', 'cups', 'bluetooth']) }}"
+  loop: '{{ services_to_disable | default([''avahi-daemon'', ''cups'', ''bluetooth''])
+    }}'
   failed_when: false
-
+  tags:
+  - security_hardening
 - name: Configure kernel security parameters
   sysctl:
-    name: "{{ item.name }}"
-    value: "{{ item.value }}"
+    name: '{{ item.name }}'
+    value: '{{ item.value }}'
     state: present
-    reload: yes
+    reload: true
   loop:
-    - { name: 'net.ipv4.ip_forward', value: '0' }
-    - { name: 'net.ipv4.conf.all.send_redirects', value: '0' }
-    - { name: 'net.ipv4.conf.default.send_redirects', value: '0' }
-    - { name: 'net.ipv4.conf.all.accept_redirects', value: '0' }
-    - { name: 'net.ipv4.conf.default.accept_redirects', value: '0' }
-    - { name: 'net.ipv4.conf.all.secure_redirects', value: '0' }
-    - { name: 'net.ipv4.conf.default.secure_redirects', value: '0' }
-    - { name: 'net.ipv4.conf.all.log_martians', value: '1' }
-    - { name: 'net.ipv4.conf.default.log_martians', value: '1' }
-    - { name: 'net.ipv4.icmp_echo_ignore_broadcasts', value: '1' }
-    - { name: 'net.ipv4.icmp_ignore_bogus_error_responses', value: '1' }
-    - { name: 'net.ipv4.tcp_syncookies', value: '1' }
-    - { name: 'kernel.dmesg_restrict', value: '1' }
-    - { name: 'kernel.kptr_restrict', value: '2' }
+  - name: net.ipv4.ip_forward
+    value: '0'
+  - name: net.ipv4.conf.all.send_redirects
+    value: '0'
+  - name: net.ipv4.conf.default.send_redirects
+    value: '0'
+  - name: net.ipv4.conf.all.accept_redirects
+    value: '0'
+  - name: net.ipv4.conf.default.accept_redirects
+    value: '0'
+  - name: net.ipv4.conf.all.secure_redirects
+    value: '0'
+  - name: net.ipv4.conf.default.secure_redirects
+    value: '0'
+  - name: net.ipv4.conf.all.log_martians
+    value: '1'
+  - name: net.ipv4.conf.default.log_martians
+    value: '1'
+  - name: net.ipv4.icmp_echo_ignore_broadcasts
+    value: '1'
+  - name: net.ipv4.icmp_ignore_bogus_error_responses
+    value: '1'
+  - name: net.ipv4.tcp_syncookies
+    value: '1'
+  - name: kernel.dmesg_restrict
+    value: '1'
+  - name: kernel.kptr_restrict
+    value: '2'
   when: kernel_hardening_enabled | default(true)
-
+  tags:
+  - security_hardening
 - name: Configure file permissions for sensitive files
   file:
-    path: "{{ item.path }}"
-    mode: "{{ item.mode }}"
-    owner: "{{ item.owner | default('root') }}"
-    group: "{{ item.group | default('root') }}"
+    path: '{{ item.path }}'
+    mode: '{{ item.mode }}'
+    owner: '{{ item.owner | default(''root'') }}'
+    group: '{{ item.group | default(''root'') }}'
   loop:
-    - { path: '/etc/powerdns/pdns.conf', mode: '0640', group: 'pdns' }
-    - { path: '/etc/mysql/my.cnf', mode: '0644' }
-    - { path: '/var/log/powerdns', mode: '0750', owner: 'pdns', group: 'pdns' }
-    - { path: '/var/lib/powerdns', mode: '0750', owner: 'pdns', group: 'pdns' }
+  - path: /etc/powerdns/pdns.conf
+    mode: '0640'
+    group: pdns
+  - path: /etc/mysql/my.cnf
+    mode: '0644'
+  - path: /var/log/powerdns
+    mode: '0750'
+    owner: pdns
+    group: pdns
+  - path: /var/lib/powerdns
+    mode: '0750'
+    owner: pdns
+    group: pdns
   failed_when: false
-
+  tags:
+  - security_hardening
 - name: Create security monitoring script
   template:
     src: security-monitor.sh.j2
@@ -501,48 +507,53 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - security_hardening
 - name: Schedule security monitoring
   cron:
-    name: "Security Monitoring"
+    name: Security Monitoring
     cron_file: security-monitoring
     user: root
-    minute: "*/15"
-    job: "/usr/local/bin/security-monitor.sh"
+    minute: '*/15'
+    job: /usr/local/bin/security-monitor.sh
     state: present
   when: security_monitoring_enabled | default(true)
-
+  tags:
+  - security_hardening
 - name: Create security status report
   copy:
     dest: /var/lib/powerdns-state/security-status.json
-    content: |
-      {
-        "timestamp": "{{ ansible_date_time.iso8601 }}",
-        "hostname": "{{ inventory_hostname }}",
-        "security_features": {
-          "fail2ban_enabled": {{ fail2ban_enabled | default(true) | to_json }},
-          "apparmor_enabled": {{ (apparmor_enabled | default(true) and ansible_os_family == "Debian") | to_json }},
-          "selinux_enabled": {{ (selinux_enabled | default(true) and ansible_os_family == "RedHat") | to_json }},
-          "firewall_enabled": {{ firewall_enabled | default(true) | to_json }},
-          "ssl_enabled": {{ ('ssl' in dns_features) | to_json }},
-          "kernel_hardening": {{ kernel_hardening_enabled | default(true) | to_json }}
-        },
-        "monitoring": {
-          "security_monitoring": {{ security_monitoring_enabled | default(true) | to_json }},
-          "fail2ban_monitoring": {{ fail2ban_enabled | default(true) | to_json }}
-        }
-      }
+    content: "{\n  \"timestamp\": \"{{ ansible_date_time.iso8601 }}\",\n  \"hostname\"\
+      : \"{{ inventory_hostname }}\",\n  \"security_features\": {\n    \"fail2ban_enabled\"\
+      : {{ fail2ban_enabled | default(true) | to_json }},\n    \"apparmor_enabled\"\
+      : {{ (apparmor_enabled | default(true) and ansible_os_family == \"Debian\")\
+      \ | to_json }},\n    \"selinux_enabled\": {{ (selinux_enabled | default(true)\
+      \ and ansible_os_family == \"RedHat\") | to_json }},\n    \"firewall_enabled\"\
+      : {{ firewall_enabled | default(true) | to_json }},\n    \"ssl_enabled\": {{\
+      \ ('ssl' in dns_features) | to_json }},\n    \"kernel_hardening\": {{ kernel_hardening_enabled\
+      \ | default(true) | to_json }}\n  },\n  \"monitoring\": {\n    \"security_monitoring\"\
+      : {{ security_monitoring_enabled | default(true) | to_json }},\n    \"fail2ban_monitoring\"\
+      : {{ fail2ban_enabled | default(true) | to_json }}\n  }\n}\n"
     mode: '0644'
-
+  tags:
+  - security_hardening
 - name: Display security hardening summary
   debug:
     msg:
-      - "=== Security Hardening Complete ==="
-      - "Fail2Ban: {{ 'Enabled' if fail2ban_enabled | default(true) else 'Disabled' }}"
-      - "AppArmor: {{ 'Enabled' if (apparmor_enabled | default(true) and ansible_os_family == 'Debian') else 'Disabled' }}"
-      - "SELinux: {{ 'Enabled' if (selinux_enabled | default(true) and ansible_os_family == 'RedHat') else 'Disabled' }}"
-      - "Firewall: {{ 'Enabled' if firewall_enabled | default(true) else 'Disabled' }}"
-      - "SSL/TLS: {{ 'Enabled' if 'ssl' in dns_features else 'Disabled' }}"
-      - "Kernel Hardening: {{ 'Enabled' if kernel_hardening_enabled | default(true) else 'Disabled' }}"
-      - "Security Monitoring: {{ 'Enabled' if security_monitoring_enabled | default(true) else 'Disabled' }}"
-      - "Status: SUCCESS ✓"
+    - === Security Hardening Complete ===
+    - 'Fail2Ban: {{ ''Enabled'' if fail2ban_enabled | default(true) else ''Disabled''
+      }}'
+    - 'AppArmor: {{ ''Enabled'' if (apparmor_enabled | default(true) and ansible_os_family
+      == ''Debian'') else ''Disabled'' }}'
+    - 'SELinux: {{ ''Enabled'' if (selinux_enabled | default(true) and ansible_os_family
+      == ''RedHat'') else ''Disabled'' }}'
+    - 'Firewall: {{ ''Enabled'' if firewall_enabled | default(true) else ''Disabled''
+      }}'
+    - 'SSL/TLS: {{ ''Enabled'' if ''ssl'' in dns_features else ''Disabled'' }}'
+    - 'Kernel Hardening: {{ ''Enabled'' if kernel_hardening_enabled | default(true)
+      else ''Disabled'' }}'
+    - 'Security Monitoring: {{ ''Enabled'' if security_monitoring_enabled | default(true)
+      else ''Disabled'' }}'
+    - "Status: SUCCESS \u2713"
+  tags:
+  - security_hardening

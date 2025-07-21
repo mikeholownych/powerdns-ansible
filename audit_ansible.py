@@ -151,8 +151,22 @@ def check_role(role_path: str, defined_vars: Set[str]) -> Dict[str, List[str]]:
 
     # Undefined variables
     undefined = used_vars - defined_vars
-    if undefined:
-        findings["undefined_vars"].update(sorted(undefined))
+    ignored_prefixes = ("ansible_",)
+    ignored_vars = {
+        "item",
+        "inventory_hostname",
+        "inventory_hostname_short",
+        "groups",
+        "hostvars",
+        "group_names",
+    }
+    filtered = {
+        var
+        for var in undefined
+        if not var.startswith(ignored_prefixes) and var not in ignored_vars
+    }
+    if filtered:
+        findings["undefined_vars"].update(sorted(filtered))
 
     return {k: sorted(v) for k, v in findings.items()}
 

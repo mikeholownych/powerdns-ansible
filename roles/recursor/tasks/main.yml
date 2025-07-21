@@ -1,19 +1,18 @@
----
-# PowerDNS Recursor installation and configuration
-
 - name: Install PowerDNS Recursor packages
   package:
-    name: "{{ recursor_packages[ansible_os_family] }}"
+    name: '{{ recursor_packages[ansible_os_family] }}'
     state: present
-
+  tags:
+  - recursor
 - name: Create PowerDNS Recursor configuration directory
   file:
-    path: "{{ recursor_config_dir }}"
+    path: '{{ recursor_config_dir }}'
     state: directory
     owner: pdns-recursor
     group: pdns-recursor
     mode: '0755'
-
+  tags:
+  - recursor
 - name: Create PowerDNS Recursor log directory
   file:
     path: /var/log/pdns-recursor
@@ -21,34 +20,39 @@
     owner: pdns-recursor
     group: pdns-recursor
     mode: '0755'
-
+  tags:
+  - recursor
 - name: Stop PowerDNS Recursor service for initial configuration
   systemd:
-    name: "{{ recursor_service_name }}"
+    name: '{{ recursor_service_name }}'
     state: stopped
-  ignore_errors: yes
-
+  ignore_errors: true
+  tags:
+  - recursor
 - name: Create PowerDNS Recursor configuration backup
   copy:
-    src: "{{ recursor_config_file }}"
-    dest: "{{ recursor_backup_dir }}/recursor.conf.backup.{{ ansible_date_time.epoch }}"
-    remote_src: yes
+    src: '{{ recursor_config_file }}'
+    dest: '{{ recursor_backup_dir }}/recursor.conf.backup.{{ ansible_date_time.epoch
+      }}'
+    remote_src: true
     owner: root
     group: root
     mode: '0640'
   when: ansible_stat.stat.exists is defined and ansible_stat.stat.exists
-  ignore_errors: yes
-
+  ignore_errors: true
+  tags:
+  - recursor
 - name: Generate PowerDNS Recursor configuration
   template:
     src: recursor.conf.j2
-    dest: "{{ recursor_config_file }}"
+    dest: '{{ recursor_config_file }}'
     owner: root
     group: pdns-recursor
     mode: '0640'
-    backup: yes
+    backup: true
   notify: restart recursor
-
+  tags:
+  - recursor
 - name: Create PowerDNS Recursor systemd override directory
   file:
     path: /etc/systemd/system/{{ recursor_service_name }}.service.d
@@ -56,7 +60,8 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - recursor
 - name: Configure PowerDNS Recursor systemd service overrides
   template:
     src: recursor-override.conf.j2
@@ -65,78 +70,89 @@
     group: root
     mode: '0644'
   notify:
-    - reload systemd
-    - restart recursor
-
+  - reload systemd
+  - restart recursor
+  tags:
+  - recursor
 - name: Create PowerDNS Recursor forward zones configuration
   template:
     src: forward-zones.conf.j2
-    dest: "{{ recursor_config_dir }}/forward-zones.conf"
+    dest: '{{ recursor_config_dir }}/forward-zones.conf'
     owner: root
     group: pdns-recursor
     mode: '0640'
   notify: restart recursor
   when: recursor_forward_zones is defined
-
+  tags:
+  - recursor
 - name: Create PowerDNS Recursor Lua configuration
   template:
     src: recursor.lua.j2
-    dest: "{{ recursor_config_dir }}/recursor.lua"
+    dest: '{{ recursor_config_dir }}/recursor.lua'
     owner: root
     group: pdns-recursor
     mode: '0640'
   notify: restart recursor
   when: recursor_lua_config_enabled | default(false)
-
+  tags:
+  - recursor
 - name: Enable and start PowerDNS Recursor service
   systemd:
-    name: "{{ recursor_service_name }}"
-    enabled: yes
+    name: '{{ recursor_service_name }}'
+    enabled: true
     state: started
-    daemon_reload: yes
-
+    daemon_reload: true
+  tags:
+  - recursor
 - name: Wait for PowerDNS Recursor to start
   wait_for:
-    port: "{{ recursor_port }}"
-    host: "{{ ansible_default_ipv4.address }}"
+    port: '{{ recursor_port }}'
+    host: '{{ ansible_default_ipv4.address }}'
     delay: 5
     timeout: 30
-
+  tags:
+  - recursor
 - name: Wait for PowerDNS Recursor API to start
   wait_for:
-    port: "{{ recursor_api_port }}"
-    host: "{{ ansible_default_ipv4.address }}"
+    port: '{{ recursor_api_port }}'
+    host: '{{ ansible_default_ipv4.address }}'
     delay: 5
     timeout: 30
   when: recursor_api_enabled | default(false)
-
+  tags:
+  - recursor
 - name: Check PowerDNS Recursor service status
   systemd:
-    name: "{{ recursor_service_name }}"
+    name: '{{ recursor_service_name }}'
   register: recursor_service_status
-
+  tags:
+  - recursor
 - name: Display PowerDNS Recursor service status
   debug:
-    msg: "PowerDNS Recursor service is {{ recursor_service_status.status.ActiveState }}"
-
+    msg: PowerDNS Recursor service is {{ recursor_service_status.status.ActiveState
+      }}
+  tags:
+  - recursor
 - name: Test PowerDNS Recursor configuration
   command: pdns_recursor --config-check
   register: recursor_config_check
   failed_when: recursor_config_check.rc != 0
   changed_when: false
-
+  tags:
+  - recursor
 - name: Create PowerDNS Recursor management scripts
   template:
-    src: "{{ item }}.j2"
-    dest: "/usr/local/bin/{{ item }}"
+    src: '{{ item }}.j2'
+    dest: /usr/local/bin/{{ item }}
     owner: root
     group: root
     mode: '0755'
   loop:
-    - recursor-stats.sh
-    - recursor-cache-management.sh
-    - recursor-health-check.sh
-
+  - recursor-stats.sh
+  - recursor-cache-management.sh
+  - recursor-health-check.sh
+  tags:
+  - recursor
 - name: Configure PowerDNS Recursor log rotation
   template:
     src: recursor-logrotate.j2
@@ -144,48 +160,62 @@
     owner: root
     group: root
     mode: '0644'
-
+  tags:
+  - recursor
 - name: Create PowerDNS Recursor monitoring cron job
   cron:
-    name: "PowerDNS Recursor Health Check"
-    minute: "*/5"
-    job: "/usr/local/bin/recursor-health-check.sh"
+    name: PowerDNS Recursor Health Check
+    minute: '*/5'
+    job: /usr/local/bin/recursor-health-check.sh
     user: root
   when: recursor_monitoring_enabled | default(true)
-
+  tags:
+  - recursor
 - name: Verify PowerDNS Recursor is responding to queries
   command: dig @{{ ansible_default_ipv4.address }} -p {{ recursor_port }} google.com
   register: recursor_test
   failed_when: recursor_test.rc != 0
   changed_when: false
-  ignore_errors: yes
-
+  ignore_errors: true
+  tags:
+  - recursor
 - name: Display PowerDNS Recursor test result
   debug:
-    msg: "PowerDNS Recursor query test: {{ 'PASSED' if recursor_test.rc == 0 else 'FAILED' }}"
-
+    msg: 'PowerDNS Recursor query test: {{ ''PASSED'' if recursor_test.rc == 0 else
+      ''FAILED'' }}'
+  tags:
+  - recursor
 - name: Configure firewall for PowerDNS Recursor
   ufw:
     rule: allow
-    port: "{{ item.port }}"
-    proto: "{{ item.proto }}"
-    src: "{{ item.src | default('any') }}"
-    comment: "{{ item.comment }}"
+    port: '{{ item.port }}'
+    proto: '{{ item.proto }}'
+    src: '{{ item.src | default(''any'') }}'
+    comment: '{{ item.comment }}'
   loop:
-    - { port: "{{ recursor_port }}", proto: "udp", src: "{{ recursor_allowed_networks | join(',') }}", comment: "PowerDNS Recursor UDP" }
-    - { port: "{{ recursor_port }}", proto: "tcp", src: "{{ recursor_allowed_networks | join(',') }}", comment: "PowerDNS Recursor TCP" }
+  - port: '{{ recursor_port }}'
+    proto: udp
+    src: '{{ recursor_allowed_networks | join('','') }}'
+    comment: PowerDNS Recursor UDP
+  - port: '{{ recursor_port }}'
+    proto: tcp
+    src: '{{ recursor_allowed_networks | join('','') }}'
+    comment: PowerDNS Recursor TCP
   when: ansible_os_family == "Debian" and firewall_enabled | default(true)
   notify: reload firewall
-
+  tags:
+  - recursor
 - name: Configure firewall for PowerDNS Recursor API
   ufw:
     rule: allow
-    port: "{{ recursor_api_port }}"
+    port: '{{ recursor_api_port }}'
     proto: tcp
-    src: "{{ recursor_api_allowed_networks | join(',') }}"
-    comment: "PowerDNS Recursor API"
-  when: 
-    - ansible_os_family == "Debian" 
-    - firewall_enabled | default(true)
-    - recursor_api_enabled | default(false)
+    src: '{{ recursor_api_allowed_networks | join('','') }}'
+    comment: PowerDNS Recursor API
+  when:
+  - ansible_os_family == "Debian"
+  - firewall_enabled | default(true)
+  - recursor_api_enabled | default(false)
   notify: reload firewall
+  tags:
+  - recursor

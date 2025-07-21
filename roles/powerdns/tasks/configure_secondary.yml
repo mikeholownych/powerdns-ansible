@@ -1,85 +1,109 @@
----
-# Configure secondary server zones
-
 - name: Add master server as supermaster
   community.mysql.mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
-    login_db: "{{ powerdns_db_name }}"
-    query: |
-      INSERT IGNORE INTO supermasters (ip, nameserver, account)
-      VALUES ('{{ master_server_ip | default(ns1_ip) }}', 'ns1.{{ primary_domains[0] | default("home.lan") }}', 'ansible');
-  when: master_server_ip is defined or ns1_ip is defined
+    login_password: '{{ mysql_root_password | default(omit) }}'
+    login_db: '{{ powerdns_db_name }}'
+    query: 'INSERT IGNORE INTO supermasters (ip, nameserver, account)
 
+      VALUES (''{{ master_server_ip | default(ns1_ip) }}'', ''ns1.{{ primary_domains[0]
+      | default("home.lan") }}'', ''ansible'');
+
+      '
+  when: master_server_ip is defined or ns1_ip is defined
+  tags:
+  - powerdns
 - name: Create slave zones for primary domains
   community.mysql.mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
-    login_db: "{{ powerdns_db_name }}"
-    query: |
-      INSERT IGNORE INTO domains (name, type, master, account)
-      VALUES ('{{ item }}', 'SLAVE', '{{ master_server_ip | default(ns1_ip) }}', 'ansible');
-  loop: "{{ primary_domains }}"
-  when: primary_domains is defined and (master_server_ip is defined or ns1_ip is defined)
+    login_password: '{{ mysql_root_password | default(omit) }}'
+    login_db: '{{ powerdns_db_name }}'
+    query: 'INSERT IGNORE INTO domains (name, type, master, account)
 
+      VALUES (''{{ item }}'', ''SLAVE'', ''{{ master_server_ip | default(ns1_ip) }}'',
+      ''ansible'');
+
+      '
+  loop: '{{ primary_domains }}'
+  when: primary_domains is defined and (master_server_ip is defined or ns1_ip is defined)
+  tags:
+  - powerdns
 - name: Create slave zones for reverse zones
   community.mysql.mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
-    login_db: "{{ powerdns_db_name }}"
-    query: |
-      INSERT IGNORE INTO domains (name, type, master, account)
-      VALUES ('{{ item }}', 'SLAVE', '{{ master_server_ip | default(ns1_ip) }}', 'ansible');
-  loop: "{{ reverse_zones }}"
-  when: reverse_zones is defined and (master_server_ip is defined or ns1_ip is defined)
+    login_password: '{{ mysql_root_password | default(omit) }}'
+    login_db: '{{ powerdns_db_name }}'
+    query: 'INSERT IGNORE INTO domains (name, type, master, account)
 
+      VALUES (''{{ item }}'', ''SLAVE'', ''{{ master_server_ip | default(ns1_ip) }}'',
+      ''ansible'');
+
+      '
+  loop: '{{ reverse_zones }}'
+  when: reverse_zones is defined and (master_server_ip is defined or ns1_ip is defined)
+  tags:
+  - powerdns
 - name: Create slave zones for AD domains
   community.mysql.mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
-    login_db: "{{ powerdns_db_name }}"
-    query: |
-      INSERT IGNORE INTO domains (name, type, master, account)
-      VALUES ('{{ item }}', 'SLAVE', '{{ master_server_ip | default(ns1_ip) }}', 'ansible');
-  loop: "{{ ad_domains }}"
-  when: ad_domains is defined and (master_server_ip is defined or ns1_ip is defined)
+    login_password: '{{ mysql_root_password | default(omit) }}'
+    login_db: '{{ powerdns_db_name }}'
+    query: 'INSERT IGNORE INTO domains (name, type, master, account)
 
+      VALUES (''{{ item }}'', ''SLAVE'', ''{{ master_server_ip | default(ns1_ip) }}'',
+      ''ansible'');
+
+      '
+  loop: '{{ ad_domains }}'
+  when: ad_domains is defined and (master_server_ip is defined or ns1_ip is defined)
+  tags:
+  - powerdns
 - name: Get slave domain count
   community.mysql.mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
-    login_db: "{{ powerdns_db_name }}"
-    query: "SELECT COUNT(*) as count FROM domains WHERE type = 'SLAVE' AND account = 'ansible';"
+    login_password: '{{ mysql_root_password | default(omit) }}'
+    login_db: '{{ powerdns_db_name }}'
+    query: SELECT COUNT(*) as count FROM domains WHERE type = 'SLAVE' AND account
+      = 'ansible';
   register: slave_domain_count
-
+  tags:
+  - powerdns
 - name: Display slave zones created
   ansible.builtin.debug:
-    msg: "Created {{ slave_domain_count.query_result[0].count }} slave zones for secondary server"
+    msg: Created {{ slave_domain_count.query_result[0].count }} slave zones for secondary
+      server
   when: slave_domain_count.query_result is defined
-
+  tags:
+  - powerdns
 - name: Force zone transfers from master
   ansible.builtin.command: pdns_control retrieve {{ item }}
-  loop: "{{ primary_domains + reverse_zones + ad_domains }}"
+  loop: '{{ primary_domains + reverse_zones + ad_domains }}'
   changed_when: false
   failed_when: false
   when:
-    - primary_domains is defined or reverse_zones is defined or ad_domains is defined
-    - master_server_ip is defined or ns1_ip is defined
-
+  - primary_domains is defined or reverse_zones is defined or ad_domains is defined
+  - master_server_ip is defined or ns1_ip is defined
+  tags:
+  - powerdns
 - name: Wait for zone transfers to complete
   ansible.builtin.pause:
     seconds: 10
-
+  tags:
+  - powerdns
 - name: Verify zone transfers
   community.mysql.mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
-    login_db: "{{ powerdns_db_name }}"
-    query: "SELECT name, last_check FROM domains WHERE type = 'SLAVE' AND account = 'ansible';"
+    login_password: '{{ mysql_root_password | default(omit) }}'
+    login_db: '{{ powerdns_db_name }}'
+    query: SELECT name, last_check FROM domains WHERE type = 'SLAVE' AND account =
+      'ansible';
   register: zone_transfer_status
-
+  tags:
+  - powerdns
 - name: Display zone transfer status
   ansible.builtin.debug:
-    msg: "Zone {{ item.name }}: Last check {{ item.last_check | default('Never') }}"
-  loop: "{{ zone_transfer_status.query_result }}"
+    msg: 'Zone {{ item.name }}: Last check {{ item.last_check | default(''Never'')
+      }}'
+  loop: '{{ zone_transfer_status.query_result }}'
   when: zone_transfer_status.query_result is defined
+  tags:
+  - powerdns

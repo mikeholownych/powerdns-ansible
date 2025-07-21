@@ -1,19 +1,29 @@
 ## ✅ Valid Items
-- None
+- roles/clean_install
+- roles/state_management
 
 ## ❌ Missing or Broken
-- powerdns: /workspace/powerdns-ansible/roles/powerdns/tasks/configure_secondary.yml missing tags for: Add master server as supermaster, Create slave zones for primary domains, Create slave zones for reverse zones, Create slave zones for AD domains, Get slave domain count, Display slave zones created, Force zone transfers from master, Wait for zone transfers to complete, Verify zone transfers, Display zone transfer status
-- powerdns: /workspace/powerdns-ansible/roles/powerdns/tasks/create_zones.yml missing tags for: Create primary domains, Create reverse zones, Get domain IDs for primary domains, Create SOA records for primary domains, Create NS records for primary domains, Create A records for nameservers, Create basic A records for primary domains, Create MX records for primary domains, Create TXT records for primary domains, Create PTR records for reverse zones, Display created zones
-- powerdns: /workspace/powerdns-ansible/roles/powerdns/tasks/main.yml missing tags for: Install PowerDNS packages, Ensure PowerDNS MySQL backend .so exists, Fail if PowerDNS MySQL backend is missing, Ensure PowerDNS MySQL backend is installed, Ensure PowerDNS config directory exists, Stop PowerDNS service for initial configuration, Create PowerDNS configuration backup, Check if PowerDNS config exists, Generate PowerDNS configuration, Create PowerDNS systemd override directory, Configure PowerDNS systemd service overrides, Enable and start PowerDNS service, Wait for PowerDNS to start, Wait for PowerDNS API to start, Check PowerDNS service status, Display PowerDNS service status, Dry-run PowerDNS config check before enable/start, Display PowerDNS config validation result, Create initial zones for primary server, Configure secondary server zones, Install PowerDNS utilities, Create PowerDNS management scripts, Configure PowerDNS log rotation, Create PowerDNS monitoring user (if API enabled), Verify PowerDNS is responding to queries, Display DNS test result, Install DNSSEC utilities, Enable DNSSEC for primary domains, Generate DNSSEC keys for domains, Generate DNSSEC ZSK keys for domains, Activate DNSSEC keys, Set up automatic DNSSEC key rollover, Verify DNSSEC status, Display DNSSEC status, Create zone validation script, Validate zones after creation, Display zone validation results, Create PowerDNS API management script, Test PowerDNS API connectivity, Display API test result
+- common: alert_email
+- common: powerdns_config_dir
+- common: powerdns_db_password
+- common: powerdns_group
+- common: powerdns_user
+- recursor: domain
+- recursor: key
+- recursor: record
+- recursor: recursor_service_status
+- recursor: value
+- recursor: zone
+- self_healing: gitops_repo_url
+- self_healing: powerdns_api_key
+- self_healing: powerdns_config_dir
+- self_healing: powerdns_db_password
 - powerdns: /workspace/powerdns-ansible/roles/powerdns/tasks/main.yml notifies undefined handler 'reload systemd'
 - powerdns: /workspace/powerdns-ansible/roles/powerdns/tasks/main.yml notifies undefined handler 'restart powerdns'
 - powerdns: ad_domains
-- powerdns: ansible_date_time
-- powerdns: ansible_default_ipv4
 - powerdns: dnssec_status
 - powerdns: domain
 - powerdns: domain_ids
-- powerdns: item
 - powerdns: powerdns_api_key
 - powerdns: powerdns_backend
 - powerdns: powerdns_config_dir
@@ -26,223 +36,94 @@
 - powerdns: slave_domain_count
 - powerdns: zone_transfer_status
 - powerdns: zone_validation
-- validate_config: /workspace/powerdns-ansible/roles/validate_config/tasks/main.yml missing tags for: Display validation start message, Validate operation mode, Validate DNS features configuration, Validate server role, Check PowerDNS version format, Validate MySQL configuration, Check MySQL connectivity (if MySQL feature enabled), Validate DNSSEC configuration, Validate API configuration, Check zones configuration, Validate zone template syntax, Clean up validation files, Check system requirements, Validate network configuration, Check disk space, Validate firewall configuration, Check for conflicting services, Ensure no conflicting DNS services, Validate backup configuration, Check monitoring prerequisites, Validate SSL/TLS configuration, Check for existing PowerDNS installation, Compute existing configuration hash, Store configuration state, Validate upgrade path, Check package availability, Validate PowerDNS package availability, Create validation report, Display validation summary
-- validate_config: ansible_date_time
-- validate_config: ansible_default_ipv4
-- validate_config: ansible_distribution
-- validate_config: ansible_distribution_version
-- validate_config: ansible_memtotal_mb
-- validate_config: ansible_mounts
-- validate_config: ansible_processor_vcpus
-- validate_config: dnssec_key_algorithm
-- validate_config: existing_pdns_config
-- validate_config: inventory_hostname
-- validate_config: item
-- validate_config: pdns_config_hash
-- security: /workspace/powerdns-ansible/roles/security/tasks/configure_aide.yml missing tags for: Install AIDE, Check if AIDE database exists, Create AIDE configuration, Initialize AIDE database (first time), Move new AIDE database to active location, Create AIDE check script, Create AIDE update script, Schedule daily AIDE checks, Schedule weekly AIDE database updates, Create AIDE log directory, Configure AIDE log rotation, Set proper permissions on AIDE files, Display AIDE setup status
-- security: /workspace/powerdns-ansible/roles/security/tasks/configure_firewalld.yml missing tags for: Start and enable firewalld, Set default zone to public, Configure DNS firewall rules, Allow SSH access, Allow PowerDNS API access, Allow database access from localhost, Allow monitoring ports (if Prometheus is enabled), Allow NTP, Create rich rules for zone transfers between DNS servers, Set firewalld default target to DROP, Enable firewalld logging, Reload firewalld configuration, Check firewalld status, Display firewalld status
-- security: /workspace/powerdns-ansible/roles/security/tasks/configure_ufw.yml missing tags for: Reset UFW to defaults, Set UFW default policies, Allow SSH access, Configure DNS firewall rules, Allow PowerDNS API access from management networks, Allow zone transfers between DNS servers, Allow database access from localhost, Allow monitoring ports (if Prometheus is enabled), Allow NTP, Deny all other incoming traffic, Enable UFW logging, Enable UFW, Check UFW status, Display UFW status
-- security: /workspace/powerdns-ansible/roles/security/tasks/main.yml missing tags for: Install security packages, Install security packages (RHEL), Configure UFW firewall (Debian/Ubuntu), Configure firewalld (RHEL/CentOS), Configure fail2ban, Enable and start fail2ban, Configure SSH security, Set secure file permissions, Configure system audit rules, Install and configure AIDE (file integrity monitoring), Configure kernel security parameters, Create security monitoring script, Schedule security monitoring, Configure log monitoring, Disable unnecessary services, Remove unnecessary packages, Configure password policies, Create security report, Display security status
-- security: alert_email
-- security: alert_webhook_url
-- security: ansible_date_time
-- security: ansible_default_ipv4
-- security: ansible_fqdn
-- security: groups
-- security: hostvars
-- security: item
-- security: powerdns_config_dir
-- security: powerdns_db_password
-- security: powerdns_group
-- security: powerdns_webserver_port
-- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml missing tags for: Install Galera cluster packages, Stop MySQL service before cluster setup, Create Galera configuration, Create Galera cluster state directory, Configure MySQL for Galera, Create Galera cluster bootstrap script, Create Galera cluster management scripts, Bootstrap Galera cluster (first node only), Wait for bootstrap node to be ready, Start MySQL service on remaining nodes, Wait for Galera cluster to sync, Verify Galera cluster status, Display Galera cluster information, Create Galera monitoring user, Configure Galera cluster health checks, Configure Galera cluster health check timer, Create Galera backup script, Schedule Galera cluster backups, Configure firewall for Galera cluster, Create Galera cluster status dashboard, Enable Galera health monitoring, Test Galera cluster functionality, Display Galera test results, Create Galera cluster recovery procedures
-- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'reload systemd'
-- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'restart galera-health-check'
-- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'restart mysql'
-- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'start galera-health-check-timer'
-- galera: ansible_date_time
-- galera: ansible_default_ipv4
-- galera: galera_config_path
-- galera: galera_packages
-- galera: hostvars
-- galera: inventory_hostname
-- galera: item
-- galera: mysql_galera_config_path
-- monitoring: /workspace/powerdns-ansible/roles/monitoring/tasks/install_prometheus.yml missing tags for: Check if Prometheus Node Exporter is already installed, Create prometheus user, Create prometheus directories, Download Prometheus Node Exporter, Extract Node Exporter, Copy Node Exporter binary, Create Node Exporter systemd service, Create PowerDNS custom metrics script, Create PowerDNS metrics collection service, Create PowerDNS metrics collection timer, Enable and start Node Exporter, Enable and start PowerDNS metrics collection, Configure firewall for Prometheus (if UFW is active), Configure firewall for Prometheus (if firewalld is active), Clean up downloaded files, Verify Node Exporter is running, Display Prometheus setup status
-- monitoring: /workspace/powerdns-ansible/roles/monitoring/tasks/main.yml missing tags for: Install monitoring packages, Create monitoring directories, Install PowerDNS monitoring script, Install system resource monitoring script, Install DNS query monitoring script, Create monitoring configuration, Schedule PowerDNS monitoring, Schedule system monitoring, Schedule DNS query monitoring, Configure log rotation for monitoring logs, Install alerting script, Create monitoring dashboard script, Install Prometheus node exporter (if enabled), Display monitoring setup status
-- monitoring: alert_email
-- monitoring: alert_webhook_url
-- monitoring: ansible_date_time
-- monitoring: ansible_default_ipv4
-- monitoring: domain
-- monitoring: hostvars
-- monitoring: item
-- monitoring: loop
-- monitoring: powerdns_api_key
-- monitoring: powerdns_db_password
-- monitoring: powerdns_webserver_port
-- monitoring: zone
-- recursor: /workspace/powerdns-ansible/roles/recursor/tasks/main.yml missing tags for: Install PowerDNS Recursor packages, Create PowerDNS Recursor configuration directory, Create PowerDNS Recursor log directory, Stop PowerDNS Recursor service for initial configuration, Create PowerDNS Recursor configuration backup, Generate PowerDNS Recursor configuration, Create PowerDNS Recursor systemd override directory, Configure PowerDNS Recursor systemd service overrides, Create PowerDNS Recursor forward zones configuration, Create PowerDNS Recursor Lua configuration, Enable and start PowerDNS Recursor service, Wait for PowerDNS Recursor to start, Wait for PowerDNS Recursor API to start, Check PowerDNS Recursor service status, Display PowerDNS Recursor service status, Test PowerDNS Recursor configuration, Create PowerDNS Recursor management scripts, Configure PowerDNS Recursor log rotation, Create PowerDNS Recursor monitoring cron job, Verify PowerDNS Recursor is responding to queries, Display PowerDNS Recursor test result, Configure firewall for PowerDNS Recursor, Configure firewall for PowerDNS Recursor API
-- recursor: ansible_date_time
-- recursor: ansible_default_ipv4
-- recursor: domain
-- recursor: item
-- recursor: key
-- recursor: record
-- recursor: recursor_service_status
-- recursor: value
-- recursor: zone
-- self_healing: /workspace/powerdns-ansible/roles/self_healing/tasks/main.yml missing tags for: Create self-healing directories, Create configuration hash tracking, Create service health monitor, Create drift detection script, Create auto-recovery script, Create systemd watchdog service for PowerDNS, Create systemd watchdog timer, Create MySQL watchdog service, Create MySQL watchdog timer, Create configuration baseline, Schedule drift detection, Schedule service health monitoring, Create self-healing notification script, Configure logrotate for self-healing logs, Create Ansible pull configuration for GitOps, Schedule Ansible pull for GitOps, Create performance monitoring script, Schedule performance monitoring, Create backup verification script, Schedule backup verification, Enable and start watchdog services, Create self-healing dashboard script, Create self-healing status check, Test self-healing functionality, Display self-healing test result
-- self_healing: ansible_default_ipv4
-- self_healing: gitops_repo_url
-- self_healing: item
-- self_healing: powerdns_api_key
-- self_healing: powerdns_config_dir
-- self_healing: powerdns_db_password
-- clean_install: /workspace/powerdns-ansible/roles/clean_install/tasks/main.yml missing tags for: Display clean install warning, Pause for confirmation (only in interactive mode), Stop PowerDNS service, Stop MySQL/MariaDB service, Stop monitoring services, Remove PowerDNS packages (Debian/Ubuntu), Remove PowerDNS packages (RedHat/CentOS), Remove MySQL/MariaDB packages (Debian/Ubuntu), Remove MySQL/MariaDB packages (RedHat/CentOS), Remove additional PowerDNS tools, Remove PowerDNS data directories, Remove MySQL/MariaDB data directories, Remove MySQL/MariaDB configuration files, Remove PowerDNS systemd overrides, Remove PowerDNS management scripts, Remove monitoring scripts and services, Remove logrotate configurations, Remove security configurations, Remove system users created by playbook, Remove system groups created by playbook, Clean package cache (Debian/Ubuntu), Clean package cache (RedHat/CentOS), Reload systemd daemon after cleanup, Remove any remaining PowerDNS processes, Verify clean install completion, Skip clean install notification
-- clean_install: item
-- dnssec_automation: /workspace/powerdns-ansible/roles/dnssec_automation/tasks/main.yml missing tags for: Display DNSSEC automation start, Install DNSSEC dependencies, Create DNSSEC management directories, Create DNSSEC key management script, Create DNSSEC zone signing script, Create DNSSEC validation script, Get list of zones to secure, Secure zones with DNSSEC, Generate DNSSEC keys for zones, Activate DNSSEC keys, Validate DNSSEC zone signing, Export DS records for parent zone delegation, Save DS records to file, Create DNSSEC key rollover script, Schedule DNSSEC key rollover, Create DNSSEC monitoring script, Schedule DNSSEC monitoring, Create DNSSEC backup script, Schedule DNSSEC key backups, Test DNSSEC resolution, Create DNSSEC status report, Display DNSSEC automation summary
-- dnssec_automation: ansible_date_time
-- dnssec_automation: ansible_default_ipv4
-- dnssec_automation: inventory_hostname
-- dnssec_automation: item
-- dnssec_automation: powerdns_db_password
-- selfheal: /workspace/powerdns-ansible/roles/selfheal/tasks/main.yml missing tags for: Display self-healing start message, Ensure PowerDNS MySQL backend is installed, Ensure PowerDNS service file exists, Reinstall PowerDNS if service file is missing, Ensure MySQL service file exists, Reinstall MySQL if service file is missing, Create systemd service overrides for resilience, Add PowerDNS systemd watchdog override, Add MySQL systemd watchdog override, Check for port conflicts, Display port usage, Stop conflicting services on DNS port, Create self-healing health check script, Create self-healing systemd service, Create self-healing timer, Enable self-healing timer, Create failure log collection script, Collect logs if services failed during this run, Final service status check, Display final service status, Create self-healing status report, Display self-healing completion summary
-- selfheal: ansible_date_time
-- selfheal: ansible_default_ipv4
-- selfheal: config_check_result
-- selfheal: final_service_check
-- selfheal: inventory_hostname
-- selfheal: item
-- selfheal: mysql_error_log
-- selfheal: port_conflicts
-- selfheal: powerdns_api_key
-- selfheal: powerdns_db_password
-- selfheal: powerdns_mysql_backend_packages
-- zones_as_code: /workspace/powerdns-ansible/roles/zones_as_code/tasks/main.yml missing tags for: Create zones-as-code directories, Install zones-as-code dependencies, Install Python dependencies for zones management, Create zone management scripts, Create zone template files, Create zone schema validation, Generate zones from inventory, Create zone configuration from inventory, Create zone files from templates, Create reverse zone files, Validate zone configurations, Deploy zones to PowerDNS, Create zone backup before changes, Set up Git repository for zones, Configure Git hooks for zone validation, Create zone monitoring and alerting, Schedule zone monitoring, Create zone API integration, Create zone synchronization script, Schedule zone synchronization, Create zone rollback mechanism, Create zone management CLI, Create zone management web interface (optional), Configure zone change notifications, Create zone documentation generator, Generate zone documentation, Create zone testing framework, Run zone tests, Create zone performance monitoring, Schedule zone performance monitoring, Display zones-as-code setup summary
-- zones_as_code: item
-- zones_as_code: zones_git_repo
-- common: /workspace/powerdns-ansible/roles/common/tasks/main.yml missing tags for: Update package cache, Install common packages, Ensure system group for pdns (Debian), Ensure system group for pdns (RHEL), Ensure pdns system user exists, Create PowerDNS directories, Set up log rotation for PowerDNS, Configure system limits for PowerDNS, Configure sysctl parameters for DNS performance, Ensure system-wide DB clients are present, Create backup script, Schedule backup cron job, Install health check script, Create systemd timer for health checks, Create systemd service for health checks, Force systemd to reload after creating health check files, Ensure systemd daemon is reloaded before starting timer, Verify health check timer file exists, Verify health check service file exists, Check if systemd files would be created (check mode), Enable and start health check timer, Show what would happen with health check timer (check mode)
-- common: alert_email
-- common: item
-- common: powerdns_config_dir
-- common: powerdns_db_password
-- common: powerdns_group
-- common: powerdns_user
-- dnsdist: /workspace/powerdns-ansible/roles/dnsdist/tasks/main.yml missing tags for: Create dnsdist system user, Install DNSdist packages, Create DNSdist directories, Generate DNSdist configuration, Create DNSdist systemd override, Configure DNSdist health checks, Create DNSdist management scripts, Configure firewall for DNSdist, Enable and start DNSdist service, Wait for DNSdist to start, Test DNSdist functionality, Display DNSdist test result, Create DNSdist monitoring configuration, Schedule DNSdist statistics collection
-- dnsdist: /workspace/powerdns-ansible/roles/dnsdist/tasks/main.yml notifies undefined handler 'reload systemd'
-- dnsdist: /workspace/powerdns-ansible/roles/dnsdist/tasks/main.yml notifies undefined handler 'restart dnsdist'
-- dnsdist: ansible_date_time
-- dnsdist: ansible_default_ipv4
-- dnsdist: dnsdist_packages
-- dnsdist: domain
-- dnsdist: geo_rule
-- dnsdist: hostvars
-- dnsdist: item
-- dnsdist: loop
-- dnsdist: rule
-- dnsdist: zone
-- security_hardening: /workspace/powerdns-ansible/roles/security_hardening/tasks/main.yml missing tags for: Display security hardening start, Install Fail2Ban, Create PowerDNS Fail2Ban filter, Create PowerDNS API Fail2Ban filter, Configure Fail2Ban jail for PowerDNS, Create DNS abuse filter, Enable and start Fail2Ban, Install AppArmor utilities (Debian/Ubuntu), Install SELinux utilities (RHEL/CentOS), Create PowerDNS AppArmor profile, Enable PowerDNS AppArmor profile, Create MySQL AppArmor profile enhancement, Configure SELinux for PowerDNS (RHEL/CentOS), Configure UFW firewall (Debian/Ubuntu), Configure FirewallD (RHEL/CentOS), Install SSL/TLS certificates, Disable unnecessary services, Configure kernel security parameters, Configure file permissions for sensitive files, Create security monitoring script, Schedule security monitoring, Create security status report, Display security hardening summary
-- security_hardening: /workspace/powerdns-ansible/roles/security_hardening/tasks/main.yml notifies undefined handler 'restart fail2ban'
-- security_hardening: ansible_date_time
-- security_hardening: ansible_fqdn
-- security_hardening: hostvars
-- security_hardening: inventory_hostname
-- security_hardening: item
-- security_hardening: ssl_cert_path
-- security_hardening: ssl_key_path
-- prometheus: /workspace/powerdns-ansible/roles/prometheus/tasks/main.yml missing tags for: Create prometheus system user, Create prometheus directories, Download and install Prometheus, Copy Prometheus binaries, Create Prometheus configuration, Create Prometheus systemd service, Download and install PowerDNS Exporter, Extract PowerDNS Exporter, Install PowerDNS Exporter binary, Create PowerDNS Exporter systemd service, Download and install Node Exporter, Install Node Exporter binary, Create Node Exporter systemd service, Install MySQL Exporter (if MySQL monitoring enabled), Create Grafana dashboards directory, Install PowerDNS Grafana dashboard, Configure firewall for Prometheus, Enable and start monitoring services, Create monitoring health check script, Schedule monitoring health checks, Verify Prometheus is accessible, Display Prometheus status
-- prometheus: ansible_date_time
-- prometheus: ansible_default_ipv4
-- prometheus: hostvars
-- prometheus: item
-- prometheus: powerdns_api_key
-- prometheus: prometheus_remote_write_password
-- prometheus: prometheus_remote_write_url
-- prometheus: prometheus_remote_write_username
-- mysql: /workspace/powerdns-ansible/roles/mysql/tasks/main.yml missing tags for: Ensure MySQL config directories exist, Install MySQL/MariaDB packages, Ensure Python MySQL packages are installed for Ansible modules, Ensure Python MySQL packages are installed for Ansible modules (RHEL), Verify Python MySQL module availability, Display Python MySQL module status, Start and enable MySQL/MariaDB service, Wait for MySQL to be ready, Secure MySQL installation, Create MySQL configuration file for root, Remove anonymous MySQL users, Remove MySQL test database, Create PowerDNS database, Create PowerDNS database user with minimal privileges, Configure MySQL for PowerDNS performance, Configure MariaDB for PowerDNS performance (RHEL), Create PowerDNS database schema, Create custom PowerDNS schema if standard not found, Verify database schema, Display database tables, Create database backup user, Configure MySQL slow query log, Configure MySQL slow query log file, Set MySQL slow query time threshold, Configure MySQL for replication (Master), Configure MySQL for replication (Slave), Create replication user on master, Get master status, Configure slave replication, Start slave replication, Check slave status, Display replication status, Create MySQL failover scripts, Create MySQL monitoring user for HAProxy, Configure MySQL for high availability, Wait for MySQL to be ready with retries, Validate MySQL is reachable from PowerDNS node, Display MySQL connectivity test result, Ensure PowerDNS DB schema is present, Display schema validation result
-- mysql: ansible_date_time
-- mysql: ansible_default_ipv4
-- mysql: ansible_python_interpreter
-- mysql: db_tables
-- mysql: hostvars
-- mysql: item
-- mysql: mysql_root_password
-- mysql: powerdns_db_password
-- state_management: /workspace/powerdns-ansible/roles/state_management/tasks/main.yml missing tags for: Create state management directories, Install state management dependencies, Create configuration hash tracking script, Create state report generator, Create drift detection script, Generate initial configuration hashes, Create current system state snapshot, Store deployment metadata, Create change tracking database, Record current deployment as change, Create service state tracking, Generate comprehensive state report, Create state monitoring cron job, Create state report cleanup job, Create state backup job, Create state validation script, Validate current state, Create rollback preparation script, Prepare rollback point, Create state notification script, Send state change notification, Create state query interface, Display state management summary, Create state management logrotate configuration
-- state_management: ansible_date_time
-- state_management: ansible_default_ipv4
-- state_management: ansible_distribution
-- state_management: ansible_distribution_version
-- state_management: ansible_kernel
-- state_management: ansible_user_id
-- state_management: ansible_version
-- state_management: inventory_hostname
-- state_management: item
-- keepalived: /workspace/powerdns-ansible/roles/keepalived/tasks/main.yml missing tags for: Install keepalived, Install additional networking tools, Create keepalived configuration backup, Generate keepalived configuration, Create keepalived scripts directory, Create keepalived health check scripts, Configure sysctl for keepalived, Enable and start keepalived service, Check keepalived service status, Display keepalived service status, Test keepalived configuration, Create keepalived management scripts, Configure keepalived log rotation, Create keepalived monitoring cron job, Configure firewall for VRRP, Verify keepalived VRRP state, Display VRRP state, Create keepalived status check, Create keepalived status check timer, Enable keepalived status check timer
 - keepalived: alert_email
-- keepalived: ansible_date_time
-- keepalived: ansible_default_ipv4
 - keepalived: instance
-- keepalived: inventory_hostname
-- keepalived: item
 - keepalived: keepalived_service_status
 - keepalived: keepalived_webhook_url
 - keepalived: powerdns_db_password
 - keepalived: script
 - keepalived: vrrp_state
-- haproxy: /workspace/powerdns-ansible/roles/haproxy/tasks/main.yml missing tags for: Install HAProxy, Install HAProxy stats packages, Create HAProxy configuration backup, Generate HAProxy configuration, Create HAProxy systemd override directory, Configure HAProxy systemd service overrides, Create HAProxy stats user, Configure HAProxy log rotation, Create HAProxy management scripts, Enable and start HAProxy service, Wait for HAProxy to start, Check HAProxy service status, Display HAProxy service status, Test HAProxy configuration, Create HAProxy monitoring user for database, Verify HAProxy is load balancing DNS, Display DNS load balancing test result
-- haproxy: ansible_date_time
-- haproxy: ansible_default_ipv4
+- selfheal: config_check_result
+- selfheal: final_service_check
+- selfheal: mysql_error_log
+- selfheal: port_conflicts
+- selfheal: powerdns_api_key
+- selfheal: powerdns_db_password
+- selfheal: powerdns_mysql_backend_packages
 - haproxy: haproxy_service_status
-- haproxy: hostvars
-- haproxy: item
+- security_hardening: /workspace/powerdns-ansible/roles/security_hardening/tasks/main.yml notifies undefined handler 'restart fail2ban'
+- security_hardening: ssl_cert_path
+- security_hardening: ssl_key_path
+- monitoring: alert_email
+- monitoring: alert_webhook_url
+- monitoring: domain
+- monitoring: loop
+- monitoring: powerdns_api_key
+- monitoring: powerdns_db_password
+- monitoring: powerdns_webserver_port
+- monitoring: zone
+- dnssec_automation: powerdns_db_password
+- prometheus: powerdns_api_key
+- prometheus: prometheus_remote_write_password
+- prometheus: prometheus_remote_write_url
+- prometheus: prometheus_remote_write_username
+- security: alert_email
+- security: alert_webhook_url
+- security: powerdns_config_dir
+- security: powerdns_db_password
+- security: powerdns_group
+- security: powerdns_webserver_port
+- zones_as_code: zones_git_repo
+- mysql: db_tables
+- mysql: mysql_root_password
+- mysql: powerdns_db_password
+- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'reload systemd'
+- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'restart galera-health-check'
+- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'restart mysql'
+- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'start galera-health-check-timer'
+- galera: galera_config_path
+- galera: galera_packages
+- galera: mysql_galera_config_path
+- dnsdist: /workspace/powerdns-ansible/roles/dnsdist/tasks/main.yml notifies undefined handler 'reload systemd'
+- dnsdist: /workspace/powerdns-ansible/roles/dnsdist/tasks/main.yml notifies undefined handler 'restart dnsdist'
+- dnsdist: dnsdist_packages
+- dnsdist: domain
+- dnsdist: geo_rule
+- dnsdist: loop
+- dnsdist: rule
+- dnsdist: zone
+- validate_config: dnssec_key_algorithm
+- validate_config: existing_pdns_config
+- validate_config: pdns_config_hash
 
 ## ⚠️ Placeholders Detected
 - None
 
 ## 🛠 Fix Recommendations
+- Define variables alert_email, powerdns_config_dir, powerdns_db_password, powerdns_group, powerdns_user
+- Define variables domain, key, record, recursor_service_status, value, zone
+- Define variables gitops_repo_url, powerdns_api_key, powerdns_config_dir, powerdns_db_password
 - Review tasks/handlers in roles/powerdns for missing tags or handlers
-- Define variables ad_domains, ansible_date_time, ansible_default_ipv4, dnssec_status, domain, domain_ids, item, powerdns_api_key, powerdns_backend, powerdns_config_dir, powerdns_db_password, powerdns_group, powerdns_service_status, powerdns_user, record, reverse_zones, slave_domain_count, zone_transfer_status, zone_validation
-- Review tasks/handlers in roles/validate_config for missing tags or handlers
-- Define variables ansible_date_time, ansible_default_ipv4, ansible_distribution, ansible_distribution_version, ansible_memtotal_mb, ansible_mounts, ansible_processor_vcpus, dnssec_key_algorithm, existing_pdns_config, inventory_hostname, item, pdns_config_hash
-- Review tasks/handlers in roles/security for missing tags or handlers
-- Define variables alert_email, alert_webhook_url, ansible_date_time, ansible_default_ipv4, ansible_fqdn, groups, hostvars, item, powerdns_config_dir, powerdns_db_password, powerdns_group, powerdns_webserver_port
-- Review tasks/handlers in roles/galera for missing tags or handlers
-- Define variables ansible_date_time, ansible_default_ipv4, galera_config_path, galera_packages, hostvars, inventory_hostname, item, mysql_galera_config_path
-- Review tasks/handlers in roles/monitoring for missing tags or handlers
-- Define variables alert_email, alert_webhook_url, ansible_date_time, ansible_default_ipv4, domain, hostvars, item, loop, powerdns_api_key, powerdns_db_password, powerdns_webserver_port, zone
-- Review tasks/handlers in roles/recursor for missing tags or handlers
-- Define variables ansible_date_time, ansible_default_ipv4, domain, item, key, record, recursor_service_status, value, zone
-- Review tasks/handlers in roles/self_healing for missing tags or handlers
-- Define variables ansible_default_ipv4, gitops_repo_url, item, powerdns_api_key, powerdns_config_dir, powerdns_db_password
-- Review tasks/handlers in roles/clean_install for missing tags or handlers
-- Define variables item
-- Review tasks/handlers in roles/dnssec_automation for missing tags or handlers
-- Define variables ansible_date_time, ansible_default_ipv4, inventory_hostname, item, powerdns_db_password
-- Review tasks/handlers in roles/selfheal for missing tags or handlers
-- Define variables ansible_date_time, ansible_default_ipv4, config_check_result, final_service_check, inventory_hostname, item, mysql_error_log, port_conflicts, powerdns_api_key, powerdns_db_password, powerdns_mysql_backend_packages
-- Review tasks/handlers in roles/zones_as_code for missing tags or handlers
-- Define variables item, zones_git_repo
-- Review tasks/handlers in roles/common for missing tags or handlers
-- Define variables alert_email, item, powerdns_config_dir, powerdns_db_password, powerdns_group, powerdns_user
-- Review tasks/handlers in roles/dnsdist for missing tags or handlers
-- Define variables ansible_date_time, ansible_default_ipv4, dnsdist_packages, domain, geo_rule, hostvars, item, loop, rule, zone
+- Define variables ad_domains, dnssec_status, domain, domain_ids, powerdns_api_key, powerdns_backend, powerdns_config_dir, powerdns_db_password, powerdns_group, powerdns_service_status, powerdns_user, record, reverse_zones, slave_domain_count, zone_transfer_status, zone_validation
+- Define variables alert_email, instance, keepalived_service_status, keepalived_webhook_url, powerdns_db_password, script, vrrp_state
+- Define variables config_check_result, final_service_check, mysql_error_log, port_conflicts, powerdns_api_key, powerdns_db_password, powerdns_mysql_backend_packages
+- Define variables haproxy_service_status
 - Review tasks/handlers in roles/security_hardening for missing tags or handlers
-- Define variables ansible_date_time, ansible_fqdn, hostvars, inventory_hostname, item, ssl_cert_path, ssl_key_path
-- Review tasks/handlers in roles/prometheus for missing tags or handlers
-- Define variables ansible_date_time, ansible_default_ipv4, hostvars, item, powerdns_api_key, prometheus_remote_write_password, prometheus_remote_write_url, prometheus_remote_write_username
-- Review tasks/handlers in roles/mysql for missing tags or handlers
-- Define variables ansible_date_time, ansible_default_ipv4, ansible_python_interpreter, db_tables, hostvars, item, mysql_root_password, powerdns_db_password
-- Review tasks/handlers in roles/state_management for missing tags or handlers
-- Define variables ansible_date_time, ansible_default_ipv4, ansible_distribution, ansible_distribution_version, ansible_kernel, ansible_user_id, ansible_version, inventory_hostname, item
-- Review tasks/handlers in roles/keepalived for missing tags or handlers
-- Define variables alert_email, ansible_date_time, ansible_default_ipv4, instance, inventory_hostname, item, keepalived_service_status, keepalived_webhook_url, powerdns_db_password, script, vrrp_state
-- Review tasks/handlers in roles/haproxy for missing tags or handlers
-- Define variables ansible_date_time, ansible_default_ipv4, haproxy_service_status, hostvars, item
+- Define variables ssl_cert_path, ssl_key_path
+- Define variables alert_email, alert_webhook_url, domain, loop, powerdns_api_key, powerdns_db_password, powerdns_webserver_port, zone
+- Define variables powerdns_db_password
+- Define variables powerdns_api_key, prometheus_remote_write_password, prometheus_remote_write_url, prometheus_remote_write_username
+- Define variables alert_email, alert_webhook_url, powerdns_config_dir, powerdns_db_password, powerdns_group, powerdns_webserver_port
+- Define variables zones_git_repo
+- Define variables db_tables, mysql_root_password, powerdns_db_password
+- Review tasks/handlers in roles/galera for missing tags or handlers
+- Define variables galera_config_path, galera_packages, mysql_galera_config_path
+- Review tasks/handlers in roles/dnsdist for missing tags or handlers
+- Define variables dnsdist_packages, domain, geo_rule, loop, rule, zone
+- Define variables dnssec_key_algorithm, existing_pdns_config, pdns_config_hash
 
 ## 📊 Score
-0/100
+8/100
 
 ## 🔜 Next Actions
 - Address missing directories and meta files
