@@ -443,8 +443,7 @@
 
 - name: Display MySQL connectivity test result
   debug:
-    msg: "MySQL connectivity test: {{ 'PASSED' if mysql_connectivity_test.query_result[0]['test_connection'] == 1 else 'FAILED' }}"
-
+    var: mysql_connectivity_test
 - name: Ensure PowerDNS DB schema is present
   mysql_query:
     login_user: "{{ powerdns_db_user }}"
