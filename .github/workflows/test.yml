@@ -1,10 +1,11 @@
+---
 name: Test
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   ansible-lint:
@@ -35,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        scenario: [default, security, ha_cluster]
+        scenario: [default,security,ha_cluster]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

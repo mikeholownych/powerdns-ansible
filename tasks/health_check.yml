@@ -2,42 +2,45 @@
 # Comprehensive health check tasks
 
 - name: Run PowerDNS health check script
-  command: /usr/local/bin/powerdns-health-check.sh
+  ansible.builtin.command: /usr/local/bin/powerdns-health-check.sh
   register: health_check_result
   failed_when: health_check_result.rc > 1
   changed_when: false
 
 - name: Display health check results
-  debug:
+  ansible.builtin.debug:
     var: health_check_result.stdout_lines
   when: health_check_result.stdout_lines is defined
 
 - name: Verify PowerDNS service is running
-  systemd:
+  ansible.builtin.systemd:
     name: "{{ powerdns_service_name }}"
   register: service_status
   failed_when: service_status.status.ActiveState != "active"
 
 - name: Test DNS resolution
-  command: dig @{{ ansible_default_ipv4.address }} localhost +short +time=5
+  ansible.builtin.command:
+    dig @{{ ansible_default_ipv4.address }} localhost +short +time=5
   register: dns_test
   failed_when: dns_test.rc != 0
   changed_when: false
-  ignore_errors: yes
+  ignore_errors: true
 
 - name: Test PowerDNS API (if enabled)
-  uri:
-    url: "http://{{ ansible_default_ipv4.address }}:{{ powerdns_webserver_port | default(8081) }}/api/v1/servers"
+  ansible.builtin.uri:
+    url: >-
+      http://{{ ansible_default_ipv4.address }}:{{ powerdns_webserver_port |
+      default(8081) }}/api/v1/servers
     method: GET
     headers:
       X-API-Key: "{{ powerdns_api_key }}"
     status_code: 200
   register: api_test
   when: powerdns_api_readonly is defined
-  ignore_errors: yes
+  ignore_errors: true
 
 - name: Check database connectivity
-  mysql_query:
+  community.mysql.mysql_query:
     login_user: "{{ powerdns_db_user }}"
     login_password: "{{ powerdns_db_password }}"
     login_host: "{{ powerdns_db_host }}"
@@ -47,31 +50,31 @@
   failed_when: db_test is failed
 
 - name: Verify zone count
-  debug:
+  ansible.builtin.debug:
     msg: "Database contains {{ db_test.query_result[0].count }} zones"
   when: db_test.query_result is defined
 
 - name: Check firewall status
-  command: ufw status
+  ansible.builtin.command: ufw status
   register: firewall_status
   when: ansible_os_family == "Debian"
   changed_when: false
-  ignore_errors: yes
+  ignore_errors: true
 
 - name: Check firewalld status (RHEL)
-  command: firewall-cmd --state
+  ansible.builtin.command: firewall-cmd --state
   register: firewalld_status
   when: ansible_os_family == "RedHat"
   changed_when: false
-  ignore_errors: yes
+  ignore_errors: true
 
 - name: Verify backup directory
-  stat:
+  ansible.builtin.stat:
     path: "{{ powerdns_backup_dir }}"
   register: backup_dir_stat
 
 - name: Check recent backups
-  find:
+  ansible.builtin.find:
     paths: "{{ powerdns_backup_dir }}"
     patterns: "powerdns_backup_*"
     age: -7d
@@ -79,12 +82,12 @@
   when: backup_dir_stat.stat.exists
 
 - name: Display backup status
-  debug:
+  ansible.builtin.debug:
     msg: "Found {{ recent_backups.matched }} recent backups"
   when: recent_backups is defined
 
 - name: Check system resources
-  shell: |
+  ansible.builtin.shell: |
     echo "CPU: $(top -bn1 | grep 'Cpu(s)' | awk '{print $2}' | cut -d'%' -f1)"
     echo "Memory: $(free | grep Mem | awk '{printf "%.1f%%", $3/$2 * 100.0}')"
     echo "Disk: $(df /etc/powerdns | tail -1 | awk '{print $5}')"
@@ -92,17 +95,29 @@
   changed_when: false
 
 - name: Display system resources
-  debug:
+  ansible.builtin.debug:
     var: system_resources.stdout_lines
 
 - name: Final health check summary
-  debug:
+  ansible.builtin.debug:
     msg:
       - "=== PowerDNS Health Check Summary ==="
-      - "Service Status: {{ service_status.status.ActiveState }}"
-      - "DNS Test: {{ 'PASSED' if dns_test.rc == 0 else 'FAILED' }}"
-      - "API Test: {{ 'PASSED' if (api_test.status | default(0)) == 200 else 'SKIPPED/FAILED' }}"
-      - "Database: {{ 'CONNECTED' if db_test.query_result is defined else 'FAILED' }}"
-      - "Zones: {{ db_test.query_result[0].count if db_test.query_result is defined else 'UNKNOWN' }}"
-      - "Backups: {{ recent_backups.matched if recent_backups is defined else 'UNKNOWN' }} recent"
-      - "Overall Status: {{ 'HEALTHY' if (service_status.status.ActiveState == 'active' and dns_test.rc == 0) else 'NEEDS ATTENTION' }}"
+      - >-
+        Service Status: {{ service_status.status.ActiveState }}
+      - >-
+        DNS Test: {{ 'PASSED' if dns_test.rc == 0 else 'FAILED' }}
+      - >-
+        API Test: {{ 'PASSED' if (api_test.status | default(0)) == 200 else
+        'SKIPPED/FAILED' }}
+      - >-
+        Database: {{ 'CONNECTED' if db_test.query_result is defined else
+        'FAILED' }}
+      - >-
+        Zones: {{ db_test.query_result[0].count if db_test.query_result is
+        defined else 'UNKNOWN' }}
+      - >-
+        Backups: {{ recent_backups.matched if recent_backups is defined else
+        'UNKNOWN' }} recent
+      - >-
+        Overall Status: {{ 'HEALTHY' if (service_status.status.ActiveState ==
+        'active' and dns_test.rc == 0) else 'NEEDS ATTENTION' }}
