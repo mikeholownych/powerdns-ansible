@@ -1,141 +1,140 @@
 - name: Create dnsdist system user
-  user:
+  ansible.builtin.user:
     name: dnsdist
     system: true
     shell: /bin/false
     home: /var/lib/dnsdist
     create_home: true
   tags:
-  - dnsdist
+    - dnsdist
 - name: Install DNSdist packages
-  package:
+  ansible.builtin.package:
     name: '{{ dnsdist_packages[ansible_os_family] }}'
     state: present
   vars:
     dnsdist_packages:
       Debian:
-      - dnsdist
+        - dnsdist
       RedHat:
-      - dnsdist
+        - dnsdist
   tags:
-  - dnsdist
+    - dnsdist
 - name: Create DNSdist directories
-  file:
+  ansible.builtin.file:
     path: '{{ item }}'
     state: directory
     owner: dnsdist
     group: dnsdist
     mode: '0755'
   loop:
-  - /etc/dnsdist
-  - /var/lib/dnsdist
-  - /var/log/dnsdist
+    - /etc/dnsdist
+    - /var/lib/dnsdist
+    - /var/log/dnsdist
   tags:
-  - dnsdist
+    - dnsdist
 - name: Generate DNSdist configuration
-  template:
+  ansible.builtin.template:
     src: dnsdist.conf.j2
     dest: /etc/dnsdist/dnsdist.conf
     owner: dnsdist
     group: dnsdist
     mode: '0640'
     backup: true
-  notify: restart dnsdist
+  notify: Restart dnsdist
   tags:
-  - dnsdist
+    - dnsdist
 - name: Create DNSdist systemd override
-  template:
+  ansible.builtin.template:
     src: dnsdist-override.conf.j2
     dest: /etc/systemd/system/dnsdist.service.d/override.conf
     owner: root
     group: root
     mode: '0644'
   notify:
-  - reload systemd
-  - restart dnsdist
+    - Reload systemd
+    - Restart dnsdist
   tags:
-  - dnsdist
+    - dnsdist
 - name: Configure DNSdist health checks
-  template:
+  ansible.builtin.template:
     src: dnsdist-health-check.lua.j2
     dest: /etc/dnsdist/health-check.lua
     owner: dnsdist
     group: dnsdist
     mode: '0644'
-  notify: restart dnsdist
+  notify: Restart dnsdist
   tags:
-  - dnsdist
+    - dnsdist
 - name: Create DNSdist management scripts
-  template:
+  ansible.builtin.template:
     src: '{{ item }}.j2'
     dest: /usr/local/bin/{{ item }}
     owner: root
     group: root
     mode: '0755'
   loop:
-  - dnsdist-stats.sh
-  - dnsdist-manage.sh
-  - dnsdist-health.sh
+    - dnsdist-stats.sh
+    - dnsdist-manage.sh
+    - dnsdist-health.sh
   tags:
-  - dnsdist
+    - dnsdist
 - name: Configure firewall for DNSdist
-  ufw:
+  community.general.ufw:
     rule: allow
     port: '{{ item }}'
     proto: '{{ item.split(''/'')[1] if ''/'' in item else ''tcp'' }}'
     comment: DNSdist Load Balancer
   loop:
-  - '{{ dnsdist_port | default(53) }}/tcp'
-  - '{{ dnsdist_port | default(53) }}/udp'
-  - '{{ dnsdist_console_port | default(5199) }}/tcp'
-  - '{{ dnsdist_webserver_port | default(8083) }}/tcp'
+    - '{{ dnsdist_port | default(53) }}/tcp'
+    - '{{ dnsdist_port | default(53) }}/udp'
+    - '{{ dnsdist_console_port | default(5199) }}/tcp'
+    - '{{ dnsdist_webserver_port | default(8083) }}/tcp'
   when:
-  - ansible_os_family == "Debian"
-  - firewall_enabled | default(true)
+    - ansible_os_family == "Debian"
+    - firewall_enabled | default(true)
   tags:
-  - dnsdist
+    - dnsdist
 - name: Enable and start DNSdist service
-  systemd:
+  ansible.builtin.systemd:
     name: dnsdist
     enabled: true
     state: started
     daemon_reload: true
   tags:
-  - dnsdist
+    - dnsdist
 - name: Wait for DNSdist to start
-  wait_for:
+  ansible.builtin.wait_for:
     port: '{{ dnsdist_port | default(53) }}'
     host: '{{ ansible_default_ipv4.address }}'
     delay: 5
     timeout: 30
   tags:
-  - dnsdist
+    - dnsdist
 - name: Test DNSdist functionality
-  command: dig @{{ ansible_default_ipv4.address }} google.com
+  ansible.builtin.command: dig @{{ ansible_default_ipv4.address }} google.com
   register: dnsdist_test
   failed_when: dnsdist_test.rc != 0
   changed_when: false
-  ignore_errors: true
   tags:
-  - dnsdist
+    - dnsdist
 - name: Display DNSdist test result
-  debug:
+  ansible.builtin.debug:
     msg: 'DNSdist test: {{ ''PASSED'' if dnsdist_test.rc == 0 else ''FAILED'' }}'
   tags:
-  - dnsdist
+    - dnsdist
 - name: Create DNSdist monitoring configuration
-  template:
+  ansible.builtin.template:
     src: dnsdist-prometheus.lua.j2
     dest: /etc/dnsdist/prometheus.lua
     owner: dnsdist
     group: dnsdist
     mode: '0644'
-  notify: restart dnsdist
+  notify: Restart dnsdist
   when: prometheus_enabled | default(false)
   tags:
-  - dnsdist
+    - dnsdist
 - name: Schedule DNSdist statistics collection
-  cron:
+  ansible.builtin.cron:
     name: DNSdist Statistics Collection
     cron_file: dnsdist-stats
     user: root
@@ -144,4 +143,4 @@
     state: present
   when: monitoring_enabled | default(true)
   tags:
-  - dnsdist
+    - dnsdist
