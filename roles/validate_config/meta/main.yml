@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  author: codex
+  description: Skeleton for validate_config role
+  min_ansible_version: 2.15
+  license: MIT
+dependencies: []

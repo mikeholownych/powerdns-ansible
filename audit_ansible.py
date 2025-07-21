@@ -57,8 +57,17 @@ def load_yaml(path: str):
 
 
 def _extract_vars_from_string(content: str) -> Iterable[str]:
-    for var in VAR_RE.findall(content):
-        yield var.split("|")[0]
+    """Yield Jinja variable names found in ``content``.
+
+    Only the base variable name before any filters or attribute access
+    is returned so ``foo.bar | default('x')`` becomes ``foo``.
+    """
+
+    for raw in VAR_RE.findall(content):
+        var = raw.split("|")[0].strip()
+        var = re.split(r"[.\[]", var)[0]
+        if var:
+            yield var
 
 
 def collect_vars(role_path: str) -> Set[str]:
@@ -142,8 +151,25 @@ def check_role(role_path: str, defined_vars: Set[str]) -> Dict[str, List[str]]:
 
     # Undefined variables
     undefined = used_vars - defined_vars
-    if undefined:
-        findings["undefined_vars"].update(sorted(undefined))
+    ignored_prefixes = ("ansible_",)
+    ignored_vars = {
+        "item",
+        "inventory_hostname",
+        "inventory_hostname_short",
+        "groups",
+        "hostvars",
+        "group_names",
+        "loop",
+        "geo_rule",
+        "rule",
+    }
+    filtered = {
+        var
+        for var in undefined
+        if not var.startswith(ignored_prefixes) and var not in ignored_vars
+    }
+    if filtered:
+        findings["undefined_vars"].update(sorted(filtered))
 
     return {k: sorted(v) for k, v in findings.items()}
 
@@ -243,6 +269,23 @@ def main() -> None:
                 )
     else:
         lines.append("- No issues found")
+
+    # Simple scoring: start from 100 and subtract one point per issue
+    issue_count = sum(
+        len(items) for info in report.values() for items in info.values()
+    )
+    score = max(0, 100 - issue_count)
+
+    lines.append("\n## 📊 Score")
+    lines.append(f"{score}/100")
+
+    lines.append("\n## 🔜 Next Actions")
+    if report:
+        lines.append("- Address missing directories and meta files")
+        lines.append("- Ensure each task has name and tags")
+        lines.append("- Define any undefined variables in defaults or vars")
+    else:
+        lines.append("- Collection structure looks good")
 
     with open(os.path.join(ROOT_DIR, "validation_report.md"), "w") as fh:
         fh.write("\n".join(lines) + "\n")

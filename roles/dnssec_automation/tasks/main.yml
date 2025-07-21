@@ -1,33 +1,32 @@
----
-# DNSSEC Full Automation Role
-# Comprehensive DNSSEC key management and zone signing
-
 - name: Display DNSSEC automation start
   ansible.builtin.debug:
-    msg: "=== Starting DNSSEC Full Automation ==="
-
+    msg: === Starting DNSSEC Full Automation ===
+  tags:
+  - dnssec_automation
 - name: Install DNSSEC dependencies
   ansible.builtin.package:
-    name: "{{ item }}"
+    name: '{{ item }}'
     state: present
   loop:
-    - pdns-tools
-    - bind9-utils
-    - python3-dnspython
-
+  - pdns-tools
+  - bind9-utils
+  - python3-dnspython
+  tags:
+  - dnssec_automation
 - name: Create DNSSEC management directories
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: '{{ item }}'
     state: directory
     owner: pdns
     group: pdns
     mode: '0750'
   loop:
-    - /var/lib/powerdns/dnssec
-    - /var/lib/powerdns/dnssec/keys
-    - /var/lib/powerdns/dnssec/backups
-    - /var/log/powerdns/dnssec
-
+  - /var/lib/powerdns/dnssec
+  - /var/lib/powerdns/dnssec/keys
+  - /var/lib/powerdns/dnssec/backups
+  - /var/log/powerdns/dnssec
+  tags:
+  - dnssec_automation
 - name: Create DNSSEC key management script
   ansible.builtin.template:
     src: dnssec-key-manager.py.j2
@@ -35,7 +34,8 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - dnssec_automation
 - name: Create DNSSEC zone signing script
   ansible.builtin.template:
     src: dnssec-zone-signer.sh.j2
@@ -43,7 +43,8 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - dnssec_automation
 - name: Create DNSSEC validation script
   ansible.builtin.template:
     src: dnssec-validator.sh.j2
@@ -51,88 +52,107 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - dnssec_automation
 - name: Get list of zones to secure
   community.mysql.mysql_query:
-    login_user: "{{ powerdns_db_user }}"
-    login_password: "{{ powerdns_db_password }}"
-    login_host: "{{ powerdns_db_host }}"
-    login_db: "{{ powerdns_db_name }}"
-    query: "SELECT name FROM domains WHERE type='MASTER'"
+    login_user: '{{ powerdns_db_user }}'
+    login_password: '{{ powerdns_db_password }}'
+    login_host: '{{ powerdns_db_host }}'
+    login_db: '{{ powerdns_db_name }}'
+    query: SELECT name FROM domains WHERE type='MASTER'
   register: zones_to_secure
   when:
-    - server_role == 'primary'
-    - "'mysql' in dns_features"
-
+  - server_role == 'primary'
+  - '''mysql'' in dns_features'
+  tags:
+  - dnssec_automation
 - name: Secure zones with DNSSEC
   ansible.builtin.command: pdnsutil secure-zone {{ item.name }}
-  loop: "{{ zones_to_secure.query_result | default([]) }}"
+  loop: '{{ zones_to_secure.query_result | default([]) }}'
   register: zone_securing
   failed_when:
-    - zone_securing.rc != 0
-    - "'already secured' not in zone_securing.stderr"
-  changed_when: "'secured' in zone_securing.stdout"
+  - zone_securing.rc != 0
+  - '''already secured'' not in zone_securing.stderr'
+  changed_when: '''secured'' in zone_securing.stdout'
   when: server_role == 'primary'
-
+  tags:
+  - dnssec_automation
 - name: Generate DNSSEC keys for zones
   when: server_role == 'primary'
   block:
-    - name: Generate KSK (Key Signing Key)
-      ansible.builtin.command: pdnsutil generate-zone-key {{ item.name }} ksk {{ dnssec_ksk_algorithm | default('ecdsa256') }}
-      loop: "{{ zones_to_secure.query_result | default([]) }}"
-      register: ksk_generation
-      failed_when:
-        - ksk_generation.rc != 0
-        - "'already have keys' not in ksk_generation.stderr"
-      changed_when: "'Generated' in ksk_generation.stdout"
-
-    - name: Generate ZSK (Zone Signing Key)
-      ansible.builtin.command: pdnsutil generate-zone-key {{ item.name }} zsk {{ dnssec_zsk_algorithm | default('ecdsa256') }}
-      loop: "{{ zones_to_secure.query_result | default([]) }}"
-      register: zsk_generation
-      failed_when:
-        - zsk_generation.rc != 0
-        - "'already have keys' not in zsk_generation.stderr"
-      changed_when: "'Generated' in zsk_generation.stdout"
+  - name: Generate KSK (Key Signing Key)
+    ansible.builtin.command: pdnsutil generate-zone-key {{ item.name }} ksk {{ dnssec_ksk_algorithm
+      | default('ecdsa256') }}
+    loop: '{{ zones_to_secure.query_result | default([]) }}'
+    register: ksk_generation
+    failed_when:
+    - ksk_generation.rc != 0
+    - '''already have keys'' not in ksk_generation.stderr'
+    changed_when: '''Generated'' in ksk_generation.stdout'
+    tags:
+    - dnssec_automation
+  - name: Generate ZSK (Zone Signing Key)
+    ansible.builtin.command: pdnsutil generate-zone-key {{ item.name }} zsk {{ dnssec_zsk_algorithm
+      | default('ecdsa256') }}
+    loop: '{{ zones_to_secure.query_result | default([]) }}'
+    register: zsk_generation
+    failed_when:
+    - zsk_generation.rc != 0
+    - '''already have keys'' not in zsk_generation.stderr'
+    changed_when: '''Generated'' in zsk_generation.stdout'
+    tags:
+    - dnssec_automation
+  tags:
+  - dnssec_automation
 - name: Activate DNSSEC keys
   ansible.builtin.command: pdnsutil activate-zone-key {{ item.name }} all
-  loop: "{{ zones_to_secure.query_result | default([]) }}"
+  loop: '{{ zones_to_secure.query_result | default([]) }}'
   register: key_activation
   failed_when: key_activation.rc != 0
-  changed_when: "'Activated' in key_activation.stdout"
+  changed_when: '''Activated'' in key_activation.stdout'
   when: server_role == 'primary'
-
+  tags:
+  - dnssec_automation
 - name: Validate DNSSEC zone signing
   ansible.builtin.command: pdnsutil check-zone {{ item.name }}
-  loop: "{{ zones_to_secure.query_result | default([]) }}"
+  loop: '{{ zones_to_secure.query_result | default([]) }}'
   register: zone_validation
   failed_when: zone_validation.rc != 0
   changed_when: false
   when: server_role == 'primary'
-
+  tags:
+  - dnssec_automation
 - name: Export DS records for parent zone delegation
-  ansible.builtin.shell: |
-    set -o pipefail
-    pdnsutil show-zone {{ item.name }} | grep "DS = " | head -1 | cut -d'"' -f2
-  loop: "{{ zones_to_secure.query_result | default([]) }}"
+  ansible.builtin.shell: 'set -o pipefail
+
+    pdnsutil show-zone {{ item.name }} | grep "DS = " | head -1 | cut -d''"'' -f2
+
+    '
+  loop: '{{ zones_to_secure.query_result | default([]) }}'
   register: ds_records
   changed_when: false
   when: server_role == 'primary'
-
+  tags:
+  - dnssec_automation
 - name: Save DS records to file
   ansible.builtin.copy:
-    dest: "/var/lib/powerdns/dnssec/{{ item.item.name }}.ds"
-    content: |
-      ; DS record for {{ item.item.name }}
-      ; Add this to the parent zone
-      {{ item.item.name }}. IN DS {{ item.stdout }}
-    mode: '0644'
-  loop: "{{ ds_records.results | default([]) }}"
-  when:
-    - server_role == 'primary'
-    - item.stdout is defined
-    - item.stdout != ""
+    dest: /var/lib/powerdns/dnssec/{{ item.item.name }}.ds
+    content: '; DS record for {{ item.item.name }}
 
+      ; Add this to the parent zone
+
+      {{ item.item.name }}. IN DS {{ item.stdout }}
+
+      '
+    mode: '0644'
+  loop: '{{ ds_records.results | default([]) }}'
+  when:
+  - server_role == 'primary'
+  - item.stdout is defined
+  - item.stdout != ""
+  tags:
+  - dnssec_automation
 - name: Create DNSSEC key rollover script
   ansible.builtin.template:
     src: dnssec-key-rollover.sh.j2
@@ -140,22 +160,24 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - dnssec_automation
 - name: Schedule DNSSEC key rollover
   ansible.builtin.cron:
-    name: "DNSSEC Key Rollover for {{ item.name }}"
-    cron_file: "dnssec-rollover-{{ item.name | replace('.', '-') }}"
+    name: DNSSEC Key Rollover for {{ item.name }}
+    cron_file: dnssec-rollover-{{ item.name | replace('.', '-') }}
     user: root
-    minute: "0"
-    hour: "2"
-    day: "1"
-    job: "/usr/local/bin/dnssec-key-rollover.sh {{ item.name }}"
+    minute: '0'
+    hour: '2'
+    day: '1'
+    job: /usr/local/bin/dnssec-key-rollover.sh {{ item.name }}
     state: present
-  loop: "{{ zones_to_secure.query_result | default([]) }}"
+  loop: '{{ zones_to_secure.query_result | default([]) }}'
   when:
-    - server_role == 'primary'
-    - dnssec_auto_rollover | default(true)
-
+  - server_role == 'primary'
+  - dnssec_auto_rollover | default(true)
+  tags:
+  - dnssec_automation
 - name: Create DNSSEC monitoring script
   ansible.builtin.template:
     src: dnssec-monitor.sh.j2
@@ -163,17 +185,19 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - dnssec_automation
 - name: Schedule DNSSEC monitoring
   ansible.builtin.cron:
-    name: "DNSSEC Monitoring"
+    name: DNSSEC Monitoring
     cron_file: dnssec-monitoring
     user: root
-    minute: "*/30"
-    job: "/usr/local/bin/dnssec-monitor.sh"
+    minute: '*/30'
+    job: /usr/local/bin/dnssec-monitor.sh
     state: present
   when: dnssec_monitoring_enabled | default(true)
-
+  tags:
+  - dnssec_automation
 - name: Create DNSSEC backup script
   ansible.builtin.template:
     src: dnssec-backup.sh.j2
@@ -181,55 +205,59 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - dnssec_automation
 - name: Schedule DNSSEC key backups
   ansible.builtin.cron:
-    name: "DNSSEC Key Backup"
+    name: DNSSEC Key Backup
     cron_file: dnssec-backup
     user: root
-    minute: "0"
-    hour: "3"
-    job: "/usr/local/bin/dnssec-backup.sh"
+    minute: '0'
+    hour: '3'
+    job: /usr/local/bin/dnssec-backup.sh
     state: present
   when: dnssec_backup_enabled | default(true)
-
+  tags:
+  - dnssec_automation
 - name: Test DNSSEC resolution
-  ansible.builtin.command: dig @{{ ansible_default_ipv4.address }} {{ item.name }} DNSKEY +dnssec
-  loop: "{{ zones_to_secure.query_result | default([]) }}"
+  ansible.builtin.command: dig @{{ ansible_default_ipv4.address }} {{ item.name }}
+    DNSKEY +dnssec
+  loop: '{{ zones_to_secure.query_result | default([]) }}'
   register: dnssec_resolution_test
-  failed_when: "'RRSIG' not in dnssec_resolution_test.stdout"
+  failed_when: '''RRSIG'' not in dnssec_resolution_test.stdout'
   changed_when: false
   when: server_role == 'primary'
-
+  tags:
+  - dnssec_automation
 - name: Create DNSSEC status report
   ansible.builtin.copy:
     dest: /var/lib/powerdns/dnssec/dnssec-status.json
-    content: |
-      {
-        "timestamp": "{{ ansible_date_time.iso8601 }}",
-        "hostname": "{{ inventory_hostname }}",
-        "server_role": "{{ server_role }}",
-        "zones_secured": {{ zones_to_secure.query_result | default([]) | map(attribute='name') | list | to_json }},
-        "dnssec_algorithms": {
-          "ksk": "{{ dnssec_ksk_algorithm | default('ecdsa256') }}",
-          "zsk": "{{ dnssec_zsk_algorithm | default('ecdsa256') }}"
-        },
-        "auto_rollover_enabled": {{ dnssec_auto_rollover | default(true) | to_json }},
-        "monitoring_enabled": {{ dnssec_monitoring_enabled | default(true) | to_json }},
-        "backup_enabled": {{ dnssec_backup_enabled | default(true) | to_json }}
-      }
+    content: "{\n  \"timestamp\": \"{{ ansible_date_time.iso8601 }}\",\n  \"hostname\"\
+      : \"{{ inventory_hostname }}\",\n  \"server_role\": \"{{ server_role }}\",\n\
+      \  \"zones_secured\": {{ zones_to_secure.query_result | default([]) | map(attribute='name')\
+      \ | list | to_json }},\n  \"dnssec_algorithms\": {\n    \"ksk\": \"{{ dnssec_ksk_algorithm\
+      \ | default('ecdsa256') }}\",\n    \"zsk\": \"{{ dnssec_zsk_algorithm | default('ecdsa256')\
+      \ }}\"\n  },\n  \"auto_rollover_enabled\": {{ dnssec_auto_rollover | default(true)\
+      \ | to_json }},\n  \"monitoring_enabled\": {{ dnssec_monitoring_enabled | default(true)\
+      \ | to_json }},\n  \"backup_enabled\": {{ dnssec_backup_enabled | default(true)\
+      \ | to_json }}\n}\n"
     mode: '0644'
   when: server_role == 'primary'
-
+  tags:
+  - dnssec_automation
 - name: Display DNSSEC automation summary
   ansible.builtin.debug:
     msg:
-      - "=== DNSSEC Automation Complete ==="
-      - "Zones Secured: {{ zones_to_secure.query_result | default([]) | map(attribute='name') | list | join(', ') }}"
-      - "KSK Algorithm: {{ dnssec_ksk_algorithm | default('ecdsa256') }}"
-      - "ZSK Algorithm: {{ dnssec_zsk_algorithm | default('ecdsa256') }}"
-      - "Auto Rollover: {{ 'Enabled' if dnssec_auto_rollover | default(true) else 'Disabled' }}"
-      - "DS Records: /var/lib/powerdns/dnssec/*.ds"
-      - "Key Management: /usr/local/bin/dnssec-key-manager.py"
-      - "Status: SUCCESS ✓"
+    - === DNSSEC Automation Complete ===
+    - 'Zones Secured: {{ zones_to_secure.query_result | default([]) | map(attribute=''name'')
+      | list | join('', '') }}'
+    - 'KSK Algorithm: {{ dnssec_ksk_algorithm | default(''ecdsa256'') }}'
+    - 'ZSK Algorithm: {{ dnssec_zsk_algorithm | default(''ecdsa256'') }}'
+    - 'Auto Rollover: {{ ''Enabled'' if dnssec_auto_rollover | default(true) else
+      ''Disabled'' }}'
+    - 'DS Records: /var/lib/powerdns/dnssec/*.ds'
+    - 'Key Management: /usr/local/bin/dnssec-key-manager.py'
+    - "Status: SUCCESS \u2713"
   when: server_role == 'primary'
+  tags:
+  - dnssec_automation

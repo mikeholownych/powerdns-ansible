@@ -1,128 +1,141 @@
----
-# Configure firewalld for RHEL/CentOS systems
-
 - name: Start and enable firewalld
   systemd:
     name: firewalld
     state: started
-    enabled: yes
+    enabled: true
   when: ansible_os_family == "RedHat"
-
+  tags:
+  - security
 - name: Set default zone to public
   firewalld:
     zone: public
     state: enabled
-    permanent: yes
-    immediate: yes
+    permanent: true
+    immediate: true
   when: ansible_os_family == "RedHat"
-
+  tags:
+  - security
 - name: Configure DNS firewall rules
   firewalld:
-    port: "{{ item.port }}/{{ item.proto }}"
+    port: '{{ item.port }}/{{ item.proto }}'
     zone: public
-    permanent: yes
+    permanent: true
     state: enabled
-    immediate: yes
-  loop: "{{ firewall_ports }}"
+    immediate: true
+  loop: '{{ firewall_ports }}'
   when: ansible_os_family == "RedHat"
-
+  tags:
+  - security
 - name: Allow SSH access
   firewalld:
     service: ssh
     zone: public
-    permanent: yes
+    permanent: true
     state: enabled
-    immediate: yes
+    immediate: true
   when: ansible_os_family == "RedHat"
-
+  tags:
+  - security
 - name: Allow PowerDNS API access
   firewalld:
-    port: "{{ powerdns_webserver_port | default(8081) }}/tcp"
+    port: '{{ powerdns_webserver_port | default(8081) }}/tcp'
     zone: public
-    permanent: yes
+    permanent: true
     state: enabled
-    immediate: yes
-    source: "{{ dns_network }}"
-  when: 
-    - ansible_os_family == "RedHat"
-    - powerdns_webserver_port is defined
-
+    immediate: true
+    source: '{{ dns_network }}'
+  when:
+  - ansible_os_family == "RedHat"
+  - powerdns_webserver_port is defined
+  tags:
+  - security
 - name: Allow database access from localhost
   firewalld:
-    port: "{{ powerdns_db_port }}/tcp"
+    port: '{{ powerdns_db_port }}/tcp'
     zone: public
-    permanent: yes
+    permanent: true
     state: enabled
-    immediate: yes
-    source: "127.0.0.1/32"
+    immediate: true
+    source: 127.0.0.1/32
   when: ansible_os_family == "RedHat"
-
+  tags:
+  - security
 - name: Allow monitoring ports (if Prometheus is enabled)
   firewalld:
-    port: "{{ monitoring_config.prometheus_port }}/tcp"
+    port: '{{ monitoring_config.prometheus_port }}/tcp'
     zone: public
-    permanent: yes
+    permanent: true
     state: enabled
-    immediate: yes
-    source: "{{ dns_network }}"
-  when: 
-    - ansible_os_family == "RedHat"
-    - monitoring_config.prometheus_port is defined
-
+    immediate: true
+    source: '{{ dns_network }}'
+  when:
+  - ansible_os_family == "RedHat"
+  - monitoring_config.prometheus_port is defined
+  tags:
+  - security
 - name: Allow NTP
   firewalld:
     service: ntp
     zone: public
-    permanent: yes
+    permanent: true
     state: enabled
-    immediate: yes
+    immediate: true
   when: ansible_os_family == "RedHat"
-
+  tags:
+  - security
 - name: Create rich rules for zone transfers between DNS servers
   firewalld:
-    rich_rule: 'rule family="ipv4" source address="{{ hostvars[item]["ansible_default_ipv4"]["address"] }}" port protocol="tcp" port="53" accept'
+    rich_rule: rule family="ipv4" source address="{{ hostvars[item]["ansible_default_ipv4"]["address"]
+      }}" port protocol="tcp" port="53" accept
     zone: public
-    permanent: yes
+    permanent: true
     state: enabled
-    immediate: yes
-  loop: "{{ groups['powerdns_servers'] }}"
-  when: 
-    - ansible_os_family == "RedHat"
-    - item != inventory_hostname
-
+    immediate: true
+  loop: '{{ groups[''powerdns_servers''] }}'
+  when:
+  - ansible_os_family == "RedHat"
+  - item != inventory_hostname
+  tags:
+  - security
 - name: Set firewalld default target to DROP
   firewalld:
     zone: public
     target: DROP
-    permanent: yes
+    permanent: true
     state: enabled
-    immediate: yes
+    immediate: true
   when: ansible_os_family == "RedHat"
-
+  tags:
+  - security
 - name: Enable firewalld logging
   lineinfile:
     path: /etc/firewalld/firewalld.conf
-    regexp: '^LogDenied='
-    line: 'LogDenied=all'
-    backup: yes
+    regexp: ^LogDenied=
+    line: LogDenied=all
+    backup: true
   notify: restart firewalld
   when: ansible_os_family == "RedHat"
-
+  tags:
+  - security
 - name: Reload firewalld configuration
   systemd:
     name: firewalld
     state: reloaded
   when: ansible_os_family == "RedHat"
-
+  tags:
+  - security
 - name: Check firewalld status
   command: firewall-cmd --list-all
   register: firewalld_status
   changed_when: false
   when: ansible_os_family == "RedHat"
-
+  tags:
+  - security
 - name: Display firewalld status
   debug:
     var: firewalld_status.stdout_lines
-  when: 
-    - ansible_os_family == "RedHat"
-    - firewalld_status.stdout_lines is defined
+  when:
+  - ansible_os_family == "RedHat"
+  - firewalld_status.stdout_lines is defined
+  tags:
+  - security

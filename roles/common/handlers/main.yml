@@ -2,35 +2,35 @@
 # Common handlers for PowerDNS setup
 
 - name: reload systemd
-  systemd:
-    daemon_reload: yes
+  ansible.builtin.systemd:
+    daemon_reload: true
   become: yes
 
 - name: restart powerdns-health-check.timer
-  systemd:
+  ansible.builtin.systemd:
     name: powerdns-health-check.timer
     state: restarted
     enabled: yes
-    daemon_reload: yes
+    daemon_reload: true
   become: yes
   when: not ansible_check_mode
   ignore_errors: yes
 
 - name: restart powerdns-health-check.service
-  systemd:
+  ansible.builtin.systemd:
     name: powerdns-health-check.service
     state: restarted
-    daemon_reload: yes
+    daemon_reload: true
   become: yes
   when: not ansible_check_mode
   ignore_errors: yes
 
 - name: start powerdns-health-check.timer
-  systemd:
+  ansible.builtin.systemd:
     name: powerdns-health-check.timer
     state: started
     enabled: yes
-    daemon_reload: yes
+    daemon_reload: true
   become: yes
   when: 
     - monitoring_config.enabled | default(true)
