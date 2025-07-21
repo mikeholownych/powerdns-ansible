@@ -152,6 +152,9 @@ local/
 test-results/
 packaging/
 
+# Installed Ansible collections
+collections/
+
 # Secrets and sensitive data
 secrets/
 private/
