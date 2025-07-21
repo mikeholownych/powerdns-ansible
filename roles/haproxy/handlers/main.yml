@@ -1,23 +1,23 @@
 ---
 # HAProxy handlers
 
-- name: restart haproxy
+- name: Restart haproxy
   ansible.builtin.systemd:
     name: haproxy
     state: restarted
-    enabled: yes
+    enabled: true
     daemon_reload: true
 
-- name: reload haproxy
+- name: Reload haproxy
   ansible.builtin.systemd:
     name: haproxy
     state: reloaded
 
-- name: reload systemd
+- name: Reload systemd
   ansible.builtin.systemd:
     daemon_reload: true
 
-- name: validate haproxy config
+- name: Validate haproxy config
   ansible.builtin.command: haproxy -c -f /etc/haproxy/haproxy.cfg
   register: haproxy_config_check
   failed_when: haproxy_config_check.rc != 0
