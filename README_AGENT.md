@@ -20,7 +20,7 @@ make install
 
 # Run audit
 make run
-# or python validate.py
+# or python validate.py --report custom_report.md
 
 # Start API server
 make serve  # runs uvicorn api.server:app
@@ -30,3 +30,5 @@ make test
 ```
 
 Environment variables can be placed in `.env` or exported before running. See `.env.example` for details. The `serve` command accepts `--host` and `--port` options to customize the API address.
+Ensure `AGENT_API_KEY` is set to protect the REST API. The `run` command accepts
+`--report` to specify the output path for `validation_report.md`.

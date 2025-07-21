@@ -18,6 +18,9 @@ def main() -> None:
     parser.add_argument("--config", default="config/config.yml", help="Config file")
     parser.add_argument("--host", default="0.0.0.0", help="API host")
     parser.add_argument("--port", type=int, default=8000, help="API port")
+    parser.add_argument(
+        "--report", default=None, help="Path to output validation report"
+    )
     args = parser.parse_args()
 
     logger = get_logger("CLI")
@@ -29,7 +32,10 @@ def main() -> None:
             logger.error("Root path not found", extra={"root": root})
             raise SystemExit(1)
         agent = AuditAgent(root, config)
-        report_path = agent.run()
+        report = args.report
+        if report:
+            report = os.path.abspath(os.path.expanduser(report))
+        report_path = agent.run(report)
         logger.info("Audit complete", extra={"report": report_path})
     elif args.command == "serve":
         import uvicorn
