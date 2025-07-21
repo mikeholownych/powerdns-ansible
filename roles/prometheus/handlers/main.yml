@@ -3,7 +3,7 @@
 
 - name: reload systemd
   ansible.builtin.systemd:
-    daemon_reload: yes
+    daemon_reload: true
   listen: "reload systemd"
 
 - name: restart prometheus
@@ -11,7 +11,7 @@
     name: prometheus
     state: restarted
     enabled: yes
-    daemon_reload: yes
+    daemon_reload: true
   listen: "restart prometheus"
 
 - name: restart powerdns-exporter
@@ -19,7 +19,7 @@
     name: powerdns-exporter
     state: restarted
     enabled: yes
-    daemon_reload: yes
+    daemon_reload: true
   listen: "restart powerdns-exporter"
 
 - name: restart node-exporter
@@ -27,7 +27,7 @@
     name: node-exporter
     state: restarted
     enabled: yes
-    daemon_reload: yes
+    daemon_reload: true
   listen: "restart node-exporter"
 
 - name: restart mysql-exporter
@@ -35,5 +35,5 @@
     name: mysql-exporter
     state: restarted
     enabled: yes
-    daemon_reload: yes
+    daemon_reload: true
   listen: "restart mysql-exporter"
