@@ -6,14 +6,13 @@
   - powerdns
 - name: Ensure PowerDNS MySQL backend .so exists
   ansible.builtin.stat:
-    path: /usr/lib/x86_64-linux-gnu/pdns/libmysqlbackend.so
+    path: /usr/lib/x86_64-linux-gnu/pdns/libgmysqlbackend.so
   register: pdns_backend_lib
   tags:
   - powerdns
 - name: Fail if PowerDNS MySQL backend is missing
   ansible.builtin.fail:
-    msg: "libmysqlbackend.so is missing \u2014 pdns-backend-mysql may have failed\
-      \ to install"
+    msg: libgmysqlbackend.so is missing — pdns-backend-mysql may have failed to install
   when: not pdns_backend_lib.stat.exists
   tags:
   - powerdns

@@ -31,7 +31,6 @@ local-address={{ ansible_default_ipv4.address }}
 local-port=53
 
 # Allow recursion from these networks
-allow-recursion={{ powerdns_allowed_recursion | join(',') }}
 
 # Query local address
 query-local-address={{ ansible_default_ipv4.address }}
