@@ -14,8 +14,8 @@ on:
         default: 'staging'
         type: choice
         options:
-        - staging
-        - production
+          - staging
+          - production
       skip_tests:
         description: 'Skip tests'
         required: false

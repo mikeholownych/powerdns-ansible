@@ -1,0 +1,4 @@
+---
+# Production inventory placeholder
+all:
+  hosts: {}
