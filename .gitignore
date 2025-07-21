@@ -170,3 +170,5 @@ logs/
 
 # Audit outputs
 audit_output.yaml
+lint_status.yaml
+lint.json
