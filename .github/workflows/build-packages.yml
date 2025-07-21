@@ -129,10 +129,12 @@ jobs:
           	mkdir -p debian/${PACKAGE_NAME}/usr/share/doc/${PACKAGE_NAME}
           	cp *.md debian/${PACKAGE_NAME}/usr/share/doc/${PACKAGE_NAME}/
           	cp LICENSE debian/${PACKAGE_NAME}/usr/share/doc/${PACKAGE_NAME}/
-          	mkdir -p debian/${PACKAGE_NAME}/usr/bin
-          	echo '#!/bin/bash' > debian/${PACKAGE_NAME}/usr/bin/powerdns-ops-deploy
-          	echo 'ansible-playbook /usr/share/ansible/collections/community/powerdns_ops/powerdns-operational-playbook.yml "$$@"' >> debian/${PACKAGE_NAME}/usr/bin/powerdns-ops-deploy
-          	chmod +x debian/${PACKAGE_NAME}/usr/bin/powerdns-ops-deploy
+                mkdir -p debian/${PACKAGE_NAME}/usr/bin
+                cat <<'EOS' > debian/${PACKAGE_NAME}/usr/bin/powerdns-ops-deploy
+                #!/bin/bash
+                ansible-playbook /usr/share/ansible/collections/community/powerdns_ops/powerdns-operational-playbook.yml "$@"
+                EOS
+                chmod +x debian/${PACKAGE_NAME}/usr/bin/powerdns-ops-deploy
           EOF
 
           chmod +x packaging/deb/${PACKAGE_NAME}-${PACKAGE_VERSION}/debian/rules
@@ -158,7 +160,14 @@ jobs:
       matrix:
         os: [centos-8, centos-9, fedora-37, fedora-38, rocky-8, rocky-9]
     container:
-      image: ${{ matrix.os == 'centos-8' && 'centos:8' || matrix.os == 'centos-9' && 'centos:stream9' || matrix.os == 'rocky-8' && 'rockylinux:8' || matrix.os == 'rocky-9' && 'rockylinux:9' || matrix.os == 'fedora-37' && 'fedora:37' || matrix.os == 'fedora-38' && 'fedora:38' || 'fedora:latest' }}
+      image: >-
+        ${{ matrix.os == 'centos-8' && 'centos:8' ||
+           matrix.os == 'centos-9' && 'centos:stream9' ||
+           matrix.os == 'rocky-8' && 'rockylinux:8' ||
+           matrix.os == 'rocky-9' && 'rockylinux:9' ||
+           matrix.os == 'fedora-37' && 'fedora:37' ||
+           matrix.os == 'fedora-38' && 'fedora:38' ||
+           'fedora:latest' }}
     steps:
       - name: Install build dependencies
         run: |

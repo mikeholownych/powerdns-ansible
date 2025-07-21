@@ -4,3 +4,9 @@
 - name: reload apparmor
   ansible.builtin.command: systemctl reload apparmor
   listen: "reload apparmor"
+
+- name: restart fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: restarted
+  listen: restart fail2ban

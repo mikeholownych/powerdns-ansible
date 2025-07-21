@@ -1,0 +1,8 @@
+---
+# defaults for galera role
+
+galera_config_path: "/etc/mysql/galera.cnf"
+mysql_galera_config_path: "/etc/mysql/my.cnf"
+galera_packages:
+  - galera-4
+  - mysql-wsrep-8.0

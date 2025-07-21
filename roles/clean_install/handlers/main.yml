@@ -2,11 +2,11 @@
 # Clean Install Handlers
 
 - name: reload systemd
-  systemd:
-    daemon_reload: yes
-  listen: "reload systemd"
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: reload systemd
 
 - name: clean package cache
-  package:
-    update_cache: yes
-  listen: "clean package cache"
+  ansible.builtin.package:
+    update_cache: true
+  listen: clean package cache

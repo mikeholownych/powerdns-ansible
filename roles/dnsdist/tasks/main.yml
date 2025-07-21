@@ -1,35 +1,37 @@
----
-# DNSdist Load Balancer for PowerDNS
-
 - name: Create dnsdist system user
   user:
     name: dnsdist
-    system: yes
+    system: true
     shell: /bin/false
     home: /var/lib/dnsdist
-    create_home: yes
-
+    create_home: true
+  tags:
+  - dnsdist
 - name: Install DNSdist packages
   package:
-    name: "{{ dnsdist_packages[ansible_os_family] }}"
+    name: '{{ dnsdist_packages[ansible_os_family] }}'
     state: present
   vars:
     dnsdist_packages:
-      Debian: ['dnsdist']
-      RedHat: ['dnsdist']
-
+      Debian:
+      - dnsdist
+      RedHat:
+      - dnsdist
+  tags:
+  - dnsdist
 - name: Create DNSdist directories
   file:
-    path: "{{ item }}"
+    path: '{{ item }}'
     state: directory
     owner: dnsdist
     group: dnsdist
     mode: '0755'
   loop:
-    - /etc/dnsdist
-    - /var/lib/dnsdist
-    - /var/log/dnsdist
-
+  - /etc/dnsdist
+  - /var/lib/dnsdist
+  - /var/log/dnsdist
+  tags:
+  - dnsdist
 - name: Generate DNSdist configuration
   template:
     src: dnsdist.conf.j2
@@ -37,9 +39,10 @@
     owner: dnsdist
     group: dnsdist
     mode: '0640'
-    backup: yes
+    backup: true
   notify: restart dnsdist
-
+  tags:
+  - dnsdist
 - name: Create DNSdist systemd override
   template:
     src: dnsdist-override.conf.j2
@@ -48,9 +51,10 @@
     group: root
     mode: '0644'
   notify:
-    - reload systemd
-    - restart dnsdist
-
+  - reload systemd
+  - restart dnsdist
+  tags:
+  - dnsdist
 - name: Configure DNSdist health checks
   template:
     src: dnsdist-health-check.lua.j2
@@ -59,59 +63,66 @@
     group: dnsdist
     mode: '0644'
   notify: restart dnsdist
-
+  tags:
+  - dnsdist
 - name: Create DNSdist management scripts
   template:
-    src: "{{ item }}.j2"
-    dest: "/usr/local/bin/{{ item }}"
+    src: '{{ item }}.j2'
+    dest: /usr/local/bin/{{ item }}
     owner: root
     group: root
     mode: '0755'
   loop:
-    - dnsdist-stats.sh
-    - dnsdist-manage.sh
-    - dnsdist-health.sh
-
+  - dnsdist-stats.sh
+  - dnsdist-manage.sh
+  - dnsdist-health.sh
+  tags:
+  - dnsdist
 - name: Configure firewall for DNSdist
   ufw:
     rule: allow
-    port: "{{ item }}"
-    proto: "{{ item.split('/')[1] if '/' in item else 'tcp' }}"
-    comment: "DNSdist Load Balancer"
+    port: '{{ item }}'
+    proto: '{{ item.split(''/'')[1] if ''/'' in item else ''tcp'' }}'
+    comment: DNSdist Load Balancer
   loop:
-    - "{{ dnsdist_port | default(53) }}/tcp"
-    - "{{ dnsdist_port | default(53) }}/udp"
-    - "{{ dnsdist_console_port | default(5199) }}/tcp"
-    - "{{ dnsdist_webserver_port | default(8083) }}/tcp"
-  when: 
-    - ansible_os_family == "Debian"
-    - firewall_enabled | default(true)
-
+  - '{{ dnsdist_port | default(53) }}/tcp'
+  - '{{ dnsdist_port | default(53) }}/udp'
+  - '{{ dnsdist_console_port | default(5199) }}/tcp'
+  - '{{ dnsdist_webserver_port | default(8083) }}/tcp'
+  when:
+  - ansible_os_family == "Debian"
+  - firewall_enabled | default(true)
+  tags:
+  - dnsdist
 - name: Enable and start DNSdist service
   systemd:
     name: dnsdist
-    enabled: yes
+    enabled: true
     state: started
-    daemon_reload: yes
-
+    daemon_reload: true
+  tags:
+  - dnsdist
 - name: Wait for DNSdist to start
   wait_for:
-    port: "{{ dnsdist_port | default(53) }}"
-    host: "{{ ansible_default_ipv4.address }}"
+    port: '{{ dnsdist_port | default(53) }}'
+    host: '{{ ansible_default_ipv4.address }}'
     delay: 5
     timeout: 30
-
+  tags:
+  - dnsdist
 - name: Test DNSdist functionality
   command: dig @{{ ansible_default_ipv4.address }} google.com
   register: dnsdist_test
   failed_when: dnsdist_test.rc != 0
   changed_when: false
-  ignore_errors: yes
-
+  ignore_errors: true
+  tags:
+  - dnsdist
 - name: Display DNSdist test result
   debug:
-    msg: "DNSdist test: {{ 'PASSED' if dnsdist_test.rc == 0 else 'FAILED' }}"
-
+    msg: 'DNSdist test: {{ ''PASSED'' if dnsdist_test.rc == 0 else ''FAILED'' }}'
+  tags:
+  - dnsdist
 - name: Create DNSdist monitoring configuration
   template:
     src: dnsdist-prometheus.lua.j2
@@ -121,13 +132,16 @@
     mode: '0644'
   notify: restart dnsdist
   when: prometheus_enabled | default(false)
-
+  tags:
+  - dnsdist
 - name: Schedule DNSdist statistics collection
   cron:
-    name: "DNSdist Statistics Collection"
+    name: DNSdist Statistics Collection
     cron_file: dnsdist-stats
     user: root
-    minute: "*/5"
-    job: "/usr/local/bin/dnsdist-stats.sh"
+    minute: '*/5'
+    job: /usr/local/bin/dnsdist-stats.sh
     state: present
   when: monitoring_enabled | default(true)
+  tags:
+  - dnsdist

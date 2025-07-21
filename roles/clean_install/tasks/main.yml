@@ -1,269 +1,296 @@
----
-# Clean Install Tasks - Remove all PowerDNS and MySQL components before fresh installation
-
 - name: Display clean install warning
   debug:
     msg:
-      - "=== WARNING: PERFORMING CLEAN INSTALL ==="
-      - "This will remove ALL PowerDNS and MySQL data!"
-      - "All databases, configurations, and logs will be deleted!"
-      - "This action is IRREVERSIBLE!"
+    - '=== WARNING: PERFORMING CLEAN INSTALL ==='
+    - This will remove ALL PowerDNS and MySQL data!
+    - All databases, configurations, and logs will be deleted!
+    - This action is IRREVERSIBLE!
   when: perform_clean_install | default(false)
-
+  tags:
+  - clean_install
 - name: Pause for confirmation (only in interactive mode)
   pause:
-    prompt: "Press ENTER to continue with clean install or Ctrl+C to abort"
-  when: 
-    - perform_clean_install | default(false)
-    - ansible_check_mode is not defined
-    - clean_install_force | default(false) == false
-
+    prompt: Press ENTER to continue with clean install or Ctrl+C to abort
+  when:
+  - perform_clean_install | default(false)
+  - ansible_check_mode is not defined
+  - clean_install_force | default(false) == false
+  tags:
+  - clean_install
 - name: Stop PowerDNS service
   systemd:
-    name: "{{ powerdns_service_name | default('pdns') }}"
+    name: '{{ powerdns_service_name | default(''pdns'') }}'
     state: stopped
-    enabled: no
-  ignore_errors: yes
+    enabled: false
+  ignore_errors: true
   when: perform_clean_install | default(false)
-
+  tags:
+  - clean_install
 - name: Stop MySQL/MariaDB service
   systemd:
-    name: "{{ mysql_service_name }}"
+    name: '{{ mysql_service_name }}'
     state: stopped
-    enabled: no
-  ignore_errors: yes
+    enabled: false
+  ignore_errors: true
   when: perform_clean_install | default(false)
-
+  tags:
+  - clean_install
 - name: Stop monitoring services
   systemd:
-    name: "{{ item }}"
+    name: '{{ item }}'
     state: stopped
-    enabled: no
+    enabled: false
   loop:
-    - node_exporter
-    - powerdns-health-check.timer
-    - powerdns-health-check.service
-    - powerdns_metrics.timer
-    - powerdns_metrics.service
-  ignore_errors: yes
+  - node_exporter
+  - powerdns-health-check.timer
+  - powerdns-health-check.service
+  - powerdns_metrics.timer
+  - powerdns_metrics.service
+  ignore_errors: true
   when: perform_clean_install | default(false)
-
+  tags:
+  - clean_install
 - name: Remove PowerDNS packages (Debian/Ubuntu)
   apt:
-    name: "{{ powerdns_packages[ansible_os_family] }}"
+    name: '{{ powerdns_packages[ansible_os_family] }}'
     state: absent
-    purge: yes
-    autoremove: yes
-  when: 
-    - perform_clean_install | default(false)
-    - ansible_os_family == "Debian"
-
+    purge: true
+    autoremove: true
+  when:
+  - perform_clean_install | default(false)
+  - ansible_os_family == "Debian"
+  tags:
+  - clean_install
 - name: Remove PowerDNS packages (RedHat/CentOS)
   yum:
-    name: "{{ powerdns_packages[ansible_os_family] }}"
+    name: '{{ powerdns_packages[ansible_os_family] }}'
     state: absent
-  when: 
-    - perform_clean_install | default(false)
-    - ansible_os_family == "RedHat"
-
+  when:
+  - perform_clean_install | default(false)
+  - ansible_os_family == "RedHat"
+  tags:
+  - clean_install
 - name: Remove MySQL/MariaDB packages (Debian/Ubuntu)
   apt:
-    name: "{{ mysql_packages[ansible_os_family] }}"
+    name: '{{ mysql_packages[ansible_os_family] }}'
     state: absent
-    purge: yes
-    autoremove: yes
-  when: 
-    - perform_clean_install | default(false)
-    - ansible_os_family == "Debian"
-
+    purge: true
+    autoremove: true
+  when:
+  - perform_clean_install | default(false)
+  - ansible_os_family == "Debian"
+  tags:
+  - clean_install
 - name: Remove MySQL/MariaDB packages (RedHat/CentOS)
   yum:
-    name: "{{ mysql_packages[ansible_os_family] }}"
+    name: '{{ mysql_packages[ansible_os_family] }}'
     state: absent
-  when: 
-    - perform_clean_install | default(false)
-    - ansible_os_family == "RedHat"
-
+  when:
+  - perform_clean_install | default(false)
+  - ansible_os_family == "RedHat"
+  tags:
+  - clean_install
 - name: Remove additional PowerDNS tools
   package:
     name:
-      - pdns-tools
-      - pdns-recursor
+    - pdns-tools
+    - pdns-recursor
     state: absent
-  ignore_errors: yes
+  ignore_errors: true
   when: perform_clean_install | default(false)
-
+  tags:
+  - clean_install
 - name: Remove PowerDNS data directories
   file:
-    path: "{{ item }}"
+    path: '{{ item }}'
     state: absent
   loop:
-    - /etc/powerdns
-    - /var/lib/powerdns
-    - /var/log/powerdns
-    - /var/cache/powerdns
-    - /run/powerdns
+  - /etc/powerdns
+  - /var/lib/powerdns
+  - /var/log/powerdns
+  - /var/cache/powerdns
+  - /run/powerdns
   when: perform_clean_install | default(false)
-
+  tags:
+  - clean_install
 - name: Remove MySQL/MariaDB data directories
   file:
-    path: "{{ item }}"
+    path: '{{ item }}'
     state: absent
   loop:
-    - /var/lib/mysql
-    - /var/lib/mysqld
-    - /var/log/mysql
-    - /var/log/mysqld
-    - /var/log/mariadb
-    - /run/mysqld
-    - /run/mysql
+  - /var/lib/mysql
+  - /var/lib/mysqld
+  - /var/log/mysql
+  - /var/log/mysqld
+  - /var/log/mariadb
+  - /run/mysqld
+  - /run/mysql
   when: perform_clean_install | default(false)
-
+  tags:
+  - clean_install
 - name: Remove MySQL/MariaDB configuration files
   file:
-    path: "{{ item }}"
+    path: '{{ item }}'
     state: absent
   loop:
-    - /etc/mysql
-    - /etc/my.cnf
-    - /etc/my.cnf.d
-    - /root/.my.cnf
-    - /home/mysql/.my.cnf
+  - /etc/mysql
+  - /etc/my.cnf
+  - /etc/my.cnf.d
+  - /root/.my.cnf
+  - /home/mysql/.my.cnf
   when: perform_clean_install | default(false)
-
+  tags:
+  - clean_install
 - name: Remove PowerDNS systemd overrides
   file:
-    path: "{{ item }}"
+    path: '{{ item }}'
     state: absent
   loop:
-    - /etc/systemd/system/pdns.service.d
-    - /etc/systemd/system/mysql.service.d
-    - /etc/systemd/system/mariadb.service.d
+  - /etc/systemd/system/pdns.service.d
+  - /etc/systemd/system/mysql.service.d
+  - /etc/systemd/system/mariadb.service.d
   when: perform_clean_install | default(false)
-
+  tags:
+  - clean_install
 - name: Remove PowerDNS management scripts
   file:
-    path: "{{ item }}"
+    path: '{{ item }}'
     state: absent
   loop:
-    - /usr/local/bin/pdns-zone-manager.sh
-    - /usr/local/bin/pdns-stats.sh
-    - /usr/local/bin/pdns-maintenance.sh
-    - /usr/local/bin/backup-powerdns.sh
-    - /usr/local/bin/health-check.sh
+  - /usr/local/bin/pdns-zone-manager.sh
+  - /usr/local/bin/pdns-stats.sh
+  - /usr/local/bin/pdns-maintenance.sh
+  - /usr/local/bin/backup-powerdns.sh
+  - /usr/local/bin/health-check.sh
   when: perform_clean_install | default(false)
-
+  tags:
+  - clean_install
 - name: Remove monitoring scripts and services
   file:
-    path: "{{ item }}"
+    path: '{{ item }}'
     state: absent
   loop:
-    - /usr/local/bin/dns-query-monitor.sh
-    - /usr/local/bin/powerdns-monitor.sh
-    - /usr/local/bin/system-monitor.sh
-    - /usr/local/bin/alert-manager.sh
-    - /usr/local/bin/monitoring-dashboard.sh
-    - /usr/local/bin/powerdns_exporter.sh
-    - /etc/systemd/system/powerdns-health-check.service
-    - /etc/systemd/system/powerdns-health-check.timer
-    - /etc/systemd/system/powerdns_metrics.service
-    - /etc/systemd/system/powerdns_metrics.timer
-    - /etc/systemd/system/node_exporter.service
+  - /usr/local/bin/dns-query-monitor.sh
+  - /usr/local/bin/powerdns-monitor.sh
+  - /usr/local/bin/system-monitor.sh
+  - /usr/local/bin/alert-manager.sh
+  - /usr/local/bin/monitoring-dashboard.sh
+  - /usr/local/bin/powerdns_exporter.sh
+  - /etc/systemd/system/powerdns-health-check.service
+  - /etc/systemd/system/powerdns-health-check.timer
+  - /etc/systemd/system/powerdns_metrics.service
+  - /etc/systemd/system/powerdns_metrics.timer
+  - /etc/systemd/system/node_exporter.service
   when: perform_clean_install | default(false)
-
+  tags:
+  - clean_install
 - name: Remove logrotate configurations
   file:
-    path: "{{ item }}"
+    path: '{{ item }}'
     state: absent
   loop:
-    - /etc/logrotate.d/powerdns-logs
-    - /etc/logrotate.d/powerdns
-    - /etc/logrotate.d/mysql
-    - /etc/logrotate.d/mariadb
-    - /etc/logrotate.d/monitoring
-    - /etc/logrotate.d/aide
+  - /etc/logrotate.d/powerdns-logs
+  - /etc/logrotate.d/powerdns
+  - /etc/logrotate.d/mysql
+  - /etc/logrotate.d/mariadb
+  - /etc/logrotate.d/monitoring
+  - /etc/logrotate.d/aide
   when: perform_clean_install | default(false)
-
+  tags:
+  - clean_install
 - name: Remove security configurations
   file:
-    path: "{{ item }}"
+    path: '{{ item }}'
     state: absent
   loop:
-    - /etc/aide
-    - /var/lib/aide
-    - /var/log/aide
-    - /etc/fail2ban/jail.d/powerdns.conf
-    - /usr/local/bin/aide-check.sh
-    - /usr/local/bin/aide-update.sh
-    - /usr/local/bin/security-monitor.sh
-    - /usr/local/bin/security-report.sh
+  - /etc/aide
+  - /var/lib/aide
+  - /var/log/aide
+  - /etc/fail2ban/jail.d/powerdns.conf
+  - /usr/local/bin/aide-check.sh
+  - /usr/local/bin/aide-update.sh
+  - /usr/local/bin/security-monitor.sh
+  - /usr/local/bin/security-report.sh
   when: perform_clean_install | default(false)
-
+  tags:
+  - clean_install
 - name: Remove system users created by playbook
   user:
-    name: "{{ item }}"
+    name: '{{ item }}'
     state: absent
-    remove: yes
+    remove: true
   loop:
-    - powerdns
-    - pdns
-    - mysql
-    - prometheus
-  ignore_errors: yes
+  - powerdns
+  - pdns
+  - mysql
+  - prometheus
+  ignore_errors: true
   when: perform_clean_install | default(false)
-
+  tags:
+  - clean_install
 - name: Remove system groups created by playbook
   group:
-    name: "{{ item }}"
+    name: '{{ item }}'
     state: absent
   loop:
-    - powerdns
-    - pdns
-    - mysql
-    - prometheus
-  ignore_errors: yes
+  - powerdns
+  - pdns
+  - mysql
+  - prometheus
+  ignore_errors: true
   when: perform_clean_install | default(false)
-
+  tags:
+  - clean_install
 - name: Clean package cache (Debian/Ubuntu)
   apt:
-    autoclean: yes
-    autoremove: yes
-  when: 
-    - perform_clean_install | default(false)
-    - ansible_os_family == "Debian"
-
+    autoclean: true
+    autoremove: true
+  when:
+  - perform_clean_install | default(false)
+  - ansible_os_family == "Debian"
+  tags:
+  - clean_install
 - name: Clean package cache (RedHat/CentOS)
   yum:
-    name: "*"
+    name: '*'
     state: latest
-    update_cache: yes
-  when: 
-    - perform_clean_install | default(false)
-    - ansible_os_family == "RedHat"
-
+    update_cache: true
+  when:
+  - perform_clean_install | default(false)
+  - ansible_os_family == "RedHat"
+  tags:
+  - clean_install
 - name: Reload systemd daemon after cleanup
   systemd:
-    daemon_reload: yes
+    daemon_reload: true
   when: perform_clean_install | default(false)
-
+  tags:
+  - clean_install
 - name: Remove any remaining PowerDNS processes
-  shell: |
-    pkill -f pdns || true
-    pkill -f mysql || true
-    pkill -f mariadb || true
-  when: perform_clean_install | default(false)
-  ignore_errors: yes
+  shell: 'pkill -f pdns || true
 
+    pkill -f mysql || true
+
+    pkill -f mariadb || true
+
+    '
+  when: perform_clean_install | default(false)
+  ignore_errors: true
+  tags:
+  - clean_install
 - name: Verify clean install completion
   debug:
     msg:
-      - "=== CLEAN INSTALL COMPLETED ==="
-      - "All PowerDNS and MySQL components have been removed"
-      - "System is ready for fresh installation"
-      - "Proceeding with installation roles..."
+    - === CLEAN INSTALL COMPLETED ===
+    - All PowerDNS and MySQL components have been removed
+    - System is ready for fresh installation
+    - Proceeding with installation roles...
   when: perform_clean_install | default(false)
-
+  tags:
+  - clean_install
 - name: Skip clean install notification
   debug:
-    msg: "Clean install skipped (perform_clean_install = false)"
+    msg: Clean install skipped (perform_clean_install = false)
   when: not (perform_clean_install | default(false))
+  tags:
+  - clean_install

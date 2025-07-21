@@ -1,31 +1,30 @@
----
-# Monitoring and health check tasks for PowerDNS
-
 - name: Install monitoring packages
   package:
     name:
-      - htop
-      - iotop
-      - nethogs
-      - tcpdump
-      - nmap
-      - telnet
-      - curl
-      - jq
+    - htop
+    - iotop
+    - nethogs
+    - tcpdump
+    - nmap
+    - telnet
+    - curl
+    - jq
     state: present
-
+  tags:
+  - monitoring
 - name: Create monitoring directories
   file:
-    path: "{{ item }}"
+    path: '{{ item }}'
     state: directory
     owner: root
     group: root
     mode: '0755'
   loop:
-    - /var/log/monitoring
-    - /opt/monitoring
-    - /etc/monitoring
-
+  - /var/log/monitoring
+  - /opt/monitoring
+  - /etc/monitoring
+  tags:
+  - monitoring
 - name: Install PowerDNS monitoring script
   template:
     src: powerdns-monitor.sh.j2
@@ -33,7 +32,8 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - monitoring
 - name: Install system resource monitoring script
   template:
     src: system-monitor.sh.j2
@@ -41,7 +41,8 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - monitoring
 - name: Install DNS query monitoring script
   template:
     src: dns-query-monitor.sh.j2
@@ -49,7 +50,8 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - monitoring
 - name: Create monitoring configuration
   template:
     src: monitoring.conf.j2
@@ -57,34 +59,44 @@
     owner: root
     group: root
     mode: '0644'
-
+  tags:
+  - monitoring
 - name: Schedule PowerDNS monitoring
   cron:
-    name: "PowerDNS monitoring check"
+    name: PowerDNS monitoring check
     cron_file: powerdns-monitoring
     user: root
-    minute: "*/5"
-    job: "/usr/local/bin/powerdns-monitor.sh >> /var/log/monitoring/powerdns-monitor.log 2>&1"
-    state: "{{ 'present' if monitoring_config.enabled | default(true) else 'absent' }}"
-
+    minute: '*/5'
+    job: /usr/local/bin/powerdns-monitor.sh >> /var/log/monitoring/powerdns-monitor.log
+      2>&1
+    state: '{{ ''present'' if monitoring_config.enabled | default(true) else ''absent''
+      }}'
+  tags:
+  - monitoring
 - name: Schedule system monitoring
   cron:
-    name: "System resource monitoring"
+    name: System resource monitoring
     cron_file: system-monitoring
     user: root
-    minute: "*/10"
-    job: "/usr/local/bin/system-monitor.sh >> /var/log/monitoring/system-monitor.log 2>&1"
-    state: "{{ 'present' if monitoring_config.enabled | default(true) else 'absent' }}"
-
+    minute: '*/10'
+    job: /usr/local/bin/system-monitor.sh >> /var/log/monitoring/system-monitor.log
+      2>&1
+    state: '{{ ''present'' if monitoring_config.enabled | default(true) else ''absent''
+      }}'
+  tags:
+  - monitoring
 - name: Schedule DNS query monitoring
   cron:
-    name: "DNS query monitoring"
+    name: DNS query monitoring
     cron_file: dns-monitoring
     user: root
-    minute: "*/2"
-    job: "/usr/local/bin/dns-query-monitor.sh >> /var/log/monitoring/dns-monitor.log 2>&1"
-    state: "{{ 'present' if monitoring_config.enabled | default(true) else 'absent' }}"
-
+    minute: '*/2'
+    job: /usr/local/bin/dns-query-monitor.sh >> /var/log/monitoring/dns-monitor.log
+      2>&1
+    state: '{{ ''present'' if monitoring_config.enabled | default(true) else ''absent''
+      }}'
+  tags:
+  - monitoring
 - name: Configure log rotation for monitoring logs
   template:
     src: monitoring-logrotate.j2
@@ -92,7 +104,8 @@
     owner: root
     group: root
     mode: '0644'
-
+  tags:
+  - monitoring
 - name: Install alerting script
   template:
     src: alert-manager.sh.j2
@@ -100,7 +113,8 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - monitoring
 - name: Create monitoring dashboard script
   template:
     src: monitoring-dashboard.sh.j2
@@ -108,17 +122,21 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - monitoring
 - name: Install Prometheus node exporter (if enabled)
   include_tasks: install_prometheus.yml
   when: monitoring_config.prometheus_port is defined
-
+  tags:
+  - monitoring
 - name: Display monitoring setup status
   debug:
     msg:
-      - "Monitoring setup completed"
-      - "PowerDNS monitoring: Every 5 minutes"
-      - "System monitoring: Every 10 minutes"
-      - "DNS query monitoring: Every 2 minutes"
-      - "Logs location: /var/log/monitoring/"
-      - "Dashboard: /usr/local/bin/monitoring-dashboard.sh"
+    - Monitoring setup completed
+    - 'PowerDNS monitoring: Every 5 minutes'
+    - 'System monitoring: Every 10 minutes'
+    - 'DNS query monitoring: Every 2 minutes'
+    - 'Logs location: /var/log/monitoring/'
+    - 'Dashboard: /usr/local/bin/monitoring-dashboard.sh'
+  tags:
+  - monitoring

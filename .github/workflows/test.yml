@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        scenario: [default,security,ha_cluster]
+        scenario: [default, security, ha_cluster]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

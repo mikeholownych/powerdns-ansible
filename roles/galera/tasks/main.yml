@@ -1,31 +1,41 @@
----
-# MySQL Galera Cluster for High Availability
-
 - name: Install Galera cluster packages
   package:
-    name: "{{ galera_packages[ansible_os_family] }}"
+    name: '{{ galera_packages[ansible_os_family] }}'
     state: present
   vars:
     galera_packages:
-      Debian: ['mariadb-server', 'mariadb-client', 'galera-4', 'rsync', 'socat']
-      RedHat: ['mariadb-server', 'mariadb-client', 'galera', 'rsync', 'socat']
-
+      Debian:
+      - mariadb-server
+      - mariadb-client
+      - galera-4
+      - rsync
+      - socat
+      RedHat:
+      - mariadb-server
+      - mariadb-client
+      - galera
+      - rsync
+      - socat
+  tags:
+  - galera
 - name: Stop MySQL service before cluster setup
   systemd:
-    name: "{{ mysql_service_name }}"
+    name: '{{ mysql_service_name }}'
     state: stopped
   when: galera_bootstrap | default(false)
-
+  tags:
+  - galera
 - name: Create Galera configuration
   template:
     src: galera.cnf.j2
-    dest: "{{ galera_config_path[ansible_os_family] }}"
+    dest: '{{ galera_config_path[ansible_os_family] }}'
     owner: root
     group: root
     mode: '0644'
-    backup: yes
+    backup: true
   notify: restart mysql
-
+  tags:
+  - galera
 - name: Create Galera cluster state directory
   file:
     path: /var/lib/mysql-cluster
@@ -33,11 +43,12 @@
     owner: mysql
     group: mysql
     mode: '0755'
-
+  tags:
+  - galera
 - name: Configure MySQL for Galera
   template:
     src: mysql-galera.cnf.j2
-    dest: "{{ mysql_galera_config_path[ansible_os_family] }}"
+    dest: '{{ mysql_galera_config_path[ansible_os_family] }}'
     owner: root
     group: root
     mode: '0644'
@@ -46,7 +57,8 @@
     mysql_galera_config_path:
       Debian: /etc/mysql/conf.d/galera.cnf
       RedHat: /etc/my.cnf.d/galera.cnf
-
+  tags:
+  - galera
 - name: Create Galera cluster bootstrap script
   template:
     src: galera-bootstrap.sh.j2
@@ -54,79 +66,95 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - galera
 - name: Create Galera cluster management scripts
   template:
-    src: "{{ item }}.j2"
-    dest: "/usr/local/bin/{{ item }}"
+    src: '{{ item }}.j2'
+    dest: /usr/local/bin/{{ item }}
     owner: root
     group: root
     mode: '0755'
   loop:
-    - galera-status.sh
-    - galera-recovery.sh
-    - galera-health-check.sh
-
+  - galera-status.sh
+  - galera-recovery.sh
+  - galera-health-check.sh
+  tags:
+  - galera
 - name: Bootstrap Galera cluster (first node only)
   command: /usr/local/bin/galera-bootstrap.sh
-  when: 
-    - galera_bootstrap_node | default(false)
-    - inventory_hostname == groups['galera_cluster'][0]
+  when:
+  - galera_bootstrap_node | default(false)
+  - inventory_hostname == groups['galera_cluster'][0]
   register: galera_bootstrap_result
   changed_when: galera_bootstrap_result.rc == 0
-
+  tags:
+  - galera
 - name: Wait for bootstrap node to be ready
   wait_for:
     port: 3306
-    host: "{{ hostvars[groups['galera_cluster'][0]]['ansible_default_ipv4']['address'] }}"
+    host: '{{ hostvars[groups[''galera_cluster''][0]][''ansible_default_ipv4''][''address'']
+      }}'
     timeout: 60
   when: not (galera_bootstrap_node | default(false))
   delegate_to: localhost
-
+  tags:
+  - galera
 - name: Start MySQL service on remaining nodes
   systemd:
-    name: "{{ mysql_service_name }}"
+    name: '{{ mysql_service_name }}'
     state: started
-    enabled: yes
+    enabled: true
   when: not (galera_bootstrap_node | default(false))
-
+  tags:
+  - galera
 - name: Wait for Galera cluster to sync
   wait_for:
     port: 3306
     host: localhost
     timeout: 120
     delay: 10
-
+  tags:
+  - galera
 - name: Verify Galera cluster status
   mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
-    query: "SHOW STATUS LIKE 'wsrep_%'"
+    login_password: '{{ mysql_root_password | default(omit) }}'
+    query: SHOW STATUS LIKE 'wsrep_%'
   register: galera_status
   retries: 5
   delay: 10
-
+  tags:
+  - galera
 - name: Display Galera cluster information
   debug:
     msg:
-      - "Cluster Size: {{ galera_status.query_result | selectattr('Variable_name', 'equalto', 'wsrep_cluster_size') | map(attribute='Value') | first | default('Unknown') }}"
-      - "Cluster Status: {{ galera_status.query_result | selectattr('Variable_name', 'equalto', 'wsrep_cluster_status') | map(attribute='Value') | first | default('Unknown') }}"
-      - "Node State: {{ galera_status.query_result | selectattr('Variable_name', 'equalto', 'wsrep_local_state_comment') | map(attribute='Value') | first | default('Unknown') }}"
-
+    - 'Cluster Size: {{ galera_status.query_result | selectattr(''Variable_name'',
+      ''equalto'', ''wsrep_cluster_size'') | map(attribute=''Value'') | first | default(''Unknown'')
+      }}'
+    - 'Cluster Status: {{ galera_status.query_result | selectattr(''Variable_name'',
+      ''equalto'', ''wsrep_cluster_status'') | map(attribute=''Value'') | first |
+      default(''Unknown'') }}'
+    - 'Node State: {{ galera_status.query_result | selectattr(''Variable_name'', ''equalto'',
+      ''wsrep_local_state_comment'') | map(attribute=''Value'') | first | default(''Unknown'')
+      }}'
+  tags:
+  - galera
 - name: Create Galera monitoring user
   mysql_user:
-    name: "{{ galera_monitor_user | default('galera_monitor') }}"
-    password: "{{ galera_monitor_password | default('monitor123') }}"
-    priv: "*.*:USAGE"
-    host: "{{ item }}"
+    name: '{{ galera_monitor_user | default(''galera_monitor'') }}'
+    password: '{{ galera_monitor_password | default(''monitor123'') }}'
+    priv: '*.*:USAGE'
+    host: '{{ item }}'
     state: present
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
+    login_password: '{{ mysql_root_password | default(omit) }}'
   loop:
-    - localhost
-    - "{{ ansible_default_ipv4.address }}"
-    - '%'
-
+  - localhost
+  - '{{ ansible_default_ipv4.address }}'
+  - '%'
+  tags:
+  - galera
 - name: Configure Galera cluster health checks
   template:
     src: galera-health-check.service.j2
@@ -135,9 +163,10 @@
     group: root
     mode: '0644'
   notify:
-    - reload systemd
-    - restart galera-health-check
-
+  - reload systemd
+  - restart galera-health-check
+  tags:
+  - galera
 - name: Configure Galera cluster health check timer
   template:
     src: galera-health-check.timer.j2
@@ -146,9 +175,10 @@
     group: root
     mode: '0644'
   notify:
-    - reload systemd
-    - start galera-health-check-timer
-
+  - reload systemd
+  - start galera-health-check-timer
+  tags:
+  - galera
 - name: Create Galera backup script
   template:
     src: galera-backup.sh.j2
@@ -156,34 +186,37 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - galera
 - name: Schedule Galera cluster backups
   cron:
-    name: "Galera Cluster Backup"
+    name: Galera Cluster Backup
     cron_file: galera-backup
     user: root
-    minute: "0"
-    hour: "2"
-    job: "/usr/local/bin/galera-backup.sh"
+    minute: '0'
+    hour: '2'
+    job: /usr/local/bin/galera-backup.sh
     state: present
   when: galera_backup_enabled | default(true)
-
+  tags:
+  - galera
 - name: Configure firewall for Galera cluster
   ufw:
     rule: allow
-    port: "{{ item }}"
+    port: '{{ item }}'
     proto: tcp
-    src: "{{ galera_cluster_network | default('192.168.1.0/24') }}"
-    comment: "Galera Cluster"
+    src: '{{ galera_cluster_network | default(''192.168.1.0/24'') }}'
+    comment: Galera Cluster
   loop:
-    - "3306"  # MySQL
-    - "4567"  # Galera replication
-    - "4568"  # IST (Incremental State Transfer)
-    - "4444"  # SST (State Snapshot Transfer)
-  when: 
-    - ansible_os_family == "Debian"
-    - firewall_enabled | default(true)
-
+  - '3306'
+  - '4567'
+  - '4568'
+  - '4444'
+  when:
+  - ansible_os_family == "Debian"
+  - firewall_enabled | default(true)
+  tags:
+  - galera
 - name: Create Galera cluster status dashboard
   template:
     src: galera-dashboard.sh.j2
@@ -191,32 +224,44 @@
     owner: root
     group: root
     mode: '0755'
-
+  tags:
+  - galera
 - name: Enable Galera health monitoring
   systemd:
     name: galera-health-check.timer
-    enabled: yes
+    enabled: true
     state: started
-    daemon_reload: yes
+    daemon_reload: true
   when: galera_monitoring_enabled | default(true)
-
+  tags:
+  - galera
 - name: Test Galera cluster functionality
   mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password | default(omit) }}"
-    query: |
-      CREATE DATABASE IF NOT EXISTS galera_test;
+    login_password: '{{ mysql_root_password | default(omit) }}'
+    query: 'CREATE DATABASE IF NOT EXISTS galera_test;
+
       USE galera_test;
+
       CREATE TABLE IF NOT EXISTS test_table (id INT PRIMARY KEY, data VARCHAR(100));
-      INSERT INTO test_table (id, data) VALUES ({{ ansible_date_time.epoch }}, '{{ inventory_hostname }}') ON DUPLICATE KEY UPDATE data='{{ inventory_hostname }}';
+
+      INSERT INTO test_table (id, data) VALUES ({{ ansible_date_time.epoch }}, ''{{
+      inventory_hostname }}'') ON DUPLICATE KEY UPDATE data=''{{ inventory_hostname
+      }}'';
+
       SELECT COUNT(*) as test_count FROM test_table;
+
+      '
   register: galera_test
   changed_when: false
-
+  tags:
+  - galera
 - name: Display Galera test results
   debug:
-    msg: "Galera cluster test: {{ 'PASSED' if galera_test.query_result[0]['test_count'] > 0 else 'FAILED' }}"
-
+    msg: 'Galera cluster test: {{ ''PASSED'' if galera_test.query_result[0][''test_count'']
+      > 0 else ''FAILED'' }}'
+  tags:
+  - galera
 - name: Create Galera cluster recovery procedures
   template:
     src: galera-recovery-procedures.md.j2
@@ -224,3 +269,5 @@
     owner: root
     group: root
     mode: '0644'
+  tags:
+  - galera
