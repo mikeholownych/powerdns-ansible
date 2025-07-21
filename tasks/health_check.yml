@@ -22,7 +22,7 @@
   ansible.builtin.command: dig @{{ ansible_default_ipv4.address }} localhost +short +time=5
   register: dns_test
   changed_when: false
-  failed_when: false
+  failed_when: dns_test.rc != 0
 
 - name: Test PowerDNS API (if enabled)
   ansible.builtin.uri:
@@ -33,7 +33,7 @@
     status_code: 200
   register: api_test
   when: powerdns_api_readonly is defined
-  failed_when: false
+  failed_when: api_test.status|default(0) != 200
 
 - name: Check database connectivity
   community.mysql.mysql_query:
@@ -55,14 +55,14 @@
   register: firewall_status
   when: ansible_os_family == "Debian"
   changed_when: false
-  failed_when: false
+  failed_when: firewall_status.rc != 0
 
 - name: Check firewalld status (RHEL)
   ansible.builtin.command: firewall-cmd --state
   register: firewalld_status
   when: ansible_os_family == "RedHat"
   changed_when: false
-  failed_when: false
+  failed_when: firewalld_status.rc != 0
 
 - name: Verify backup directory
   ansible.builtin.stat:

@@ -27,7 +27,7 @@
 
 ## 🛠 Fix Recommendations
 - Address `ansible-lint` failures (1602 detected)
-- Removed `ignore_errors` uses in `tasks/health_check.yml`
+- Replaced `ignore_errors` with explicit failure checks in `tasks/health_check.yml`
 
 ## 📊 Score
 100/100
