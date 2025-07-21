@@ -1,0 +1,36 @@
+---
+# PowerDNS Role Handlers
+
+- name: restart powerdns
+  systemd:
+    name: "{{ powerdns_service_name | default('pdns') }}"
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+
+- name: reload powerdns
+  systemd:
+    name: "{{ powerdns_service_name | default('pdns') }}"
+    state: reloaded
+
+- name: start powerdns
+  systemd:
+    name: "{{ powerdns_service_name | default('pdns') }}"
+    state: started
+    enabled: yes
+
+- name: stop powerdns
+  systemd:
+    name: "{{ powerdns_service_name | default('pdns') }}"
+    state: stopped
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+
+- name: restart pdns
+  systemd:
+    name: pdns
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
