@@ -172,3 +172,5 @@ logs/
 audit_output.yaml
 lint_status.yaml
 lint.json
+lint_output.yml
+lint_status.md
