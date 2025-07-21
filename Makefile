@@ -1,11 +1,14 @@
 install:
-pip install -r requirements.txt
+	pip install -r requirements.txt
 
 test:
-pytest -q --cov=src --cov-report=term-missing
+	pytest -q --cov=src --cov-report=term-missing
 
 run:
-python src/cli.py run
+	python src/cli.py run
+
+serve:
+	python src/cli.py serve
 
 lint:
-black src tests
+	black src tests
