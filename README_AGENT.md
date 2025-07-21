@@ -20,6 +20,7 @@ make install
 
 # Run audit
 make run
+# or python validate.py
 
 # Run tests
 make test

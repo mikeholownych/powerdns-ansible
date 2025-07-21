@@ -43,8 +43,6 @@ def load_config() -> dict:
         return yaml.safe_load(f)
 
 
-
-
 @app.post("/audit", dependencies=[Depends(get_api_key), Depends(check_rate_limit)])
 async def run_audit(root: str = "."):
     agent = AuditAgent(root, config)
