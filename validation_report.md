@@ -26,8 +26,8 @@
 - None
 
 ## 🛠 Fix Recommendations
-- Address `ansible-lint` failures (1602 detected)
-- Replaced `ignore_errors` with explicit failure checks in `tasks/health_check.yml`
+- Address `ansible-lint` failures (1499 detected)
+- Replaced `ignore_errors` with explicit failure checks across multiple roles
 
 ## 📊 Score
 100/100

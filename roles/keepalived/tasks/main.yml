@@ -11,16 +11,23 @@
   when: keepalived_tools[ansible_os_family] is defined
   tags:
   - keepalived
+
+- name: Check keepalived config exists
+  ansible.builtin.stat:
+    path: /etc/keepalived/keepalived.conf
+  register: keepalived_config
+  tags:
+  - keepalived
 - name: Create keepalived configuration backup
-  copy:
+  ansible.builtin.copy:
     src: /etc/keepalived/keepalived.conf
     dest: /etc/keepalived/keepalived.conf.backup.{{ ansible_date_time.epoch }}
     remote_src: true
     owner: root
     group: root
     mode: '0644'
-  when: ansible_stat.stat.exists is defined and ansible_stat.stat.exists
-  ignore_errors: true
+  when: keepalived_config.stat.exists
+  failed_when: false
   tags:
   - keepalived
 - name: Generate keepalived configuration
@@ -101,7 +108,6 @@
   register: keepalived_config_check
   failed_when: keepalived_config_check.rc != 0
   changed_when: false
-  ignore_errors: true
   tags:
   - keepalived
 - name: Create keepalived management scripts

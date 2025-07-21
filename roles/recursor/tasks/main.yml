@@ -26,20 +26,25 @@
   systemd:
     name: '{{ recursor_service_name }}'
     state: stopped
-  ignore_errors: true
+  failed_when: false
+  tags:
+  - recursor
+- name: Check PowerDNS Recursor config exists
+  ansible.builtin.stat:
+    path: '{{ recursor_config_file }}'
+  register: recursor_config
   tags:
   - recursor
 - name: Create PowerDNS Recursor configuration backup
-  copy:
+  ansible.builtin.copy:
     src: '{{ recursor_config_file }}'
-    dest: '{{ recursor_backup_dir }}/recursor.conf.backup.{{ ansible_date_time.epoch
-      }}'
+    dest: '{{ recursor_backup_dir }}/recursor.conf.backup.{{ ansible_date_time.epoch }}'
     remote_src: true
     owner: root
     group: root
     mode: '0640'
-  when: ansible_stat.stat.exists is defined and ansible_stat.stat.exists
-  ignore_errors: true
+  when: recursor_config.stat.exists
+  failed_when: false
   tags:
   - recursor
 - name: Generate PowerDNS Recursor configuration
@@ -176,7 +181,6 @@
   register: recursor_test
   failed_when: recursor_test.rc != 0
   changed_when: false
-  ignore_errors: true
   tags:
   - recursor
 - name: Display PowerDNS Recursor test result
