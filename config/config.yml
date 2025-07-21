@@ -1,0 +1,18 @@
+audit:
+  required_role_dirs:
+    - tasks
+    - defaults
+    - handlers
+    - meta
+    - vars
+    - templates
+    - files
+  placeholder_keywords:
+    - TODO
+    - REPLACE_ME
+    - FIXME
+rate_limit:
+  max_calls: 5
+  period: 60
+api:
+  api_key_env: AGENT_API_KEY
