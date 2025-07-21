@@ -1,11 +1,11 @@
 progress.md updated
 # Validation Score: 90/100
-## ansible-lint Violations: 1099
+## ansible-lint Violations: 1028
 
 ### Top Violations
-- yaml[indentation]: 585
-- fqcn[action-core]: 353
-- fqcn[action]: 66
+- yaml[indentation]: 547
+- fqcn[action-core]: 324
+- fqcn[action]: 64
 - name[casing]: 31
 - yaml[truthy]: 14
 
