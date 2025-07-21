@@ -1,20 +1,20 @@
 - name: Display clean install warning
-  debug:
+  ansible.builtin.debug:
     msg:
-    - '=== WARNING: PERFORMING CLEAN INSTALL ==='
-    - This will remove ALL PowerDNS and MySQL data!
-    - All databases, configurations, and logs will be deleted!
-    - This action is IRREVERSIBLE!
+      - '=== WARNING: PERFORMING CLEAN INSTALL ==='
+      - This will remove ALL PowerDNS and MySQL data!
+      - All databases, configurations, and logs will be deleted!
+      - This action is IRREVERSIBLE!
   when: perform_clean_install | default(false)
   tags:
   - clean_install
 - name: Pause for confirmation (only in interactive mode)
-  pause:
+  ansible.builtin.pause:
     prompt: Press ENTER to continue with clean install or Ctrl+C to abort
   when:
   - perform_clean_install | default(false)
   - ansible_check_mode is not defined
-  - clean_install_force | default(false) == false
+  - not clean_install_force | default(false)
   tags:
   - clean_install
 - name: Stop PowerDNS service

@@ -74,7 +74,7 @@
       tags: ['health', 'validation']
 
     - name: Display setup completion summary
-      debug:
+      ansible.builtin.debug:
         msg:
           - "=== PowerDNS Setup Complete ==="
           - "Server Role: {{ server_role }}"
@@ -84,21 +84,21 @@
           - "Logs: journalctl -u pdns -f"
 
   handlers:
-    - name: restart powerdns
+    - name: Restart PowerDNS
       ansible.builtin.systemd:
         name: pdns
         state: restarted
         enabled: true
       listen: "restart powerdns"
 
-    - name: restart mysql
+    - name: Restart MySQL
       ansible.builtin.systemd:
         name: "{{ mysql_service_name }}"
         state: restarted
         enabled: true
       listen: "restart mysql"
 
-    - name: reload firewall
+    - name: Reload firewall
       ansible.builtin.systemd:
         name: ufw
         state: reloaded

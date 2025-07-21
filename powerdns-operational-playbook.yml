@@ -264,21 +264,21 @@
       listen: "restart haproxy"
       when: restart_services_on_change | default(true)
 
-    - name: restart keepalived
-      systemd:
+    - name: Restart keepalived
+      ansible.builtin.systemd:
         name: keepalived
         state: restarted
         enabled: true
       listen: "restart keepalived"
       when: restart_services_on_change | default(true)
 
-    - name: reload systemd
-      systemd:
+    - name: Reload systemd
+      ansible.builtin.systemd:
         daemon_reload: true
       listen: "reload systemd"
 
-    - name: reload firewall
-      systemd:
+    - name: Reload firewall
+      ansible.builtin.systemd:
         name: ufw
         state: reloaded
       listen: "reload firewall"
@@ -296,7 +296,8 @@
 
   tasks:
     - name: Execute rollback
-      command: /usr/local/bin/rollback-prepare.py --execute-rollback
+      ansible.builtin.command: /usr/local/bin/rollback-prepare.py --execute-rollback
+      changed_when: false
       register: rollback_execution
       when:
         - enable_rollback | default(true)
@@ -304,7 +305,7 @@
       tags: ['rollback']
 
     - name: Verify rollback success
-      include_tasks: tasks/health_check.yml
+      ansible.builtin.include_tasks: tasks/health_check.yml
       when:
         - enable_rollback | default(true)
         - operation_mode == 'rollback'
