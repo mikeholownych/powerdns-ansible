@@ -53,4 +53,3 @@ def test_rate_limit(tmp_path):
             "/audit", params={"root": str(tmp_path)}, headers={"x-api-key": "test"}
         )
         assert r.status_code == 429
-
