@@ -15,3 +15,20 @@ def test_cli_run(tmp_path, monkeypatch):
     )
     cli.main()
     assert (tmpdir / "validation_report.md").is_file()
+
+
+def test_cli_serve(monkeypatch):
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["cli.py", "serve", "--host", "127.0.0.1", "--port", "9999"],
+    )
+    called = {}
+
+    def fake_run(app, host="", port=0):
+        called["host"] = host
+        called["port"] = port
+
+    monkeypatch.setattr("uvicorn.run", fake_run)
+    cli.main()
+    assert called == {"host": "127.0.0.1", "port": 9999}
