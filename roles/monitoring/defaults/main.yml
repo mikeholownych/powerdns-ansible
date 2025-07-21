@@ -1,2 +1,10 @@
 ---
 # defaults for monitoring role
+
+alert_email: ops@example.com
+alert_webhook_url: "http://localhost/alert"
+domain: "example.com"
+powerdns_api_key: "changeme"
+powerdns_db_password: "secret"
+powerdns_webserver_port: 8081
+zone: "example.com"

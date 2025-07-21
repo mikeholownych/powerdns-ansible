@@ -1,2 +1,7 @@
 ---
 # defaults for self_healing role
+
+gitops_repo_url: "https://git.example.com/repo.git"
+powerdns_api_key: "changeme"
+powerdns_config_dir: "/etc/powerdns"
+powerdns_db_password: "secret"

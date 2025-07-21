@@ -1,2 +1,6 @@
 ---
 # defaults for mysql role
+
+mysql_root_password: "secret"
+powerdns_db_password: "secret"
+db_tables: []

@@ -1,2 +1,9 @@
 ---
 # defaults for security role
+
+alert_email: ops@example.com
+alert_webhook_url: "http://localhost/security"
+powerdns_config_dir: "/etc/powerdns"
+powerdns_db_password: "secret"
+powerdns_group: "pdns"
+powerdns_webserver_port: 8081

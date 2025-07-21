@@ -1,2 +1,7 @@
 ---
 # defaults for prometheus role
+
+powerdns_api_key: "changeme"
+prometheus_remote_write_url: ""
+prometheus_remote_write_username: ""
+prometheus_remote_write_password: ""

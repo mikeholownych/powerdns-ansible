@@ -1,2 +1,8 @@
 ---
 # defaults for common role
+
+alert_email: ops@example.com
+powerdns_config_dir: "/etc/powerdns"
+powerdns_db_password: "secret"
+powerdns_group: "pdns"
+powerdns_user: "pdns"

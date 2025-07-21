@@ -1,2 +1,4 @@
 ---
 # defaults for dnssec_automation role
+
+powerdns_db_password: "secret"

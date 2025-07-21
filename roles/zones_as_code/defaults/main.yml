@@ -1,2 +1,4 @@
 ---
 # defaults for zones_as_code role
+
+zones_git_repo: "https://git.example.com/zones.git"

@@ -1,2 +1,10 @@
 ---
 # defaults for keepalived role
+
+alert_email: admin@example.com
+keepalived_webhook_url: "http://localhost/keepalived"
+keepalived_service_status: "started"
+instance: "VI_1"
+script: "/usr/local/bin/check_service.sh"
+vrrp_state: "MASTER"
+powerdns_db_password: "secret"

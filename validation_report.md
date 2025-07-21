@@ -1,131 +1,35 @@
 ## ✅ Valid Items
 - roles/clean_install
+- roles/common
+- roles/dnsdist
+- roles/dnssec_automation
+- roles/galera
+- roles/haproxy
+- roles/keepalived
+- roles/monitoring
+- roles/mysql
+- roles/powerdns
+- roles/prometheus
+- roles/recursor
+- roles/security
+- roles/security_hardening
+- roles/self_healing
+- roles/selfheal
 - roles/state_management
+- roles/validate_config
+- roles/zones_as_code
 
 ## ❌ Missing or Broken
-- common: alert_email
-- common: powerdns_config_dir
-- common: powerdns_db_password
-- common: powerdns_group
-- common: powerdns_user
-- recursor: domain
-- recursor: key
-- recursor: record
-- recursor: recursor_service_status
-- recursor: value
-- recursor: zone
-- self_healing: gitops_repo_url
-- self_healing: powerdns_api_key
-- self_healing: powerdns_config_dir
-- self_healing: powerdns_db_password
-- powerdns: /workspace/powerdns-ansible/roles/powerdns/tasks/main.yml notifies undefined handler 'reload systemd'
-- powerdns: /workspace/powerdns-ansible/roles/powerdns/tasks/main.yml notifies undefined handler 'restart powerdns'
-- powerdns: ad_domains
-- powerdns: dnssec_status
-- powerdns: domain
-- powerdns: domain_ids
-- powerdns: powerdns_api_key
-- powerdns: powerdns_backend
-- powerdns: powerdns_config_dir
-- powerdns: powerdns_db_password
-- powerdns: powerdns_group
-- powerdns: powerdns_service_status
-- powerdns: powerdns_user
-- powerdns: record
-- powerdns: reverse_zones
-- powerdns: slave_domain_count
-- powerdns: zone_transfer_status
-- powerdns: zone_validation
-- keepalived: alert_email
-- keepalived: instance
-- keepalived: keepalived_service_status
-- keepalived: keepalived_webhook_url
-- keepalived: powerdns_db_password
-- keepalived: script
-- keepalived: vrrp_state
-- selfheal: config_check_result
-- selfheal: final_service_check
-- selfheal: mysql_error_log
-- selfheal: port_conflicts
-- selfheal: powerdns_api_key
-- selfheal: powerdns_db_password
-- selfheal: powerdns_mysql_backend_packages
-- haproxy: haproxy_service_status
-- security_hardening: /workspace/powerdns-ansible/roles/security_hardening/tasks/main.yml notifies undefined handler 'restart fail2ban'
-- security_hardening: ssl_cert_path
-- security_hardening: ssl_key_path
-- monitoring: alert_email
-- monitoring: alert_webhook_url
-- monitoring: domain
-- monitoring: loop
-- monitoring: powerdns_api_key
-- monitoring: powerdns_db_password
-- monitoring: powerdns_webserver_port
-- monitoring: zone
-- dnssec_automation: powerdns_db_password
-- prometheus: powerdns_api_key
-- prometheus: prometheus_remote_write_password
-- prometheus: prometheus_remote_write_url
-- prometheus: prometheus_remote_write_username
-- security: alert_email
-- security: alert_webhook_url
-- security: powerdns_config_dir
-- security: powerdns_db_password
-- security: powerdns_group
-- security: powerdns_webserver_port
-- zones_as_code: zones_git_repo
-- mysql: db_tables
-- mysql: mysql_root_password
-- mysql: powerdns_db_password
-- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'reload systemd'
-- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'restart galera-health-check'
-- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'restart mysql'
-- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'start galera-health-check-timer'
-- galera: galera_config_path
-- galera: galera_packages
-- galera: mysql_galera_config_path
-- dnsdist: /workspace/powerdns-ansible/roles/dnsdist/tasks/main.yml notifies undefined handler 'reload systemd'
-- dnsdist: /workspace/powerdns-ansible/roles/dnsdist/tasks/main.yml notifies undefined handler 'restart dnsdist'
-- dnsdist: dnsdist_packages
-- dnsdist: domain
-- dnsdist: geo_rule
-- dnsdist: loop
-- dnsdist: rule
-- dnsdist: zone
-- validate_config: dnssec_key_algorithm
-- validate_config: existing_pdns_config
-- validate_config: pdns_config_hash
+- None
 
 ## ⚠️ Placeholders Detected
 - None
 
 ## 🛠 Fix Recommendations
-- Define variables alert_email, powerdns_config_dir, powerdns_db_password, powerdns_group, powerdns_user
-- Define variables domain, key, record, recursor_service_status, value, zone
-- Define variables gitops_repo_url, powerdns_api_key, powerdns_config_dir, powerdns_db_password
-- Review tasks/handlers in roles/powerdns for missing tags or handlers
-- Define variables ad_domains, dnssec_status, domain, domain_ids, powerdns_api_key, powerdns_backend, powerdns_config_dir, powerdns_db_password, powerdns_group, powerdns_service_status, powerdns_user, record, reverse_zones, slave_domain_count, zone_transfer_status, zone_validation
-- Define variables alert_email, instance, keepalived_service_status, keepalived_webhook_url, powerdns_db_password, script, vrrp_state
-- Define variables config_check_result, final_service_check, mysql_error_log, port_conflicts, powerdns_api_key, powerdns_db_password, powerdns_mysql_backend_packages
-- Define variables haproxy_service_status
-- Review tasks/handlers in roles/security_hardening for missing tags or handlers
-- Define variables ssl_cert_path, ssl_key_path
-- Define variables alert_email, alert_webhook_url, domain, loop, powerdns_api_key, powerdns_db_password, powerdns_webserver_port, zone
-- Define variables powerdns_db_password
-- Define variables powerdns_api_key, prometheus_remote_write_password, prometheus_remote_write_url, prometheus_remote_write_username
-- Define variables alert_email, alert_webhook_url, powerdns_config_dir, powerdns_db_password, powerdns_group, powerdns_webserver_port
-- Define variables zones_git_repo
-- Define variables db_tables, mysql_root_password, powerdns_db_password
-- Review tasks/handlers in roles/galera for missing tags or handlers
-- Define variables galera_config_path, galera_packages, mysql_galera_config_path
-- Review tasks/handlers in roles/dnsdist for missing tags or handlers
-- Define variables dnsdist_packages, domain, geo_rule, loop, rule, zone
-- Define variables dnssec_key_algorithm, existing_pdns_config, pdns_config_hash
+- No issues found
 
 ## 📊 Score
-8/100
+100/100
 
 ## 🔜 Next Actions
-- Address missing directories and meta files
-- Ensure each task has name and tags
-- Define any undefined variables in defaults or vars
+- Collection structure looks good

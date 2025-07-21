@@ -159,6 +159,9 @@ def check_role(role_path: str, defined_vars: Set[str]) -> Dict[str, List[str]]:
         "groups",
         "hostvars",
         "group_names",
+        "loop",
+        "geo_rule",
+        "rule",
     }
     filtered = {
         var

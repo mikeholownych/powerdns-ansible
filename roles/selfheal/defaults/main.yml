@@ -1,2 +1,10 @@
 ---
 # defaults for selfheal role
+
+config_check_result: false
+final_service_check: false
+mysql_error_log: "/var/log/mysql/error.log"
+port_conflicts: []
+powerdns_api_key: "changeme"
+powerdns_db_password: "secret"
+powerdns_mysql_backend_packages: []

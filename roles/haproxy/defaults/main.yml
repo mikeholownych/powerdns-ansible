@@ -1,2 +1,4 @@
 ---
 # defaults for haproxy role
+
+haproxy_service_status: "started"

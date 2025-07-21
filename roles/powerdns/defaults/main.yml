@@ -1,2 +1,20 @@
 ---
 # defaults for powerdns role
+
+powerdns_api_key: "changeme"
+powerdns_backend: "gmysql"
+powerdns_config_dir: "/etc/powerdns"
+powerdns_db_password: "secret"
+powerdns_group: "pdns"
+powerdns_user: "pdns"
+powerdns_service_status: "started"
+
+ad_domains: []
+dnssec_status: false
+domain: "example.com"
+domain_ids: []
+record: "A"
+reverse_zones: []
+slave_domain_count: 0
+zone_transfer_status: "enabled"
+zone_validation: true

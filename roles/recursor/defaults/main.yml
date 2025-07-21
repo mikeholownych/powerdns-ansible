@@ -1,2 +1,9 @@
 ---
 # defaults for recursor role
+
+recursor_service_status: "started"
+domain: "example.com"
+zone: "example.com"
+record: "A"
+key: "changeme"
+value: "1.2.3.4"
