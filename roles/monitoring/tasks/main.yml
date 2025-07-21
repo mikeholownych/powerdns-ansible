@@ -11,7 +11,7 @@
     - jq
     state: present
   tags:
-  - monitoring
+    - monitoring
 - name: Create monitoring directories
   file:
     path: '{{ item }}'
@@ -20,11 +20,11 @@
     group: root
     mode: '0755'
   loop:
-  - /var/log/monitoring
-  - /opt/monitoring
-  - /etc/monitoring
+    - /var/log/monitoring
+    - /opt/monitoring
+    - /etc/monitoring
   tags:
-  - monitoring
+    - monitoring
 - name: Install PowerDNS monitoring script
   template:
     src: powerdns-monitor.sh.j2
@@ -33,7 +33,7 @@
     group: root
     mode: '0755'
   tags:
-  - monitoring
+    - monitoring
 - name: Install system resource monitoring script
   template:
     src: system-monitor.sh.j2
@@ -42,7 +42,7 @@
     group: root
     mode: '0755'
   tags:
-  - monitoring
+    - monitoring
 - name: Install DNS query monitoring script
   template:
     src: dns-query-monitor.sh.j2
@@ -51,7 +51,7 @@
     group: root
     mode: '0755'
   tags:
-  - monitoring
+    - monitoring
 - name: Create monitoring configuration
   template:
     src: monitoring.conf.j2
@@ -60,7 +60,7 @@
     group: root
     mode: '0644'
   tags:
-  - monitoring
+    - monitoring
 - name: Schedule PowerDNS monitoring
   cron:
     name: PowerDNS monitoring check
@@ -72,7 +72,7 @@
     state: '{{ ''present'' if monitoring_config.enabled | default(true) else ''absent''
       }}'
   tags:
-  - monitoring
+    - monitoring
 - name: Schedule system monitoring
   cron:
     name: System resource monitoring
@@ -84,7 +84,7 @@
     state: '{{ ''present'' if monitoring_config.enabled | default(true) else ''absent''
       }}'
   tags:
-  - monitoring
+    - monitoring
 - name: Schedule DNS query monitoring
   cron:
     name: DNS query monitoring
@@ -96,7 +96,7 @@
     state: '{{ ''present'' if monitoring_config.enabled | default(true) else ''absent''
       }}'
   tags:
-  - monitoring
+    - monitoring
 - name: Configure log rotation for monitoring logs
   template:
     src: monitoring-logrotate.j2
@@ -105,7 +105,7 @@
     group: root
     mode: '0644'
   tags:
-  - monitoring
+    - monitoring
 - name: Install alerting script
   template:
     src: alert-manager.sh.j2
@@ -114,7 +114,7 @@
     group: root
     mode: '0755'
   tags:
-  - monitoring
+    - monitoring
 - name: Create monitoring dashboard script
   template:
     src: monitoring-dashboard.sh.j2
@@ -123,12 +123,12 @@
     group: root
     mode: '0755'
   tags:
-  - monitoring
+    - monitoring
 - name: Install Prometheus node exporter (if enabled)
   include_tasks: install_prometheus.yml
   when: monitoring_config.prometheus_port is defined
   tags:
-  - monitoring
+    - monitoring
 - name: Display monitoring setup status
   debug:
     msg:
@@ -139,4 +139,4 @@
     - 'Logs location: /var/log/monitoring/'
     - 'Dashboard: /usr/local/bin/monitoring-dashboard.sh'
   tags:
-  - monitoring
+    - monitoring
