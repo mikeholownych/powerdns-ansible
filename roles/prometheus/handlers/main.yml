@@ -1,0 +1,39 @@
+---
+# Handlers for Prometheus role
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+  listen: "reload systemd"
+
+- name: restart prometheus
+  systemd:
+    name: prometheus
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+  listen: "restart prometheus"
+
+- name: restart powerdns-exporter
+  systemd:
+    name: powerdns-exporter
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+  listen: "restart powerdns-exporter"
+
+- name: restart node-exporter
+  systemd:
+    name: node-exporter
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+  listen: "restart node-exporter"
+
+- name: restart mysql-exporter
+  systemd:
+    name: mysql-exporter
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+  listen: "restart mysql-exporter"

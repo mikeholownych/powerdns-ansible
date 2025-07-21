@@ -1,0 +1,3 @@
+#!/bin/bash
+# Simple Prometheus health check
+curl -f http://localhost:{{ prometheus_port | default(9090) }}/-/healthy >/dev/null
