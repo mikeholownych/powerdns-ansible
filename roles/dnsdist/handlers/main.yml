@@ -1,13 +1,13 @@
 ---
 # handlers for dnsdist role
 
-- name: restart dnsdist
+- name: Restart dnsdist
   ansible.builtin.service:
     name: dnsdist
     state: restarted
   listen: restart dnsdist
 
-- name: reload systemd
+- name: Reload systemd
   ansible.builtin.systemd:
     daemon_reload: true
   listen: reload systemd
