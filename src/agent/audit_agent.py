@@ -28,7 +28,6 @@ class AuditAgent:
         self.logger.info("Starting audit", extra={"root": self.root_dir})
         if report_path is None:
             report_path = os.path.join(self.root_dir, "validation_report.md")
-        self.report_lines.append("## ✅ Valid Items")
         valid_items: List[str] = []
         missing_items: List[str] = []
         placeholders: List[str] = []
