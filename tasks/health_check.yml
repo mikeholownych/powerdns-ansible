@@ -19,8 +19,7 @@
   failed_when: service_status.status.ActiveState != "active"
 
 - name: Test DNS resolution
-  ansible.builtin.command:
-    dig @{{ ansible_default_ipv4.address }} localhost +short +time=5
+  ansible.builtin.command: dig @{{ ansible_default_ipv4.address }} localhost +short +time=5
   register: dns_test
   failed_when: dns_test.rc != 0
   changed_when: false
@@ -28,9 +27,7 @@
 
 - name: Test PowerDNS API (if enabled)
   ansible.builtin.uri:
-    url: >-
-      http://{{ ansible_default_ipv4.address }}:{{ powerdns_webserver_port |
-      default(8081) }}/api/v1/servers
+    url: "http://{{ ansible_default_ipv4.address }}:{{ powerdns_webserver_port | default(8081) }}/api/v1/servers"
     method: GET
     headers:
       X-API-Key: "{{ powerdns_api_key }}"
@@ -88,6 +85,7 @@
 
 - name: Check system resources
   ansible.builtin.shell: |
+    set -o pipefail
     echo "CPU: $(top -bn1 | grep 'Cpu(s)' | awk '{print $2}' | cut -d'%' -f1)"
     echo "Memory: $(free | grep Mem | awk '{printf "%.1f%%", $3/$2 * 100.0}')"
     echo "Disk: $(df /etc/powerdns | tail -1 | awk '{print $5}')"
@@ -102,22 +100,10 @@
   ansible.builtin.debug:
     msg:
       - "=== PowerDNS Health Check Summary ==="
-      - >-
-        Service Status: {{ service_status.status.ActiveState }}
-      - >-
-        DNS Test: {{ 'PASSED' if dns_test.rc == 0 else 'FAILED' }}
-      - >-
-        API Test: {{ 'PASSED' if (api_test.status | default(0)) == 200 else
-        'SKIPPED/FAILED' }}
-      - >-
-        Database: {{ 'CONNECTED' if db_test.query_result is defined else
-        'FAILED' }}
-      - >-
-        Zones: {{ db_test.query_result[0].count if db_test.query_result is
-        defined else 'UNKNOWN' }}
-      - >-
-        Backups: {{ recent_backups.matched if recent_backups is defined else
-        'UNKNOWN' }} recent
-      - >-
-        Overall Status: {{ 'HEALTHY' if (service_status.status.ActiveState ==
-        'active' and dns_test.rc == 0) else 'NEEDS ATTENTION' }}
+      - "Service Status: {{ service_status.status.ActiveState }}"
+      - "DNS Test: {{ 'PASSED' if dns_test.rc == 0 else 'FAILED' }}"
+      - "API Test: {{ 'PASSED' if (api_test.status | default(0)) == 200 else 'SKIPPED/FAILED' }}"
+      - "Database: {{ 'CONNECTED' if db_test.query_result is defined else 'FAILED' }}"
+      - "Zones: {{ db_test.query_result[0].count if db_test.query_result is defined else 'UNKNOWN' }}"
+      - "Backups: {{ recent_backups.matched if recent_backups is defined else 'UNKNOWN' }} recent"
+      - "Overall Status: {{ 'HEALTHY' if (service_status.status.ActiveState == 'active' and dns_test.rc == 0) else 'NEEDS ATTENTION' }}"
