@@ -1,5 +1,5 @@
 ---
-# Handlers for MySQL role
+# MySQL Role Handlers
 
 - name: restart mysql
   ansible.builtin.service:
@@ -7,28 +7,44 @@
     state: restarted
     enabled: yes
     daemon_reload: yes
+<<<<<<< HEAD
+  listen: "restart_mysql"
+=======
   listen: restart mysql
+>>>>>>> main
 
 - name: reload mysql
   ansible.builtin.service:
     name: "{{ mysql_service_name }}"
     state: reloaded
+<<<<<<< HEAD
+=======
   listen: reload mysql
+>>>>>>> main
 
 - name: start mysql
   ansible.builtin.service:
     name: "{{ mysql_service_name }}"
     state: started
     enabled: yes
+<<<<<<< HEAD
+=======
   listen: start mysql
+>>>>>>> main
 
 - name: stop mysql
   ansible.builtin.service:
     name: "{{ mysql_service_name }}"
     state: stopped
+<<<<<<< HEAD
+=======
   listen: stop mysql
+>>>>>>> main
 
 - name: reload systemd
   ansible.builtin.systemd:
     daemon_reload: yes
+<<<<<<< HEAD
+=======
   listen: reload systemd
+>>>>>>> main
