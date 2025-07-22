@@ -20,7 +20,7 @@
     enabled: true
   listen: start galera-health-check-timer
 
-- name: reload systemd
+- name: Reload systemd
   ansible.builtin.systemd:
     daemon_reload: true
   listen: reload systemd
