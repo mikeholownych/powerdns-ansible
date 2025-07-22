@@ -1,52 +1,53 @@
 ---
 # Handlers for monitoring role
 
-- name: reload systemd
+- name: Reload systemd
   ansible.builtin.systemd:
     daemon_reload: true
 
-- name: restart node_exporter
+- name: Restart node_exporter
   ansible.builtin.systemd:
     name: node_exporter
     state: restarted
-    enabled: yes
+    enabled: true
   when: monitoring_config.prometheus_port is defined
 
-- name: restart powerdns_metrics
+- name: Restart powerdns_metrics
   ansible.builtin.systemd:
     name: powerdns_metrics.timer
     state: restarted
-    enabled: yes
+    enabled: true
 
-- name: restart fail2ban
+- name: Restart fail2ban
   ansible.builtin.systemd:
     name: fail2ban
     state: restarted
-    enabled: yes
+    enabled: true
 
-- name: restart firewalld
+- name: Restart firewalld
   ansible.builtin.systemd:
     name: firewalld
     state: restarted
-    enabled: yes
+    enabled: true
 
-- name: restart ssh
+- name: Restart ssh
   ansible.builtin.systemd:
     name: sshd
     state: restarted
 
-- name: restart auditd
+- name: Restart auditd
   ansible.builtin.systemd:
     name: auditd
     state: restarted
   when: ansible_os_family == "RedHat"
 
-- name: rebuild aide database
+- name: Rebuild aide database
   ansible.builtin.command: aide --init
   register: aide_rebuild
   changed_when: aide_rebuild.rc == 0
   notify: move aide database
 
-- name: move aide database
+- name: Move aide database
   ansible.builtin.command: mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
+  changed_when: true
   when: aide_rebuild is defined and aide_rebuild.rc == 0
