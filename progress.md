@@ -1,14 +1,14 @@
 # Progress Tracker
-## Validation Score: 100/100
-## ansible-lint Violations: 1274
+## Validation Score: 97/100
+## ansible-lint Violations: 1220
 
 ### Top Violations
-- yaml[indentation]: 664
-- fqcn[action-core]: 407
-- fqcn[action]: 73
-- name[casing]: 54
-- yaml[truthy]: 23
+- yaml[indentation]: 638
+- fqcn[action-core]: 387
+- fqcn[action]: 69
+- name[casing]: 51
+- yaml[truthy]: 22
 
 ### Next Steps
 - Fix lint rules starting with the highest counts.
-- Maintain validation score while reducing lint errors.
+- Resolve validation issues reported in validation_report.md

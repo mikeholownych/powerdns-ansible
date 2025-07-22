@@ -3,7 +3,6 @@
 - roles/common
 - roles/dnsdist
 - roles/dnssec_automation
-- roles/galera
 - roles/haproxy
 - roles/keepalived
 - roles/monitoring
@@ -20,7 +19,9 @@
 - roles/zones_as_code
 
 ## ❌ Missing or Broken
-- None
+- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'restart galera-health-check'
+- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'restart mysql'
+- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'start galera-health-check-timer'
 
 ## ⚠️ Placeholders Detected
 - None
@@ -30,7 +31,9 @@
 - Continue replacing `ignore_errors` with explicit failure checks across roles
 
 ## 📊 Score
-100/100
+97/100
 
 ## 🔜 Next Actions
-- Collection structure looks good
+- Address missing directories and meta files
+- Ensure each task has name and tags
+- Define any undefined variables in defaults or vars
