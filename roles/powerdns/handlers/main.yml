@@ -1,13 +1,34 @@
 ---
-# handlers for powerdns role
+# PowerDNS Role Handlers
 
 - name: restart powerdns
   ansible.builtin.service:
-    name: pdns
+    name: "{{ powerdns_service_name | default('pdns') }}"
     state: restarted
+    enabled: yes
+    daemon_reload: yes
   listen: restart powerdns
 
+- name: reload powerdns
+  ansible.buitin.systemd:
+    name: "{{ powerdns_service_name | default('pdns') }}"
+    state: reloaded
+  listen: reload powerdns
+
+- name: start powerdns
+  ansible.builtin.service:
+    name: "{{ powerdns_service_name | default('pdns') }}"
+    state: started
+    enabled: yes
+  listen: start powerdns
+
+- name: stop powerdns
+  ansible.builtin.service:
+    name: "{{ powerdns_service_name | default('pdns') }}"
+    state: stopped
+  listen: stop powerdns
+
 - name: reload systemd
-  ansible.builtin.systemd:
-    daemon_reload: true
+  systemd:
+    daemon_reload: yes
   listen: reload systemd
