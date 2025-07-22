@@ -61,6 +61,10 @@
 - /workspace/powerdns-ansible/roles/galera: undefined variable 'item.src'
 - /workspace/powerdns-ansible/roles/galera: undefined variable 'mysql_galera_config_path[ansible_os_family]'
 - /workspace/powerdns-ansible/roles/galera: undefined variable 'mysql_service_name'
+- /workspace/powerdns-ansible/roles/haproxy/tasks/main.yml — Invalid YAML: while scanning a simple key
+  in "/workspace/powerdns-ansible/roles/haproxy/tasks/main.yml", line 14, column 1
+could not find expected ':'
+  in "/workspace/powerdns-ansible/roles/haproxy/tasks/main.yml", line 15, column 1
 - /workspace/powerdns-ansible/roles/haproxy: undefined variable 'ansible_date_time.epoch'
 - /workspace/powerdns-ansible/roles/haproxy: undefined variable 'ansible_default_ipv4.address'
 - /workspace/powerdns-ansible/roles/haproxy: undefined variable 'haproxy_service_status.status.ActiveState'
@@ -83,6 +87,10 @@
 - /workspace/powerdns-ansible/roles/monitoring: undefined variable 'item.dest'
 - /workspace/powerdns-ansible/roles/monitoring: undefined variable 'item.src'
 - /workspace/powerdns-ansible/roles/monitoring: undefined variable 'monitoring_config.prometheus_port'
+- /workspace/powerdns-ansible/roles/mysql/handlers/main.yml — Invalid YAML: while scanning a simple key
+  in "/workspace/powerdns-ansible/roles/mysql/handlers/main.yml", line 10, column 1
+could not find expected ':'
+  in "/workspace/powerdns-ansible/roles/mysql/handlers/main.yml", line 11, column 9
 - /workspace/powerdns-ansible/roles/mysql: undefined variable 'ansible_default_ipv4.address'
 - /workspace/powerdns-ansible/roles/mysql: undefined variable 'ansible_python_interpreter'
 - /workspace/powerdns-ansible/roles/mysql: undefined variable 'db_tables.rowcount[0]'
