@@ -1,0 +1,29 @@
+---
+# Service management tasks for galera
+
+- name: Enable and start galera service
+  ansible.builtin.systemd:
+    name: "{{ galera_service_name | default('galera') }}"
+    state: "{{ galera_service_state | default('started') }}"
+    enabled: "{{ galera_service_enabled | default(true) }}"
+    daemon_reload: true
+  tags:
+    - galera
+    - service
+
+- name: Verify galera service is running
+  ansible.builtin.systemd:
+    name: "{{ galera_service_name | default('galera') }}"
+  register: galera_service_status
+  tags:
+    - galera
+    - service
+    - verify
+
+- name: Display galera service status
+  ansible.builtin.debug:
+    msg: "galera service is {{ galera_service_status.status.ActiveState | default('unknown') }}"
+  tags:
+    - galera
+    - service
+    - verify

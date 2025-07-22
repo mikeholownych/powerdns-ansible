@@ -117,14 +117,14 @@
   tags:
   - security
 - name: Check UFW status
-  command: ufw status verbose
+  ansible.builtin.command: ufw status verbose
   register: ufw_status
   changed_when: false
   when: ansible_os_family == "Debian"
   tags:
   - security
 - name: Display UFW status
-  debug:
+  ansible.builtin.debug:
     var: ufw_status.stdout_lines
   when:
   - ansible_os_family == "Debian"

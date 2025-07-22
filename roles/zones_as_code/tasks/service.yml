@@ -1,0 +1,29 @@
+---
+# Service management tasks for zones_as_code
+
+- name: Enable and start zones_as_code service
+  ansible.builtin.systemd:
+    name: "{{ zones_as_code_service_name | default('zones_as_code') }}"
+    state: "{{ zones_as_code_service_state | default('started') }}"
+    enabled: "{{ zones_as_code_service_enabled | default(true) }}"
+    daemon_reload: true
+  tags:
+    - zones_as_code
+    - service
+
+- name: Verify zones_as_code service is running
+  ansible.builtin.systemd:
+    name: "{{ zones_as_code_service_name | default('zones_as_code') }}"
+  register: zones_as_code_service_status
+  tags:
+    - zones_as_code
+    - service
+    - verify
+
+- name: Display zones_as_code service status
+  ansible.builtin.debug:
+    msg: "zones_as_code service is {{ zones_as_code_service_status.status.ActiveState | default('unknown') }}"
+  tags:
+    - zones_as_code
+    - service
+    - verify

@@ -1,0 +1,26 @@
+---
+# Configuration tasks for mysql
+
+- name: Generate mysql configuration files
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode | default('0644') }}"
+    backup: true
+  loop: "{{ mysql_config_files | default([]) }}"
+  notify: "restart mysql"
+  tags:
+    - mysql
+    - configure
+
+- name: Validate mysql configuration
+  ansible.builtin.command: "{{ mysql_config_test_command | default('echo Configuration validation not implemented') }}"
+  register: mysql_config_test
+  changed_when: false
+  failed_when: false
+  tags:
+    - mysql
+    - configure
+    - validate

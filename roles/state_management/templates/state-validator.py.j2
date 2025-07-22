@@ -1,2 +1,77 @@
 #!/usr/bin/env python3
-print("State validator placeholder")
+"""
+State Validator
+Validates PowerDNS system state and configuration
+"""
+import json
+import subprocess
+import sys
+from datetime import datetime
+
+def run_command(cmd):
+    """Run a command and return output"""
+    try:
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        return result.returncode == 0, result.stdout.strip(), result.stderr.strip()
+    except Exception as e:
+        return False, "", str(e)
+
+def validate_services():
+    """Validate that required services are running"""
+    services = ['pdns', 'mysql']
+    results = {}
+    
+    for service in services:
+        success, stdout, stderr = run_command(f"systemctl is-active {service}")
+        results[service] = {
+            'active': success and stdout == 'active',
+            'status': stdout,
+            'error': stderr if not success else None
+        }
+    
+    return results
+
+def validate_configuration():
+    """Validate configuration files"""
+    results = {}
+    
+    # Validate PowerDNS config
+    success, stdout, stderr = run_command("pdns_server --config-check")
+    results['powerdns_config'] = {
+        'valid': success,
+        'output': stdout,
+        'error': stderr if not success else None
+    }
+    
+    # Validate MySQL connectivity
+    success, stdout, stderr = run_command("mysql -e 'SELECT 1;'")
+    results['mysql_connectivity'] = {
+        'connected': success,
+        'output': stdout,
+        'error': stderr if not success else None
+    }
+    
+    return results
+
+def main():
+    """Main validation function"""
+    validation_results = {
+        'timestamp': datetime.now().isoformat(),
+        'services': validate_services(),
+        'configuration': validate_configuration()
+    }
+    
+    # Print results
+    print(json.dumps(validation_results, indent=2))
+    
+    # Determine exit code based on validation results
+    all_services_ok = all(svc['active'] for svc in validation_results['services'].values())
+    all_configs_ok = all(cfg['valid'] or cfg['connected'] for cfg in validation_results['configuration'].values())
+    
+    if all_services_ok and all_configs_ok:
+        sys.exit(0)
+    else:
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

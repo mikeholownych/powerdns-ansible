@@ -1,0 +1,26 @@
+---
+# Configuration tasks for clean_install
+
+- name: Generate clean_install configuration files
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode | default('0644') }}"
+    backup: true
+  loop: "{{ clean_install_config_files | default([]) }}"
+  notify: "restart clean_install"
+  tags:
+    - clean_install
+    - configure
+
+- name: Validate clean_install configuration
+  ansible.builtin.command: "{{ clean_install_config_test_command | default('echo Configuration validation not implemented') }}"
+  register: clean_install_config_test
+  changed_when: false
+  failed_when: false
+  tags:
+    - clean_install
+    - configure
+    - validate

@@ -1,0 +1,31 @@
+---
+# Installation tasks for security_hardening
+
+- name: Update package cache
+  ansible.builtin.package:
+    update_cache: true
+  when: ansible_os_family in ['Debian', 'RedHat']
+  tags:
+    - security_hardening
+    - install
+
+- name: Install security_hardening packages
+  ansible.builtin.package:
+    name: "{{ security_hardening_packages[ansible_os_family] | default([]) }}"
+    state: present
+  when: security_hardening_packages is defined
+  tags:
+    - security_hardening
+    - install
+
+- name: Create security_hardening directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ security_hardening_user | default('root') }}"
+    group: "{{ security_hardening_group | default('root') }}"
+    mode: '0755'
+  loop: "{{ security_hardening_directories | default([]) }}"
+  tags:
+    - security_hardening
+    - install

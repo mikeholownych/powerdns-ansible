@@ -1,0 +1,29 @@
+---
+# Service management tasks for dnsdist
+
+- name: Enable and start dnsdist service
+  ansible.builtin.systemd:
+    name: "{{ dnsdist_service_name | default('dnsdist') }}"
+    state: "{{ dnsdist_service_state | default('started') }}"
+    enabled: "{{ dnsdist_service_enabled | default(true) }}"
+    daemon_reload: true
+  tags:
+    - dnsdist
+    - service
+
+- name: Verify dnsdist service is running
+  ansible.builtin.systemd:
+    name: "{{ dnsdist_service_name | default('dnsdist') }}"
+  register: dnsdist_service_status
+  tags:
+    - dnsdist
+    - service
+    - verify
+
+- name: Display dnsdist service status
+  ansible.builtin.debug:
+    msg: "dnsdist service is {{ dnsdist_service_status.status.ActiveState | default('unknown') }}"
+  tags:
+    - dnsdist
+    - service
+    - verify

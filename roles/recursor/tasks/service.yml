@@ -1,0 +1,29 @@
+---
+# Service management tasks for recursor
+
+- name: Enable and start recursor service
+  ansible.builtin.systemd:
+    name: "{{ recursor_service_name | default('recursor') }}"
+    state: "{{ recursor_service_state | default('started') }}"
+    enabled: "{{ recursor_service_enabled | default(true) }}"
+    daemon_reload: true
+  tags:
+    - recursor
+    - service
+
+- name: Verify recursor service is running
+  ansible.builtin.systemd:
+    name: "{{ recursor_service_name | default('recursor') }}"
+  register: recursor_service_status
+  tags:
+    - recursor
+    - service
+    - verify
+
+- name: Display recursor service status
+  ansible.builtin.debug:
+    msg: "recursor service is {{ recursor_service_status.status.ActiveState | default('unknown') }}"
+  tags:
+    - recursor
+    - service
+    - verify

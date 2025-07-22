@@ -1,0 +1,29 @@
+---
+# Service management tasks for keepalived
+
+- name: Enable and start keepalived service
+  ansible.builtin.systemd:
+    name: "{{ keepalived_service_name | default('keepalived') }}"
+    state: "{{ keepalived_service_state | default('started') }}"
+    enabled: "{{ keepalived_service_enabled | default(true) }}"
+    daemon_reload: true
+  tags:
+    - keepalived
+    - service
+
+- name: Verify keepalived service is running
+  ansible.builtin.systemd:
+    name: "{{ keepalived_service_name | default('keepalived') }}"
+  register: keepalived_service_status
+  tags:
+    - keepalived
+    - service
+    - verify
+
+- name: Display keepalived service status
+  ansible.builtin.debug:
+    msg: "keepalived service is {{ keepalived_service_status.status.ActiveState | default('unknown') }}"
+  tags:
+    - keepalived
+    - service
+    - verify

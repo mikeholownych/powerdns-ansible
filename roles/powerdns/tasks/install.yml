@@ -1,0 +1,31 @@
+---
+# Installation tasks for powerdns
+
+- name: Update package cache
+  ansible.builtin.package:
+    update_cache: true
+  when: ansible_os_family in ['Debian', 'RedHat']
+  tags:
+    - powerdns
+    - install
+
+- name: Install powerdns packages
+  ansible.builtin.package:
+    name: "{{ powerdns_packages[ansible_os_family] | default([]) }}"
+    state: present
+  when: powerdns_packages is defined
+  tags:
+    - powerdns
+    - install
+
+- name: Create powerdns directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ powerdns_user | default('root') }}"
+    group: "{{ powerdns_group | default('root') }}"
+    mode: '0755'
+  loop: "{{ powerdns_directories | default([]) }}"
+  tags:
+    - powerdns
+    - install

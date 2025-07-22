@@ -1,0 +1,31 @@
+---
+# Installation tasks for keepalived
+
+- name: Update package cache
+  ansible.builtin.package:
+    update_cache: true
+  when: ansible_os_family in ['Debian', 'RedHat']
+  tags:
+    - keepalived
+    - install
+
+- name: Install keepalived packages
+  ansible.builtin.package:
+    name: "{{ keepalived_packages[ansible_os_family] | default([]) }}"
+    state: present
+  when: keepalived_packages is defined
+  tags:
+    - keepalived
+    - install
+
+- name: Create keepalived directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ keepalived_user | default('root') }}"
+    group: "{{ keepalived_group | default('root') }}"
+    mode: '0755'
+  loop: "{{ keepalived_directories | default([]) }}"
+  tags:
+    - keepalived
+    - install

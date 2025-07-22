@@ -1,5 +1,5 @@
 - name: Create self-healing directories
-  file:
+  ansible.builtin.file:
     path: '{{ item }}'
     state: directory
     owner: root
@@ -13,7 +13,7 @@
   tags:
   - self_healing
 - name: Create configuration hash tracking
-  template:
+  ansible.builtin.template:
     src: config-tracker.sh.j2
     dest: /opt/self-healing/scripts/config-tracker.sh
     owner: root
@@ -22,7 +22,7 @@
   tags:
   - self_healing
 - name: Create service health monitor
-  template:
+  ansible.builtin.template:
     src: service-health-monitor.sh.j2
     dest: /opt/self-healing/scripts/service-health-monitor.sh
     owner: root
@@ -31,7 +31,7 @@
   tags:
   - self_healing
 - name: Create drift detection script
-  template:
+  ansible.builtin.template:
     src: drift-detector.sh.j2
     dest: /opt/self-healing/scripts/drift-detector.sh
     owner: root
@@ -40,7 +40,7 @@
   tags:
   - self_healing
 - name: Create auto-recovery script
-  template:
+  ansible.builtin.template:
     src: auto-recovery.sh.j2
     dest: /opt/self-healing/scripts/auto-recovery.sh
     owner: root
@@ -49,7 +49,7 @@
   tags:
   - self_healing
 - name: Create systemd watchdog service for PowerDNS
-  template:
+  ansible.builtin.template:
     src: powerdns-watchdog.service.j2
     dest: /etc/systemd/system/powerdns-watchdog.service
     owner: root
@@ -61,7 +61,7 @@
   tags:
   - self_healing
 - name: Create systemd watchdog timer
-  template:
+  ansible.builtin.template:
     src: powerdns-watchdog.timer.j2
     dest: /etc/systemd/system/powerdns-watchdog.timer
     owner: root
@@ -73,7 +73,7 @@
   tags:
   - self_healing
 - name: Create MySQL watchdog service
-  template:
+  ansible.builtin.template:
     src: mysql-watchdog.service.j2
     dest: /etc/systemd/system/mysql-watchdog.service
     owner: root
@@ -85,7 +85,7 @@
   tags:
   - self_healing
 - name: Create MySQL watchdog timer
-  template:
+  ansible.builtin.template:
     src: mysql-watchdog.timer.j2
     dest: /etc/systemd/system/mysql-watchdog.timer
     owner: root
@@ -97,7 +97,7 @@
   tags:
   - self_healing
 - name: Create configuration baseline
-  shell: '# Create baseline hashes for critical configuration files
+  ansible.builtin.shell: '# Create baseline hashes for critical configuration files
 
     find {{ item }} -type f -exec sha256sum {} \; > /opt/self-healing/configs/{{ item
     | basename }}.baseline 2>/dev/null || true
@@ -112,7 +112,7 @@
   tags:
   - self_healing
 - name: Schedule drift detection
-  cron:
+  ansible.builtin.cron:
     name: Configuration Drift Detection
     cron_file: drift-detection
     user: root
@@ -123,7 +123,7 @@
   tags:
   - self_healing
 - name: Schedule service health monitoring
-  cron:
+  ansible.builtin.cron:
     name: Service Health Monitoring
     cron_file: service-health
     user: root
@@ -134,7 +134,7 @@
   tags:
   - self_healing
 - name: Create self-healing notification script
-  template:
+  ansible.builtin.template:
     src: self-healing-notify.sh.j2
     dest: /opt/self-healing/scripts/self-healing-notify.sh
     owner: root
@@ -143,7 +143,7 @@
   tags:
   - self_healing
 - name: Configure logrotate for self-healing logs
-  template:
+  ansible.builtin.template:
     src: self-healing-logrotate.j2
     dest: /etc/logrotate.d/self-healing
     owner: root
@@ -152,7 +152,7 @@
   tags:
   - self_healing
 - name: Create Ansible pull configuration for GitOps
-  template:
+  ansible.builtin.template:
     src: ansible-pull.conf.j2
     dest: /opt/self-healing/ansible-pull.conf
     owner: root
@@ -162,7 +162,7 @@
   tags:
   - self_healing
 - name: Schedule Ansible pull for GitOps
-  cron:
+  ansible.builtin.cron:
     name: Ansible Pull GitOps
     cron_file: ansible-pull-gitops
     user: root
@@ -176,7 +176,7 @@
   tags:
   - self_healing
 - name: Create performance monitoring script
-  template:
+  ansible.builtin.template:
     src: performance-monitor.sh.j2
     dest: /opt/self-healing/scripts/performance-monitor.sh
     owner: root
@@ -185,7 +185,7 @@
   tags:
   - self_healing
 - name: Schedule performance monitoring
-  cron:
+  ansible.builtin.cron:
     name: Performance Monitoring
     cron_file: performance-monitor
     user: root
@@ -196,7 +196,7 @@
   tags:
   - self_healing
 - name: Create backup verification script
-  template:
+  ansible.builtin.template:
     src: backup-verifier.sh.j2
     dest: /opt/self-healing/scripts/backup-verifier.sh
     owner: root
@@ -205,7 +205,7 @@
   tags:
   - self_healing
 - name: Schedule backup verification
-  cron:
+  ansible.builtin.cron:
     name: Backup Verification
     cron_file: backup-verification
     user: root
@@ -217,7 +217,7 @@
   tags:
   - self_healing
 - name: Enable and start watchdog services
-  systemd:
+  ansible.builtin.systemd:
     name: '{{ item }}'
     enabled: true
     state: started
@@ -229,7 +229,7 @@
   tags:
   - self_healing
 - name: Create self-healing dashboard script
-  template:
+  ansible.builtin.template:
     src: self-healing-dashboard.sh.j2
     dest: /opt/self-healing/scripts/self-healing-dashboard.sh
     owner: root
@@ -238,7 +238,7 @@
   tags:
   - self_healing
 - name: Create self-healing status check
-  template:
+  ansible.builtin.template:
     src: self-healing-status.sh.j2
     dest: /usr/local/bin/self-healing-status.sh
     owner: root
@@ -247,14 +247,14 @@
   tags:
   - self_healing
 - name: Test self-healing functionality
-  command: /opt/self-healing/scripts/service-health-monitor.sh --test
+  ansible.builtin.command: /opt/self-healing/scripts/service-health-monitor.sh --test
   register: self_healing_test
   changed_when: false
   ignore_errors: true
   tags:
   - self_healing
 - name: Display self-healing test result
-  debug:
+  ansible.builtin.debug:
     msg: 'Self-healing test: {{ ''PASSED'' if self_healing_test.rc == 0 else ''FAILED''
       }}'
   tags:

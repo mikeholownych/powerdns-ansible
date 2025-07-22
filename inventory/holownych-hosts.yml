@@ -1,0 +1,58 @@
+---
+all:
+  children:
+    powerdns_primary:
+      hosts:
+        ns1.holownych.com:
+          ansible_host: 192.168.1.97
+          server_role: primary
+          
+    powerdns_secondary:
+      hosts:
+        ns2.holownych.com:
+          ansible_host: 192.168.1.98
+          server_role: secondary
+          
+    ad_servers:
+      hosts:
+        ad2022.adroot.holownych.com:
+          ansible_host: 192.168.1.104
+          server_role: ad_primary
+        synology.adroot.holownych.com:
+          ansible_host: 192.168.1.123
+          server_role: ad_secondary
+
+  vars:
+    # Common variables
+    ansible_user: mike  # or your SSH user
+    ansible_ssh_private_key_file: ~/.ssh/id_ed25519
+    
+    # DNS Configuration for your architecture
+    primary_domains:
+      - home.lan
+      # AD domains (initially managed by AD, will migrate later)
+      # - dns.holownych.com
+      # - kube.cluster  
+      # - lan.holownych.com
+      # - servers.holownych.com
+      
+    # Active Directory Integration
+    ad_domains:
+      - _msdcs.adroot.holownych.com
+      - adroot.holownych.com
+      
+    # Reverse DNS zones (PowerDNS as secondary)
+    reverse_zones:
+      - 1.168.192.in-addr.arpa
+      - 2.168.192.in-addr.arpa
+      - 5.0.10.in-addr.arpa
+      
+    # Network settings
+    dns_network: "192.168.0.0/16"
+    management_network: "192.168.1.0/24"
+    
+    # Split-brain configuration
+    internal_networks:
+      - 192.168.1.0/24
+      - 192.168.2.0/24
+      - 10.0.5.0/24

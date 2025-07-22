@@ -1,0 +1,29 @@
+---
+# Service management tasks for dnssec_automation
+
+- name: Enable and start dnssec_automation service
+  ansible.builtin.systemd:
+    name: "{{ dnssec_automation_service_name | default('dnssec_automation') }}"
+    state: "{{ dnssec_automation_service_state | default('started') }}"
+    enabled: "{{ dnssec_automation_service_enabled | default(true) }}"
+    daemon_reload: true
+  tags:
+    - dnssec_automation
+    - service
+
+- name: Verify dnssec_automation service is running
+  ansible.builtin.systemd:
+    name: "{{ dnssec_automation_service_name | default('dnssec_automation') }}"
+  register: dnssec_automation_service_status
+  tags:
+    - dnssec_automation
+    - service
+    - verify
+
+- name: Display dnssec_automation service status
+  ansible.builtin.debug:
+    msg: "dnssec_automation service is {{ dnssec_automation_service_status.status.ActiveState | default('unknown') }}"
+  tags:
+    - dnssec_automation
+    - service
+    - verify

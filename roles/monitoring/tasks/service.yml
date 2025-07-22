@@ -1,0 +1,29 @@
+---
+# Service management tasks for monitoring
+
+- name: Enable and start monitoring service
+  ansible.builtin.systemd:
+    name: "{{ monitoring_service_name | default('monitoring') }}"
+    state: "{{ monitoring_service_state | default('started') }}"
+    enabled: "{{ monitoring_service_enabled | default(true) }}"
+    daemon_reload: true
+  tags:
+    - monitoring
+    - service
+
+- name: Verify monitoring service is running
+  ansible.builtin.systemd:
+    name: "{{ monitoring_service_name | default('monitoring') }}"
+  register: monitoring_service_status
+  tags:
+    - monitoring
+    - service
+    - verify
+
+- name: Display monitoring service status
+  ansible.builtin.debug:
+    msg: "monitoring service is {{ monitoring_service_status.status.ActiveState | default('unknown') }}"
+  tags:
+    - monitoring
+    - service
+    - verify

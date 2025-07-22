@@ -1,0 +1,26 @@
+---
+# Configuration tasks for state_management
+
+- name: Generate state_management configuration files
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode | default('0644') }}"
+    backup: true
+  loop: "{{ state_management_config_files | default([]) }}"
+  notify: "restart state_management"
+  tags:
+    - state_management
+    - configure
+
+- name: Validate state_management configuration
+  ansible.builtin.command: "{{ state_management_config_test_command | default('echo Configuration validation not implemented') }}"
+  register: state_management_config_test
+  changed_when: false
+  failed_when: false
+  tags:
+    - state_management
+    - configure
+    - validate

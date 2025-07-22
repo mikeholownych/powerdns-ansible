@@ -1,0 +1,31 @@
+---
+# Installation tasks for dnsdist
+
+- name: Update package cache
+  ansible.builtin.package:
+    update_cache: true
+  when: ansible_os_family in ['Debian', 'RedHat']
+  tags:
+    - dnsdist
+    - install
+
+- name: Install dnsdist packages
+  ansible.builtin.package:
+    name: "{{ dnsdist_packages[ansible_os_family] | default([]) }}"
+    state: present
+  when: dnsdist_packages is defined
+  tags:
+    - dnsdist
+    - install
+
+- name: Create dnsdist directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ dnsdist_user | default('root') }}"
+    group: "{{ dnsdist_group | default('root') }}"
+    mode: '0755'
+  loop: "{{ dnsdist_directories | default([]) }}"
+  tags:
+    - dnsdist
+    - install

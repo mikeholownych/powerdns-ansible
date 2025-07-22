@@ -1,0 +1,31 @@
+---
+# Installation tasks for self_healing
+
+- name: Update package cache
+  ansible.builtin.package:
+    update_cache: true
+  when: ansible_os_family in ['Debian', 'RedHat']
+  tags:
+    - self_healing
+    - install
+
+- name: Install self_healing packages
+  ansible.builtin.package:
+    name: "{{ self_healing_packages[ansible_os_family] | default([]) }}"
+    state: present
+  when: self_healing_packages is defined
+  tags:
+    - self_healing
+    - install
+
+- name: Create self_healing directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ self_healing_user | default('root') }}"
+    group: "{{ self_healing_group | default('root') }}"
+    mode: '0755'
+  loop: "{{ self_healing_directories | default([]) }}"
+  tags:
+    - self_healing
+    - install

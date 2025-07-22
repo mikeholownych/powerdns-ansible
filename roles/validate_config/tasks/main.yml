@@ -1,5 +1,5 @@
 - name: Display validation start message
-  debug:
+  ansible.builtin.debug:
     msg: === Starting PowerDNS Configuration Validation ===
   tags:
   - validate_config
@@ -53,7 +53,7 @@
   tags:
   - validate_config
 - name: Check MySQL connectivity (if MySQL feature enabled)
-  wait_for:
+  ansible.builtin.wait_for:
     host: '{{ powerdns_db_host }}'
     port: '{{ powerdns_db_port | default(3306) }}'
     timeout: 10
@@ -94,7 +94,7 @@
   tags:
   - validate_config
 - name: Validate zone template syntax
-  template:
+  ansible.builtin.template:
     src: '{{ item }}.j2'
     dest: /tmp/validate_{{ item }}
   loop: '{{ zones_enabled | default([]) }}'
@@ -105,7 +105,7 @@
   tags:
   - validate_config
 - name: Clean up validation files
-  file:
+  ansible.builtin.file:
     path: /tmp/validate_{{ item }}
     state: absent
   loop: '{{ zones_enabled | default([]) }}'
@@ -141,7 +141,7 @@
   tags:
   - validate_config
 - name: Validate firewall configuration
-  command: ufw status
+  ansible.builtin.command: ufw status
   register: firewall_status
   failed_when: false
   changed_when: false
@@ -196,13 +196,13 @@
   tags:
   - validate_config
 - name: Check for existing PowerDNS installation
-  stat:
+  ansible.builtin.stat:
     path: /etc/powerdns/pdns.conf
   register: existing_pdns_config
   tags:
   - validate_config
 - name: Compute existing configuration hash
-  stat:
+  ansible.builtin.stat:
     path: /etc/powerdns/pdns.conf
     checksum_algorithm: sha256
   register: existing_config_hash
@@ -210,7 +210,7 @@
   tags:
   - validate_config
 - name: Store configuration state
-  set_fact:
+  ansible.builtin.set_fact:
     pdns_existing_installation: '{{ existing_pdns_config.stat.exists }}'
     pdns_config_hash: '{{ existing_config_hash.stat.checksum | default(''new'') }}'
   tags:
@@ -238,7 +238,7 @@
   tags:
   - validate_config
 - name: Create validation report
-  copy:
+  ansible.builtin.copy:
     dest: /tmp/powerdns_validation_report.json
     content: "{\n  \"timestamp\": \"{{ ansible_date_time.iso8601 }}\",\n  \"hostname\"\
       : \"{{ inventory_hostname }}\",\n  \"operation_mode\": \"{{ operation_mode }}\"\
@@ -254,7 +254,7 @@
   tags:
   - validate_config
 - name: Display validation summary
-  debug:
+  ansible.builtin.debug:
     msg:
     - === Configuration Validation Complete ===
     - 'Operation Mode: {{ operation_mode }}'

@@ -1,2 +1,113 @@
 #!/usr/bin/env python3
-print("Drift detector placeholder")
+"""
+Configuration Drift Detector
+Detects changes in PowerDNS configuration files
+"""
+import hashlib
+import json
+import os
+import sys
+from datetime import datetime
+
+HASH_FILE = '/var/lib/powerdns-state/config_hashes.json'
+DRIFT_REPORT_FILE = '/var/lib/powerdns-state/reports/drift-report.json'
+
+CONFIG_FILES = [
+    '/etc/powerdns/pdns.conf',
+    '/etc/mysql/my.cnf',
+    '/etc/haproxy/haproxy.cfg',
+    '/etc/keepalived/keepalived.conf'
+]
+
+def calculate_file_hash(file_path):
+    """Calculate SHA256 hash of a file"""
+    if not os.path.exists(file_path):
+        return None
+    
+    try:
+        with open(file_path, 'rb') as f:
+            return hashlib.sha256(f.read()).hexdigest()
+    except Exception:
+        return None
+
+def load_baseline_hashes():
+    """Load baseline configuration hashes"""
+    if not os.path.exists(HASH_FILE):
+        return {}
+    
+    try:
+        with open(HASH_FILE, 'r') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def detect_drift():
+    """Detect configuration drift"""
+    baseline_hashes = load_baseline_hashes()
+    current_time = datetime.now().isoformat()
+    
+    drift_results = {
+        'timestamp': current_time,
+        'drift_detected': False,
+        'changed_files': [],
+        'new_files': [],
+        'missing_files': [],
+        'unchanged_files': []
+    }
+    
+    # Check current files against baseline
+    for file_path in CONFIG_FILES:
+        current_hash = calculate_file_hash(file_path)
+        baseline_entry = baseline_hashes.get(file_path, {})
+        baseline_hash = baseline_entry.get('hash')
+        
+        if current_hash is None:
+            if baseline_hash is not None:
+                drift_results['missing_files'].append(file_path)
+                drift_results['drift_detected'] = True
+        elif baseline_hash is None:
+            drift_results['new_files'].append(file_path)
+            drift_results['drift_detected'] = True
+        elif current_hash != baseline_hash:
+            drift_results['changed_files'].append({
+                'file': file_path,
+                'baseline_hash': baseline_hash,
+                'current_hash': current_hash,
+                'baseline_timestamp': baseline_entry.get('timestamp', 'unknown')
+            })
+            drift_results['drift_detected'] = True
+        else:
+            drift_results['unchanged_files'].append(file_path)
+    
+    return drift_results
+
+def save_drift_report(drift_results):
+    """Save drift detection report"""
+    os.makedirs(os.path.dirname(DRIFT_REPORT_FILE), exist_ok=True)
+    
+    with open(DRIFT_REPORT_FILE, 'w') as f:
+        json.dump(drift_results, f, indent=2)
+
+def main():
+    """Main drift detection function"""
+    drift_results = detect_drift()
+    
+    # Save report
+    save_drift_report(drift_results)
+    
+    # Print summary
+    if drift_results['drift_detected']:
+        print(f"⚠️  Configuration drift detected!")
+        if drift_results['changed_files']:
+            print(f"  Changed files: {len(drift_results['changed_files'])}")
+        if drift_results['new_files']:
+            print(f"  New files: {len(drift_results['new_files'])}")
+        if drift_results['missing_files']:
+            print(f"  Missing files: {len(drift_results['missing_files'])}")
+        sys.exit(1)
+    else:
+        print("✅ No configuration drift detected")
+        sys.exit(0)
+
+if __name__ == "__main__":
+    main()

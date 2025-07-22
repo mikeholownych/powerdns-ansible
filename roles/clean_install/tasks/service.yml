@@ -1,0 +1,29 @@
+---
+# Service management tasks for clean_install
+
+- name: Enable and start clean_install service
+  ansible.builtin.systemd:
+    name: "{{ clean_install_service_name | default('clean_install') }}"
+    state: "{{ clean_install_service_state | default('started') }}"
+    enabled: "{{ clean_install_service_enabled | default(true) }}"
+    daemon_reload: true
+  tags:
+    - clean_install
+    - service
+
+- name: Verify clean_install service is running
+  ansible.builtin.systemd:
+    name: "{{ clean_install_service_name | default('clean_install') }}"
+  register: clean_install_service_status
+  tags:
+    - clean_install
+    - service
+    - verify
+
+- name: Display clean_install service status
+  ansible.builtin.debug:
+    msg: "clean_install service is {{ clean_install_service_status.status.ActiveState | default('unknown') }}"
+  tags:
+    - clean_install
+    - service
+    - verify

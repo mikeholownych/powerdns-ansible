@@ -1,17 +1,17 @@
 - name: Display security hardening start
-  debug:
+  ansible.builtin.debug:
     msg: === Starting Security Hardening ===
   tags:
   - security_hardening
 - name: Install Fail2Ban
-  package:
+  ansible.builtin.package:
     name: fail2ban
     state: present
   when: fail2ban_enabled | default(true)
   tags:
   - security_hardening
 - name: Create PowerDNS Fail2Ban filter
-  copy:
+  ansible.builtin.copy:
     dest: /etc/fail2ban/filter.d/powerdns.conf
     content: "# PowerDNS filter for Fail2Ban\n[Definition]\nfailregex = ^.*\\[.*\\\
       ] \\(tcp\\) \\((?:(?:::ffff:)?(?P<host>\\S+))\\) \\S+ packet parse error.*$\n\
@@ -25,7 +25,7 @@
   tags:
   - security_hardening
 - name: Create PowerDNS API Fail2Ban filter
-  copy:
+  ansible.builtin.copy:
     dest: /etc/fail2ban/filter.d/powerdns-api.conf
     content: "# PowerDNS API filter for Fail2Ban\n[Definition]\nfailregex = ^.*\\\
       [.*\\] HTTP API request from (?:(?:::ffff:)?(?P<host>\\S+)) denied.*$\n    \
@@ -40,7 +40,7 @@
   tags:
   - security_hardening
 - name: Configure Fail2Ban jail for PowerDNS
-  copy:
+  ansible.builtin.copy:
     dest: /etc/fail2ban/jail.d/powerdns.conf
     content: "[powerdns]\nenabled = true\nport = 53\nprotocol = udp\nfilter = powerdns\n\
       logpath = /var/log/powerdns/*.log\nmaxretry = {{ fail2ban_powerdns_maxretry\
@@ -64,7 +64,7 @@
   tags:
   - security_hardening
 - name: Create DNS abuse filter
-  copy:
+  ansible.builtin.copy:
     dest: /etc/fail2ban/filter.d/dns-abuse.conf
     content: '# DNS abuse filter for excessive queries
 
@@ -81,7 +81,7 @@
   tags:
   - security_hardening
 - name: Enable and start Fail2Ban
-  systemd:
+  ansible.builtin.systemd:
     name: fail2ban
     enabled: true
     state: started
@@ -89,7 +89,7 @@
   tags:
   - security_hardening
 - name: Install AppArmor utilities (Debian/Ubuntu)
-  package:
+  ansible.builtin.package:
     name: '{{ item }}'
     state: present
   loop:
@@ -102,7 +102,7 @@
   tags:
   - security_hardening
 - name: Install SELinux utilities (RHEL/CentOS)
-  package:
+  ansible.builtin.package:
     name: '{{ item }}'
     state: present
   loop:
@@ -115,7 +115,7 @@
   tags:
   - security_hardening
 - name: Create PowerDNS AppArmor profile
-  copy:
+  ansible.builtin.copy:
     dest: /etc/apparmor.d/usr.sbin.pdns_server
     content: "# PowerDNS AppArmor profile\n#include <tunables/global>\n\n/usr/sbin/pdns_server\
       \ {\n  #include <abstractions/base>\n  #include <abstractions/nameservice>\n\
@@ -138,7 +138,7 @@
   tags:
   - security_hardening
 - name: Enable PowerDNS AppArmor profile
-  command: aa-enforce /etc/apparmor.d/usr.sbin.pdns_server
+  ansible.builtin.command: aa-enforce /etc/apparmor.d/usr.sbin.pdns_server
   register: apparmor_enforce
   failed_when: false
   changed_when: '''Setting'' in apparmor_enforce.stdout'
@@ -148,7 +148,7 @@
   tags:
   - security_hardening
 - name: Create MySQL AppArmor profile enhancement
-  copy:
+  ansible.builtin.copy:
     dest: /etc/apparmor.d/local/usr.sbin.mysqld
     content: '# Local MySQL AppArmor profile enhancements
 
@@ -322,7 +322,7 @@
     tags:
     - security_hardening
   - name: Start and enable FirewallD
-    systemd:
+    ansible.builtin.systemd:
       name: firewalld
       state: started
       enabled: true
@@ -430,7 +430,7 @@
   tags:
   - security_hardening
 - name: Disable unnecessary services
-  systemd:
+  ansible.builtin.systemd:
     name: '{{ item }}'
     enabled: false
     state: stopped
@@ -478,7 +478,7 @@
   tags:
   - security_hardening
 - name: Configure file permissions for sensitive files
-  file:
+  ansible.builtin.file:
     path: '{{ item.path }}'
     mode: '{{ item.mode }}'
     owner: '{{ item.owner | default(''root'') }}'
@@ -501,7 +501,7 @@
   tags:
   - security_hardening
 - name: Create security monitoring script
-  template:
+  ansible.builtin.template:
     src: security-monitor.sh.j2
     dest: /usr/local/bin/security-monitor.sh
     owner: root
@@ -510,7 +510,7 @@
   tags:
   - security_hardening
 - name: Schedule security monitoring
-  cron:
+  ansible.builtin.cron:
     name: Security Monitoring
     cron_file: security-monitoring
     user: root
@@ -521,7 +521,7 @@
   tags:
   - security_hardening
 - name: Create security status report
-  copy:
+  ansible.builtin.copy:
     dest: /var/lib/powerdns-state/security-status.json
     content: "{\n  \"timestamp\": \"{{ ansible_date_time.iso8601 }}\",\n  \"hostname\"\
       : \"{{ inventory_hostname }}\",\n  \"security_features\": {\n    \"fail2ban_enabled\"\
@@ -538,7 +538,7 @@
   tags:
   - security_hardening
 - name: Display security hardening summary
-  debug:
+  ansible.builtin.debug:
     msg:
     - === Security Hardening Complete ===
     - 'Fail2Ban: {{ ''Enabled'' if fail2ban_enabled | default(true) else ''Disabled''

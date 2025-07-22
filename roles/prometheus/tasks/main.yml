@@ -1,5 +1,5 @@
 - name: Create prometheus system user
-  user:
+  ansible.builtin.user:
     name: prometheus
     system: true
     shell: /bin/false
@@ -8,7 +8,7 @@
   tags:
   - prometheus
 - name: Create prometheus directories
-  file:
+  ansible.builtin.file:
     path: '{{ item }}'
     state: directory
     owner: prometheus
@@ -22,7 +22,7 @@
   tags:
   - prometheus
 - name: Download and install Prometheus
-  unarchive:
+  ansible.builtin.unarchive:
     src: https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version
       | default('2.45.0') }}/prometheus-{{ prometheus_version | default('2.45.0')
       }}.linux-amd64.tar.gz
@@ -32,7 +32,7 @@
   tags:
   - prometheus
 - name: Copy Prometheus binaries
-  copy:
+  ansible.builtin.copy:
     src: /tmp/prometheus-{{ prometheus_version | default('2.45.0') }}.linux-amd64/{{
       item }}
     dest: /usr/local/bin/{{ item }}
@@ -46,7 +46,7 @@
   tags:
   - prometheus
 - name: Create Prometheus configuration
-  template:
+  ansible.builtin.template:
     src: prometheus.yml.j2
     dest: /etc/prometheus/prometheus.yml
     owner: prometheus
@@ -56,7 +56,7 @@
   tags:
   - prometheus
 - name: Create Prometheus systemd service
-  template:
+  ansible.builtin.template:
     src: prometheus.service.j2
     dest: /etc/systemd/system/prometheus.service
     owner: root
@@ -68,7 +68,7 @@
   tags:
   - prometheus
 - name: Download and install PowerDNS Exporter
-  get_url:
+  ansible.builtin.get_url:
     url: https://github.com/janeczku/powerdns_exporter/releases/download/v{{ powerdns_exporter_version
       | default('0.4.0') }}/powerdns_exporter-{{ powerdns_exporter_version | default('0.4.0')
       }}.linux-amd64.tar.gz
@@ -76,14 +76,14 @@
   tags:
   - prometheus
 - name: Extract PowerDNS Exporter
-  unarchive:
+  ansible.builtin.unarchive:
     src: /tmp/powerdns_exporter.tar.gz
     dest: /tmp
     remote_src: true
   tags:
   - prometheus
 - name: Install PowerDNS Exporter binary
-  copy:
+  ansible.builtin.copy:
     src: /tmp/powerdns_exporter-{{ powerdns_exporter_version | default('0.4.0') }}.linux-amd64/powerdns_exporter
     dest: /usr/local/bin/powerdns_exporter
     owner: root
@@ -93,7 +93,7 @@
   tags:
   - prometheus
 - name: Create PowerDNS Exporter systemd service
-  template:
+  ansible.builtin.template:
     src: powerdns-exporter.service.j2
     dest: /etc/systemd/system/powerdns-exporter.service
     owner: root
@@ -105,7 +105,7 @@
   tags:
   - prometheus
 - name: Download and install Node Exporter
-  unarchive:
+  ansible.builtin.unarchive:
     src: https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version
       | default('1.6.1') }}/node_exporter-{{ node_exporter_version | default('1.6.1')
       }}.linux-amd64.tar.gz
@@ -114,7 +114,7 @@
   tags:
   - prometheus
 - name: Install Node Exporter binary
-  copy:
+  ansible.builtin.copy:
     src: /tmp/node_exporter-{{ node_exporter_version | default('1.6.1') }}.linux-amd64/node_exporter
     dest: /usr/local/bin/node_exporter
     owner: root
@@ -124,7 +124,7 @@
   tags:
   - prometheus
 - name: Create Node Exporter systemd service
-  template:
+  ansible.builtin.template:
     src: node-exporter.service.j2
     dest: /etc/systemd/system/node-exporter.service
     owner: root
@@ -187,7 +187,7 @@
   tags:
   - prometheus
 - name: Create Grafana dashboards directory
-  file:
+  ansible.builtin.file:
     path: /var/lib/grafana/dashboards
     state: directory
     owner: prometheus
@@ -196,7 +196,7 @@
   tags:
   - prometheus
 - name: Install PowerDNS Grafana dashboard
-  template:
+  ansible.builtin.template:
     src: powerdns-dashboard.json.j2
     dest: /var/lib/grafana/dashboards/powerdns-dashboard.json
     owner: prometheus
@@ -221,7 +221,7 @@
   tags:
   - prometheus
 - name: Enable and start monitoring services
-  systemd:
+  ansible.builtin.systemd:
     name: '{{ item }}'
     enabled: true
     state: started
@@ -235,7 +235,7 @@
   tags:
   - prometheus
 - name: Create monitoring health check script
-  template:
+  ansible.builtin.template:
     src: monitoring-health-check.sh.j2
     dest: /usr/local/bin/monitoring-health-check.sh
     owner: root
@@ -244,7 +244,7 @@
   tags:
   - prometheus
 - name: Schedule monitoring health checks
-  cron:
+  ansible.builtin.cron:
     name: Monitoring Health Check
     cron_file: monitoring-health
     user: root
@@ -255,7 +255,7 @@
   tags:
   - prometheus
 - name: Verify Prometheus is accessible
-  uri:
+  ansible.builtin.uri:
     url: http://localhost:{{ prometheus_port | default(9090) }}/api/v1/status/config
     method: GET
     status_code: 200
@@ -266,7 +266,7 @@
   tags:
   - prometheus
 - name: Display Prometheus status
-  debug:
+  ansible.builtin.debug:
     msg: 'Prometheus status: {{ ''RUNNING'' if prometheus_status.status == 200 else
       ''FAILED'' }}'
   tags:

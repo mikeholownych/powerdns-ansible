@@ -1,0 +1,69 @@
+---
+- name: Deploy Holownych Split-Brain DNS with AD Integration
+  hosts: powerdns_primary,powerdns_secondary
+  become: true
+  gather_facts: true
+  vars_files:
+    - vars/main.yml
+    - vars/holownych-config.yml
+    - vault/secrets.yml
+    
+  pre_tasks:
+    - name: Validate environment-specific requirements
+      ansible.builtin.assert:
+        that:
+          - ansible_host is defined
+          - server_role in ['primary', 'secondary']
+          - powerdns_api_key is defined
+          - split_brain_enabled is true
+        fail_msg: "Environment validation failed"
+        
+  roles:
+    - role: validate_config
+      tags: ['validation']
+    - role: common
+      tags: ['common', 'base']
+    - role: mysql
+      when: "'mysql' in dns_features"
+      tags: ['mysql', 'database']
+    - role: powerdns
+      tags: ['powerdns', 'dns']
+    - role: security
+      when: "security_hardening_enabled | default(false)"
+      tags: ['security']
+    - role: monitoring
+      when: "'monitoring' in dns_features"
+      tags: ['monitoring']
+    - role: selfheal
+      when: "'self_healing' in dns_features"
+      tags: ['selfheal']
+      
+  post_tasks:
+    - name: Verify PowerDNS is responding
+      uri:
+        url: "http://{{ ansible_host }}:8081/api/v1/servers/localhost"
+        headers:
+          X-API-Key: "{{ powerdns_api_key }}"
+        method: GET
+        status_code: 200
+      delegate_to: localhost
+      tags: ['verification']
+      
+    - name: Test DNS resolution
+      command: dig @{{ ansible_host }} home.lan SOA +short
+      delegate_to: localhost
+      register: dns_test
+      failed_when: dns_test.rc != 0
+      tags: ['verification']
+      
+    - name: Display deployment summary
+      debug:
+        msg: |
+          PowerDNS deployment completed successfully!
+          Primary DNS: {{ hostvars[groups['powerdns_primary'][0]]['ansible_host'] }}
+          Secondary DNS: {{ hostvars[groups['powerdns_secondary'][0]]['ansible_host'] }}
+          DNSSEC: {{ 'Enabled' if dnssec_enabled else 'Disabled' }}
+          DOT: {{ 'Enabled' if dot_enabled else 'Disabled' }}
+          Monitoring: {{ 'Enabled' if 'monitoring' in dns_features else 'Disabled' }}
+      run_once: true
+      tags: ['summary']

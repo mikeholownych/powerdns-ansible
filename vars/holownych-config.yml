@@ -1,0 +1,122 @@
+---
+# Core PowerDNS Configuration
+powerdns_version: "4.9.7"
+powerdns_backend: "mysql"
+powerdns_bind_addresses:
+  - 192.168.1.97  # ns1
+  - 192.168.1.98  # ns2
+
+# Split-brain DNS configuration
+split_brain_enabled: true
+internal_view_enabled: true
+
+# Active Directory Integration
+ad_integration_enabled: true
+ad_forward_zones:
+  - _msdcs.adroot.holownych.com
+  - adroot.holownych.com
+ad_forwarders:
+  - 192.168.1.104  # AD Primary
+  - 192.168.1.123  # AD Secondary
+
+# DNSSEC Configuration (your requirement)
+dnssec_enabled: true
+dnssec_algorithm: "rsasha256"
+dnssec_key_size: 2048
+
+# DNS over TLS (DOT) Configuration
+dot_enabled: true
+dot_port: 853
+dot_certificate_path: "/etc/powerdns/tls"
+
+# Zone Configuration
+zones_config:
+  - name: "home.lan"
+    type: "native"
+    dnssec: true
+    records:
+      - name: "ns1"
+        type: "A"
+        content: "192.168.1.97"
+      - name: "ns2"
+        type: "A"
+        content: "192.168.1.98"
+      - name: "@"
+        type: "NS"
+        content: "ns1.home.lan"
+      - name: "@"
+        type: "NS"
+        content: "ns2.home.lan"
+
+# Reverse DNS zones (as secondary)
+reverse_zones_config:
+  - name: "1.168.192.in-addr.arpa"
+    type: "slave"
+    masters: ["192.168.1.104", "192.168.1.123"]
+  - name: "2.168.192.in-addr.arpa"  
+    type: "slave"
+    masters: ["192.168.1.104", "192.168.1.123"]
+  - name: "5.0.10.in-addr.arpa"
+    type: "slave"
+    masters: ["192.168.1.104", "192.168.1.123"]
+
+# Feature toggles for your deployment
+dns_features:
+  - base              # Core PowerDNS (required)
+  - mysql             # MySQL backend
+  - api               # PowerDNS API
+  - dnssec            # DNSSEC support
+  - security          # Security hardening
+  - monitoring        # Prometheus monitoring
+  - backup            # Backup functionality
+  - logging           # Enhanced logging
+  - self_healing      # Auto-recovery
+
+# Performance tuning
+performance_config:
+  max_tcp_connections: 25
+  max_queue_length: 6000
+  distributor_threads: 4
+  receiver_threads: 2
+  cache_ttl: 30
+
+# Security hardening
+security_hardening_enabled: true
+firewall_enabled: true
+fail2ban_enabled: true
+file_integrity_monitoring: true
+
+# MySQL configuration
+mysql_performance_tuning: true
+mysql_security_hardening: true
+mysql_backup_enabled: true
+
+# Monitoring configuration  
+prometheus_enabled: true
+grafana_enabled: true
+alertmanager_enabled: true
+
+# Complete performance_config dictionary
+performance_config:
+  max_tcp_connections: 25
+  max_queue_length: 6000
+  distributor_threads: 4
+  receiver_threads: 2
+  cache_ttl: 30
+  negquery_cache_ttl: 60          # THIS WAS MISSING
+  query_cache_ttl: 20             # THIS WAS MISSING
+  recursive_cache_ttl: 10         # THIS WAS MISSING
+
+# Also add the missing logging_config
+logging_config:
+  level: 4
+  dns_details: true
+  dns_queries: false
+  facility: 0
+  rotate_size: "100M"
+  rotate_count: 10
+
+# And the missing monitoring_config
+monitoring_config:
+  enabled: true
+  prometheus_port: 9153

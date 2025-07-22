@@ -1,0 +1,31 @@
+---
+# Installation tasks for state_management
+
+- name: Update package cache
+  ansible.builtin.package:
+    update_cache: true
+  when: ansible_os_family in ['Debian', 'RedHat']
+  tags:
+    - state_management
+    - install
+
+- name: Install state_management packages
+  ansible.builtin.package:
+    name: "{{ state_management_packages[ansible_os_family] | default([]) }}"
+    state: present
+  when: state_management_packages is defined
+  tags:
+    - state_management
+    - install
+
+- name: Create state_management directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ state_management_user | default('root') }}"
+    group: "{{ state_management_group | default('root') }}"
+    mode: '0755'
+  loop: "{{ state_management_directories | default([]) }}"
+  tags:
+    - state_management
+    - install

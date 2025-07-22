@@ -1,0 +1,29 @@
+---
+# Service management tasks for self_healing
+
+- name: Enable and start self_healing service
+  ansible.builtin.systemd:
+    name: "{{ self_healing_service_name | default('self_healing') }}"
+    state: "{{ self_healing_service_state | default('started') }}"
+    enabled: "{{ self_healing_service_enabled | default(true) }}"
+    daemon_reload: true
+  tags:
+    - self_healing
+    - service
+
+- name: Verify self_healing service is running
+  ansible.builtin.systemd:
+    name: "{{ self_healing_service_name | default('self_healing') }}"
+  register: self_healing_service_status
+  tags:
+    - self_healing
+    - service
+    - verify
+
+- name: Display self_healing service status
+  ansible.builtin.debug:
+    msg: "self_healing service is {{ self_healing_service_status.status.ActiveState | default('unknown') }}"
+  tags:
+    - self_healing
+    - service
+    - verify

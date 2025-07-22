@@ -1,10 +1,10 @@
 - name: Display self-healing start message
-  debug:
+  ansible.builtin.debug:
     msg: === Starting Self-Healing Pre-checks and Auto-Recovery ===
   tags:
   - selfheal
 - name: Ensure required system groups exist
-  group:
+  ansible.builtin.group:
     name: '{{ item }}'
     state: present
   loop:
@@ -13,7 +13,7 @@
   - prometheus
   tags: bootstrap
 - name: Ensure required system users exist
-  user:
+  ansible.builtin.user:
     name: '{{ item.name }}'
     group: '{{ item.group }}'
     system: true
@@ -32,7 +32,7 @@
     home: /var/lib/prometheus
   tags: bootstrap
 - name: Ensure PowerDNS MySQL backend is installed
-  package:
+  ansible.builtin.package:
     name: '{{ powerdns_mysql_backend_packages[ansible_os_family] }}'
     state: present
   vars:
@@ -49,7 +49,7 @@
   tags:
   - selfheal
 - name: Clean partial lock files
-  file:
+  ansible.builtin.file:
     path: '{{ item }}'
     state: absent
   loop:
@@ -59,7 +59,7 @@
   - /tmp/mysql.sock.lock
   tags: cleanup
 - name: Ensure critical directories exist with correct permissions
-  file:
+  ansible.builtin.file:
     path: '{{ item.path }}'
     state: directory
     owner: '{{ item.owner }}'
@@ -92,7 +92,7 @@
     mode: '0755'
   tags: directories
 - name: Wait for MySQL socket with retries
-  wait_for:
+  ansible.builtin.wait_for:
     path: /var/run/mysqld/mysqld.sock
     state: present
     timeout: 30
@@ -103,7 +103,7 @@
   when: '''mysql'' in dns_features'
   tags: mysql
 - name: Wait for MySQL port with retries
-  wait_for:
+  ansible.builtin.wait_for:
     port: 3306
     host: '{{ powerdns_db_host | default(''localhost'') }}'
     timeout: 30
@@ -128,7 +128,7 @@
 - name: PowerDNS service management with auto-recovery
   block:
   - name: Enable and start PowerDNS
-    systemd:
+    ansible.builtin.systemd:
       name: pdns
       state: started
       enabled: true
@@ -137,17 +137,17 @@
     - selfheal
   rescue:
   - name: Log PowerDNS start failure
-    debug:
+    ansible.builtin.debug:
       msg: PowerDNS failed to start, attempting recovery...
   - name: Reload systemd daemon
-    systemd:
+    ansible.builtin.systemd:
       daemon_reload: true
   - name: Check for configuration issues
     command: pdns_server --config-check
     register: config_check_result
     failed_when: false
   - name: Display configuration check results
-    debug:
+    ansible.builtin.debug:
       msg: 'Configuration check: {{ config_check_result.stdout }}'
     when: config_check_result.stdout is defined
   - name: Fix common configuration issues
@@ -167,7 +167,7 @@
       line: setgid=pdns
     when: config_check_result.rc != 0
   - name: Retry starting PowerDNS after fixes
-    systemd:
+    ansible.builtin.systemd:
       name: pdns
       state: restarted
       enabled: true
@@ -180,7 +180,7 @@
 - name: MySQL service management with auto-recovery
   block:
   - name: Enable and start MySQL
-    systemd:
+    ansible.builtin.systemd:
       name: '{{ mysql_service_name }}'
       state: started
       enabled: true
@@ -189,14 +189,14 @@
     - selfheal
   rescue:
   - name: Log MySQL start failure
-    debug:
+    ansible.builtin.debug:
       msg: MySQL failed to start, attempting recovery...
   - name: Check MySQL error log
     command: tail -20 /var/log/mysql/error.log
     register: mysql_error_log
     failed_when: false
   - name: Display MySQL errors
-    debug:
+    ansible.builtin.debug:
       msg: 'MySQL errors: {{ mysql_error_log.stdout_lines }}'
     when: mysql_error_log.stdout_lines is defined
   - name: Fix MySQL permissions
@@ -214,7 +214,7 @@
     register: mysql_init_result
     failed_when: false
   - name: Retry starting MySQL after fixes
-    systemd:
+    ansible.builtin.systemd:
       name: '{{ mysql_service_name }}'
       state: restarted
       enabled: true
@@ -288,13 +288,13 @@
   - mysql
   - validation
 - name: Ensure PowerDNS service file exists
-  stat:
+  ansible.builtin.stat:
     path: /usr/lib/systemd/system/pdns.service
   register: pdns_service_file
   tags:
   - selfheal
 - name: Reinstall PowerDNS if service file is missing
-  package:
+  ansible.builtin.package:
     name: pdns-server
     state: latest
   when: not pdns_service_file.stat.exists
@@ -302,14 +302,14 @@
   tags:
   - selfheal
 - name: Ensure MySQL service file exists
-  stat:
+  ansible.builtin.stat:
     path: /usr/lib/systemd/system/{{ mysql_service_name }}.service
   register: mysql_service_file
   when: '''mysql'' in dns_features'
   tags:
   - selfheal
 - name: Reinstall MySQL if service file is missing
-  package:
+  ansible.builtin.package:
     name: '{{ mysql_packages[ansible_os_family] }}'
     state: latest
   when:
@@ -319,7 +319,7 @@
   tags:
   - selfheal
 - name: Create systemd service overrides for resilience
-  file:
+  ansible.builtin.file:
     path: /etc/systemd/system/{{ item }}.service.d
     state: directory
     mode: '0755'
@@ -330,7 +330,7 @@
   tags:
   - selfheal
 - name: Add PowerDNS systemd watchdog override
-  copy:
+  ansible.builtin.copy:
     dest: /etc/systemd/system/pdns.service.d/override.conf
     content: '[Service]
 
@@ -352,7 +352,7 @@
   tags:
   - selfheal
 - name: Add MySQL systemd watchdog override
-  copy:
+  ansible.builtin.copy:
     dest: /etc/systemd/system/{{ mysql_service_name }}.service.d/override.conf
     content: '[Service]
 
@@ -373,7 +373,7 @@
   tags:
   - selfheal
 - name: Check for port conflicts
-  shell: 'netstat -tuln | grep -E '':(53|3306|8081|9090)'' || true
+  ansible.builtin.shell: 'netstat -tuln | grep -E '':(53|3306|8081|9090)'' || true
 
     '
   register: port_conflicts
@@ -381,13 +381,13 @@
   tags:
   - selfheal
 - name: Display port usage
-  debug:
+  ansible.builtin.debug:
     msg: 'Current port usage: {{ port_conflicts.stdout_lines }}'
   when: port_conflicts.stdout_lines | length > 0
   tags:
   - selfheal
 - name: Stop conflicting services on DNS port
-  systemd:
+  ansible.builtin.systemd:
     name: '{{ item }}'
     state: stopped
     enabled: false
@@ -401,7 +401,7 @@
   tags:
   - selfheal
 - name: Create self-healing health check script
-  template:
+  ansible.builtin.template:
     src: self-healing-health-check.sh.j2
     dest: /usr/local/bin/self-healing-health-check.sh
     owner: root
@@ -410,7 +410,7 @@
   tags:
   - selfheal
 - name: Create self-healing systemd service
-  copy:
+  ansible.builtin.copy:
     dest: /etc/systemd/system/powerdns-self-healing.service
     content: '[Unit]
 
@@ -442,7 +442,7 @@
   tags:
   - selfheal
 - name: Create self-healing timer
-  copy:
+  ansible.builtin.copy:
     dest: /etc/systemd/system/powerdns-self-healing.timer
     content: '[Unit]
 
@@ -470,7 +470,7 @@
   tags:
   - selfheal
 - name: Enable self-healing timer
-  systemd:
+  ansible.builtin.systemd:
     name: powerdns-self-healing.timer
     enabled: true
     state: started
@@ -479,7 +479,7 @@
   tags:
   - selfheal
 - name: Create failure log collection script
-  template:
+  ansible.builtin.template:
     src: collect-failure-logs.sh.j2
     dest: /usr/local/bin/collect-failure-logs.sh
     owner: root
@@ -488,7 +488,7 @@
   tags:
   - selfheal
 - name: Collect logs if services failed during this run
-  command: /usr/local/bin/collect-failure-logs.sh
+  ansible.builtin.command: /usr/local/bin/collect-failure-logs.sh
   register: log_collection
   when:
   - pdns_start_result is defined and pdns_start_result is failed
@@ -497,7 +497,7 @@
   tags:
   - selfheal
 - name: Final service status check
-  systemd:
+  ansible.builtin.systemd:
     name: '{{ item }}'
   register: final_service_check
   loop:
@@ -507,14 +507,14 @@
   tags:
   - selfheal
 - name: Display final service status
-  debug:
+  ansible.builtin.debug:
     msg: '{{ item.item }} service status: {{ item.status.ActiveState }}'
   loop: '{{ final_service_check.results }}'
   when: final_service_check.results is defined
   tags:
   - selfheal
 - name: Create self-healing status report
-  copy:
+  ansible.builtin.copy:
     dest: /var/lib/powerdns-state/self-healing-report.json
     content: "{\n  \"timestamp\": \"{{ ansible_date_time.iso8601 }}\",\n  \"hostname\"\
       : \"{{ inventory_hostname }}\",\n  \"self_healing_enabled\": {{ self_healing_enabled\
@@ -528,7 +528,7 @@
   tags:
   - selfheal
 - name: Display self-healing completion summary
-  debug:
+  ansible.builtin.debug:
     msg:
     - === Self-Healing Pre-checks Complete ===
     - 'Services Validated: {{ final_service_check.results | map(attribute=''item'')

@@ -1,5 +1,5 @@
 - name: Create state management directories
-  file:
+  ansible.builtin.file:
     path: '{{ item }}'
     state: directory
     owner: root
@@ -14,7 +14,7 @@
   tags:
   - state_management
 - name: Install state management dependencies
-  package:
+  ansible.builtin.package:
     name: '{{ item }}'
     state: present
   loop:
@@ -26,7 +26,7 @@
   tags:
   - state_management
 - name: Create configuration hash tracking script
-  template:
+  ansible.builtin.template:
     src: config-hash-tracker.py.j2
     dest: /usr/local/bin/config-hash-tracker.py
     owner: root
@@ -35,7 +35,7 @@
   tags:
   - state_management
 - name: Create state report generator
-  template:
+  ansible.builtin.template:
     src: state-report-generator.py.j2
     dest: /usr/local/bin/state-report-generator.py
     owner: root
@@ -44,7 +44,7 @@
   tags:
   - state_management
 - name: Create drift detection script
-  template:
+  ansible.builtin.template:
     src: drift-detector.py.j2
     dest: /usr/local/bin/drift-detector.py
     owner: root
@@ -53,7 +53,7 @@
   tags:
   - state_management
 - name: Generate initial configuration hashes
-  shell: 'find {{ item }} -type f -exec sha256sum {} \; > /var/lib/powerdns-state/configs/{{
+  ansible.builtin.shell: 'find {{ item }} -type f -exec sha256sum {} \; > /var/lib/powerdns-state/configs/{{
     item | basename }}.hashes 2>/dev/null || true
 
     '
@@ -68,7 +68,7 @@
   tags:
   - state_management
 - name: Create current system state snapshot
-  shell: "/usr/local/bin/state-report-generator.py --format {{ state_report_format\
+  ansible.builtin.shell: "/usr/local/bin/state-report-generator.py --format {{ state_report_format\
     \ | default('json') }} \\\n  --output /var/lib/powerdns-state/reports/current-state.{{\
     \ state_report_format | default('json') }}\n"
   register: state_snapshot
@@ -76,7 +76,7 @@
   tags:
   - state_management
 - name: Store deployment metadata
-  copy:
+  ansible.builtin.copy:
     dest: /var/lib/powerdns-state/deployment-metadata.json
     content: "{\n  \"deployment_timestamp\": \"{{ ansible_date_time.iso8601 }}\",\n\
       \  \"operation_mode\": \"{{ operation_mode }}\",\n  \"dns_features\": {{ dns_features\
@@ -95,7 +95,7 @@
   tags:
   - state_management
 - name: Create change tracking database
-  copy:
+  ansible.builtin.copy:
     dest: /var/lib/powerdns-state/change-log.json
     content: "{\n  \"changes\": [],\n  \"last_update\": \"{{ ansible_date_time.iso8601\
       \ }}\",\n  \"change_count\": 0\n}\n"
@@ -104,7 +104,7 @@
   tags:
   - state_management
 - name: Record current deployment as change
-  shell: "python3 -c \"\nimport json\nimport datetime\n\n# Load existing change log\n\
+  ansible.builtin.shell: "python3 -c \"\nimport json\nimport datetime\n\n# Load existing change log\n\
     try:\n    with open('/var/lib/powerdns-state/change-log.json', 'r') as f:\n  \
     \      log = json.load(f)\nexcept:\n    log = {'changes': [], 'last_update': '',\
     \ 'change_count': 0}\n\n# Add new change\nchange = {\n    'timestamp': '{{ ansible_date_time.iso8601\
@@ -120,7 +120,7 @@
   tags:
   - state_management
 - name: Create service state tracking
-  shell: 'systemctl is-active {{ item }} > /var/lib/powerdns-state/service-{{ item
+  ansible.builtin.shell: 'systemctl is-active {{ item }} > /var/lib/powerdns-state/service-{{ item
     }}.state 2>&1 || echo "inactive" > /var/lib/powerdns-state/service-{{ item }}.state
 
     '
@@ -135,7 +135,7 @@
   tags:
   - state_management
 - name: Generate comprehensive state report
-  template:
+  ansible.builtin.template:
     src: comprehensive-state-report.j2
     dest: /var/lib/powerdns-state/reports/state-report-{{ ansible_date_time.epoch
       }}.{{ state_report_format | default('json') }}
@@ -143,7 +143,7 @@
   tags:
   - state_management
 - name: Create state monitoring cron job
-  cron:
+  ansible.builtin.cron:
     name: PowerDNS State Monitoring
     cron_file: powerdns-state-monitoring
     user: root
@@ -155,7 +155,7 @@
   tags:
   - state_management
 - name: Create state report cleanup job
-  cron:
+  ansible.builtin.cron:
     name: PowerDNS State Report Cleanup
     cron_file: powerdns-state-cleanup
     user: root
@@ -167,7 +167,7 @@
   tags:
   - state_management
 - name: Create state backup job
-  cron:
+  ansible.builtin.cron:
     name: PowerDNS State Backup
     cron_file: powerdns-state-backup
     user: root
@@ -180,7 +180,7 @@
   tags:
   - state_management
 - name: Create state validation script
-  template:
+  ansible.builtin.template:
     src: state-validator.py.j2
     dest: /usr/local/bin/state-validator.py
     owner: root
@@ -189,7 +189,7 @@
   tags:
   - state_management
 - name: Validate current state
-  command: /usr/local/bin/state-validator.py --validate-all
+  ansible.builtin.command: /usr/local/bin/state-validator.py --validate-all
   register: state_validation
   failed_when: state_validation.rc != 0
   changed_when: false
@@ -197,7 +197,7 @@
   tags:
   - state_management
 - name: Create rollback preparation script
-  template:
+  ansible.builtin.template:
     src: rollback-prepare.py.j2
     dest: /usr/local/bin/rollback-prepare.py
     owner: root
@@ -207,7 +207,7 @@
   tags:
   - state_management
 - name: Prepare rollback point
-  command: /usr/local/bin/rollback-prepare.py --create-checkpoint
+  ansible.builtin.command: /usr/local/bin/rollback-prepare.py --create-checkpoint
   register: rollback_preparation
   changed_when: rollback_preparation.rc == 0
   when:
@@ -216,7 +216,7 @@
   tags:
   - state_management
 - name: Create state notification script
-  template:
+  ansible.builtin.template:
     src: state-notifier.py.j2
     dest: /usr/local/bin/state-notifier.py
     owner: root
@@ -226,7 +226,7 @@
   tags:
   - state_management
 - name: Send state change notification
-  command: /usr/local/bin/state-notifier.py --event "deployment_complete" --operation
+  ansible.builtin.command: /usr/local/bin/state-notifier.py --event "deployment_complete" --operation
     "{{ operation_mode }}"
   register: notification_sent
   changed_when: notification_sent.rc == 0
@@ -235,7 +235,7 @@
   tags:
   - state_management
 - name: Create state query interface
-  template:
+  ansible.builtin.template:
     src: state-query.py.j2
     dest: /usr/local/bin/powerdns-state
     owner: root
@@ -244,7 +244,7 @@
   tags:
   - state_management
 - name: Display state management summary
-  debug:
+  ansible.builtin.debug:
     msg:
     - === State Management Configured ===
     - 'State Directory: /var/lib/powerdns-state/'
@@ -260,7 +260,7 @@
   tags:
   - state_management
 - name: Create state management logrotate configuration
-  copy:
+  ansible.builtin.copy:
     dest: /etc/logrotate.d/powerdns-state
     content: "/var/log/powerdns-state/*.log {\n    daily\n    missingok\n    rotate\
       \ 30\n    compress\n    delaycompress\n    notifempty\n    create 0644 root\

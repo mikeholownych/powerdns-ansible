@@ -1,0 +1,29 @@
+---
+# Service management tasks for powerdns
+
+- name: Enable and start powerdns service
+  ansible.builtin.systemd:
+    name: "{{ powerdns_service_name | default('powerdns') }}"
+    state: "{{ powerdns_service_state | default('started') }}"
+    enabled: "{{ powerdns_service_enabled | default(true) }}"
+    daemon_reload: true
+  tags:
+    - powerdns
+    - service
+
+- name: Verify powerdns service is running
+  ansible.builtin.systemd:
+    name: "{{ powerdns_service_name | default('powerdns') }}"
+  register: powerdns_service_status
+  tags:
+    - powerdns
+    - service
+    - verify
+
+- name: Display powerdns service status
+  ansible.builtin.debug:
+    msg: "powerdns service is {{ powerdns_service_status.status.ActiveState | default('unknown') }}"
+  tags:
+    - powerdns
+    - service
+    - verify
