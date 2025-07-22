@@ -1,5 +1,5 @@
 ---
-# MySQL Role Handlers
+# Handlers for MySQL role
 
 - name: Restart mysql
   ansible.builtin.service:
