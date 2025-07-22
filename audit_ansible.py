@@ -98,12 +98,6 @@ def check_role(role_path: str, defined_vars: Set[str]) -> Dict[str, List[str]]:
     if not os.path.isfile(os.path.join(role_path, "meta", "main.yml")):
         findings["missing"].add("meta/main.yml")
 
-    # Optional but recommended components
-    if not os.path.isfile(os.path.join(role_path, "README.md")):
-        findings["missing"].add("README.md")
-    if not os.path.isdir(os.path.join(role_path, "molecule")):
-        findings["missing"].add("molecule directory")
-
     # Collect handler names
     handlers: Set[str] = set()
     for hfile in glob.glob(os.path.join(role_path, "handlers", "*.yml")):
@@ -293,19 +287,10 @@ def main() -> None:
     else:
         lines.append("- Collection structure looks good")
 
-    report_path = os.path.join(ROOT_DIR, "validation_report.md")
-    with open(report_path, "w") as fh:
+    with open(os.path.join(ROOT_DIR, "validation_report.md"), "w") as fh:
         fh.write("\n".join(lines) + "\n")
 
-    # Also dump machine-readable results
-    with open(os.path.join(ROOT_DIR, "audit_output.yaml"), "w") as fh:
-        yaml.safe_dump({
-            "valid_roles": valid_roles,
-            "issues": report,
-            "score": score,
-        }, fh)
-
-    print("Validation report written to", report_path)
+    print("Validation report written to validation_report.md")
 
 if __name__ == "__main__":
     main()

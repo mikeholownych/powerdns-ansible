@@ -32,9 +32,8 @@
 - None
 
 ## 🛠 Fix Recommendations
-- Review tasks/handlers in roles/galera for missing tags or handlers
-- Review tasks/handlers in roles/monitoring for missing tags or handlers
-- Review tasks/handlers in roles/keepalived for missing tags or handlers
+- Address `ansible-lint` failures (1458 detected, reduced from 1602)
+- Continue replacing `ignore_errors` with explicit failure checks across roles
 
 ## 📊 Score
 90/100

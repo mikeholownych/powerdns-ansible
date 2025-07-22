@@ -11,6 +11,19 @@
   when: haproxy_stats_packages[ansible_os_family] is defined
   tags:
     - haproxy
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+
+- name: Check HAProxy config exists
+  ansible.builtin.stat:
+    path: /etc/haproxy/haproxy.cfg
+  register: haproxy_config
+  tags:
+    - haproxy
+=======
+>>>>>>> a5823e1 (Fix galera and haproxy lint issues)
+>>>>>>> main
 - name: Create HAProxy configuration backup
   ansible.builtin.copy:
     src: /etc/haproxy/haproxy.cfg
@@ -19,7 +32,14 @@
     owner: root
     group: root
     mode: '0644'
+<<<<<<< HEAD
+  when: haproxy_config.stat.exists
+=======
   when: ansible_stat.stat.exists is defined and ansible_stat.stat.exists
+<<<<<<< HEAD
+=======
+>>>>>>> a5823e1 (Fix galera and haproxy lint issues)
+>>>>>>> main
   failed_when: false
   tags:
     - haproxy
@@ -51,8 +71,18 @@
     group: root
     mode: '0644'
   notify:
+<<<<<<< HEAD
     - Reload systemd
     - Restart haproxy
+=======
+<<<<<<< HEAD
+    - reload systemd
+    - restart haproxy
+=======
+    - Reload systemd
+    - Restart haproxy
+>>>>>>> a5823e1 (Fix galera and haproxy lint issues)
+>>>>>>> main
   tags:
     - haproxy
 - name: Create HAProxy stats user

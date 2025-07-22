@@ -129,11 +129,11 @@ jobs:
           	mkdir -p debian/${PACKAGE_NAME}/usr/share/doc/${PACKAGE_NAME}
           	cp *.md debian/${PACKAGE_NAME}/usr/share/doc/${PACKAGE_NAME}/
           	cp LICENSE debian/${PACKAGE_NAME}/usr/share/doc/${PACKAGE_NAME}/
-                mkdir -p debian/${PACKAGE_NAME}/usr/bin
-                cat <<'EOS' > debian/${PACKAGE_NAME}/usr/bin/powerdns-ops-deploy
+          	mkdir -p debian/${PACKAGE_NAME}/usr/bin
+                cat <<'EOF_SCRIPT' > debian/${PACKAGE_NAME}/usr/bin/powerdns-ops-deploy
                 #!/bin/bash
                 ansible-playbook /usr/share/ansible/collections/community/powerdns_ops/powerdns-operational-playbook.yml "$@"
-                EOS
+                EOF_SCRIPT
                 chmod +x debian/${PACKAGE_NAME}/usr/bin/powerdns-ops-deploy
           EOF
 

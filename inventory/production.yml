@@ -1,5 +1,4 @@
 ---
+# Production inventory placeholder
 all:
-  hosts:
-    prod.example.com:
-      ansible_host: 192.0.2.10
+  hosts: {}
