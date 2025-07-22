@@ -3,7 +3,10 @@
 - roles/common
 - roles/dnsdist
 - roles/dnssec_automation
+- roles/galera
 - roles/haproxy
+- roles/keepalived
+- roles/monitoring
 - roles/mysql
 - roles/powerdns
 - roles/prometheus
@@ -17,28 +20,450 @@
 - roles/zones_as_code
 
 ## ❌ Missing or Broken
-- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'restart galera-health-check'
-- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'restart mysql'
-- galera: /workspace/powerdns-ansible/roles/galera/tasks/main.yml notifies undefined handler 'start galera-health-check-timer'
-- monitoring: /workspace/powerdns-ansible/roles/monitoring/tasks/install_prometheus.yml notifies undefined handler 'reload systemd'
-- monitoring: /workspace/powerdns-ansible/roles/monitoring/tasks/install_prometheus.yml notifies undefined handler 'restart node_exporter'
-- keepalived: /workspace/powerdns-ansible/roles/keepalived/tasks/main.yml notifies undefined handler 'reload firewall'
-- keepalived: /workspace/powerdns-ansible/roles/keepalived/tasks/main.yml notifies undefined handler 'reload systemd'
-- keepalived: /workspace/powerdns-ansible/roles/keepalived/tasks/main.yml notifies undefined handler 'restart keepalived'
-- keepalived: /workspace/powerdns-ansible/roles/keepalived/tasks/main.yml notifies undefined handler 'restart keepalived-check'
-- keepalived: /workspace/powerdns-ansible/roles/keepalived/tasks/main.yml notifies undefined handler 'start keepalived-check-timer'
+- /workspace/powerdns-ansible/roles/clean_install: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/clean_install: undefined variable 'item.dest'
+- /workspace/powerdns-ansible/roles/clean_install: undefined variable 'item.src'
+- /workspace/powerdns-ansible/roles/clean_install: undefined variable 'mysql_packages[ansible_os_family]'
+- /workspace/powerdns-ansible/roles/clean_install: undefined variable 'mysql_service_name'
+- /workspace/powerdns-ansible/roles/clean_install: undefined variable 'powerdns_packages[ansible_os_family]'
+- /workspace/powerdns-ansible/roles/common: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/common: undefined variable 'item.dest'
+- /workspace/powerdns-ansible/roles/common: undefined variable 'item.name'
+- /workspace/powerdns-ansible/roles/common: undefined variable 'item.src'
+- /workspace/powerdns-ansible/roles/common: undefined variable 'item.value'
+- /workspace/powerdns-ansible/roles/common: undefined variable 'powerdns_backup_dir'
+- /workspace/powerdns-ansible/roles/dnsdist: undefined variable 'ansible_default_ipv4.address'
+- /workspace/powerdns-ansible/roles/dnsdist: undefined variable 'dnsdist_packages[ansible_os_family]'
+- /workspace/powerdns-ansible/roles/dnsdist: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/dnsdist: undefined variable 'item.dest'
+- /workspace/powerdns-ansible/roles/dnsdist: undefined variable 'item.src'
+- /workspace/powerdns-ansible/roles/dnssec_automation: undefined variable 'ansible_date_time.iso8601'
+- /workspace/powerdns-ansible/roles/dnssec_automation: undefined variable 'ansible_default_ipv4.address'
+- /workspace/powerdns-ansible/roles/dnssec_automation: undefined variable 'inventory_hostname'
+- /workspace/powerdns-ansible/roles/dnssec_automation: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/dnssec_automation: undefined variable 'item.dest'
+- /workspace/powerdns-ansible/roles/dnssec_automation: undefined variable 'item.item.name'
+- /workspace/powerdns-ansible/roles/dnssec_automation: undefined variable 'item.name'
+- /workspace/powerdns-ansible/roles/dnssec_automation: undefined variable 'item.src'
+- /workspace/powerdns-ansible/roles/dnssec_automation: undefined variable 'item.stdout'
+- /workspace/powerdns-ansible/roles/dnssec_automation: undefined variable 'powerdns_db_host'
+- /workspace/powerdns-ansible/roles/dnssec_automation: undefined variable 'powerdns_db_name'
+- /workspace/powerdns-ansible/roles/dnssec_automation: undefined variable 'powerdns_db_user'
+- /workspace/powerdns-ansible/roles/dnssec_automation: undefined variable 'server_role'
+- /workspace/powerdns-ansible/roles/galera: undefined variable 'ansible_date_time.epoch'
+- /workspace/powerdns-ansible/roles/galera: undefined variable 'ansible_default_ipv4.address'
+- /workspace/powerdns-ansible/roles/galera: undefined variable 'galera_config_path[ansible_os_family]'
+- /workspace/powerdns-ansible/roles/galera: undefined variable 'galera_packages[ansible_os_family]'
+- /workspace/powerdns-ansible/roles/galera: undefined variable 'hostvars[groups['galera_cluster'][0]].ansible_default_ipv4.address'
+- /workspace/powerdns-ansible/roles/galera: undefined variable 'inventory_hostname'
+- /workspace/powerdns-ansible/roles/galera: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/galera: undefined variable 'item.dest'
+- /workspace/powerdns-ansible/roles/galera: undefined variable 'item.src'
+- /workspace/powerdns-ansible/roles/galera: undefined variable 'mysql_galera_config_path[ansible_os_family]'
+- /workspace/powerdns-ansible/roles/galera: undefined variable 'mysql_service_name'
+- /workspace/powerdns-ansible/roles/haproxy: undefined variable 'ansible_date_time.epoch'
+- /workspace/powerdns-ansible/roles/haproxy: undefined variable 'ansible_default_ipv4.address'
+- /workspace/powerdns-ansible/roles/haproxy: undefined variable 'haproxy_service_status.status.ActiveState'
+- /workspace/powerdns-ansible/roles/haproxy: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/haproxy: undefined variable 'item.dest'
+- /workspace/powerdns-ansible/roles/haproxy: undefined variable 'item.src'
+- /workspace/powerdns-ansible/roles/keepalived: undefined variable 'ansible_date_time.epoch'
+- /workspace/powerdns-ansible/roles/keepalived: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/keepalived: undefined variable 'item.comment'
+- /workspace/powerdns-ansible/roles/keepalived: undefined variable 'item.dest'
+- /workspace/powerdns-ansible/roles/keepalived: undefined variable 'item.name'
+- /workspace/powerdns-ansible/roles/keepalived: undefined variable 'item.proto'
+- /workspace/powerdns-ansible/roles/keepalived: undefined variable 'item.src'
+- /workspace/powerdns-ansible/roles/keepalived: undefined variable 'item.value'
+- /workspace/powerdns-ansible/roles/keepalived: undefined variable 'keepalived_service_status.status.ActiveState'
+- /workspace/powerdns-ansible/roles/keepalived: undefined variable 'keepalived_vip'
+- /workspace/powerdns-ansible/roles/keepalived: undefined variable 'vrrp_state.stdout'
+- /workspace/powerdns-ansible/roles/monitoring: undefined variable 'ansible_default_ipv4.address'
+- /workspace/powerdns-ansible/roles/monitoring: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/monitoring: undefined variable 'item.dest'
+- /workspace/powerdns-ansible/roles/monitoring: undefined variable 'item.src'
+- /workspace/powerdns-ansible/roles/monitoring: undefined variable 'monitoring_config.prometheus_port'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'ansible_default_ipv4.address'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'ansible_python_interpreter'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'db_tables.rowcount[0]'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'hostvars[mysql_master_host][''mysql_master_status''][''query_result''][0][''File'']'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'hostvars[mysql_master_host][''mysql_master_status''][''query_result''][0][''Position'']'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'item.dest'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'item.name'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'item.src'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'item.value'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'mysql_master_host'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'mysql_packages[ansible_os_family]'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'mysql_replication_config_path[ansible_os_family]'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'mysql_replication_password'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'mysql_replication_user'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'mysql_service_name'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'powerdns_db_host'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'powerdns_db_name'
+- /workspace/powerdns-ansible/roles/mysql: undefined variable 'powerdns_db_user'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'ansible_date_time.epoch'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'ansible_default_ipv4.address'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'dnssec_status.results'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'domain_ids.query_result'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'item.dest'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'item.id'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'item.item'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'item.name'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'item.src'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'powerdns_backup_dir'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'powerdns_config_file'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'powerdns_db_name'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'powerdns_packages[ansible_os_family]'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'powerdns_service_name'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'powerdns_service_status.status.ActiveState'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'primary_domains'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'slave_domain_count.query_result[0].count'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'zone_transfer_status.query_result'
+- /workspace/powerdns-ansible/roles/powerdns: undefined variable 'zone_validation.results'
+- /workspace/powerdns-ansible/roles/prometheus: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/prometheus: undefined variable 'item.dest'
+- /workspace/powerdns-ansible/roles/prometheus: undefined variable 'item.src'
+- /workspace/powerdns-ansible/roles/recursor: undefined variable 'ansible_date_time.epoch'
+- /workspace/powerdns-ansible/roles/recursor: undefined variable 'ansible_default_ipv4.address'
+- /workspace/powerdns-ansible/roles/recursor: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/recursor: undefined variable 'item.comment'
+- /workspace/powerdns-ansible/roles/recursor: undefined variable 'item.dest'
+- /workspace/powerdns-ansible/roles/recursor: undefined variable 'item.port'
+- /workspace/powerdns-ansible/roles/recursor: undefined variable 'item.proto'
+- /workspace/powerdns-ansible/roles/recursor: undefined variable 'item.src'
+- /workspace/powerdns-ansible/roles/recursor: undefined variable 'recursor_api_port'
+- /workspace/powerdns-ansible/roles/recursor: undefined variable 'recursor_backup_dir'
+- /workspace/powerdns-ansible/roles/recursor: undefined variable 'recursor_config_dir'
+- /workspace/powerdns-ansible/roles/recursor: undefined variable 'recursor_config_file'
+- /workspace/powerdns-ansible/roles/recursor: undefined variable 'recursor_packages[ansible_os_family]'
+- /workspace/powerdns-ansible/roles/recursor: undefined variable 'recursor_port'
+- /workspace/powerdns-ansible/roles/recursor: undefined variable 'recursor_service_name'
+- /workspace/powerdns-ansible/roles/recursor: undefined variable 'recursor_service_status.status.ActiveState'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'dns_network'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'firewall_ports'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'groups[''powerdns_servers'']'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'hostvars[item]["ansible_default_ipv4"]["address"]'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'hostvars[item][''ansible_default_ipv4''][''address'']'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'item.comment'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'item.dest'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'item.direction'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'item.line'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'item.mode'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'item.name'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'item.path'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'item.policy'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'item.port'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'item.proto'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'item.regexp'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'item.src'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'item.value'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'monitoring_config.prometheus_port'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'powerdns_backup_dir'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'powerdns_config_file'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'powerdns_db_port'
+- /workspace/powerdns-ansible/roles/security: undefined variable 'powerdns_webserver_allow_from'
+- /workspace/powerdns-ansible/roles/security_hardening: undefined variable 'ansible_date_time.iso8601'
+- /workspace/powerdns-ansible/roles/security_hardening: undefined variable 'hostvars[item][''ansible_default_ipv4''][''address'']'
+- /workspace/powerdns-ansible/roles/security_hardening: undefined variable 'inventory_hostname'
+- /workspace/powerdns-ansible/roles/security_hardening: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/security_hardening: undefined variable 'item.comment'
+- /workspace/powerdns-ansible/roles/security_hardening: undefined variable 'item.dest'
+- /workspace/powerdns-ansible/roles/security_hardening: undefined variable 'item.direction'
+- /workspace/powerdns-ansible/roles/security_hardening: undefined variable 'item.mode'
+- /workspace/powerdns-ansible/roles/security_hardening: undefined variable 'item.name'
+- /workspace/powerdns-ansible/roles/security_hardening: undefined variable 'item.owner'
+- /workspace/powerdns-ansible/roles/security_hardening: undefined variable 'item.path'
+- /workspace/powerdns-ansible/roles/security_hardening: undefined variable 'item.policy'
+- /workspace/powerdns-ansible/roles/security_hardening: undefined variable 'item.port'
+- /workspace/powerdns-ansible/roles/security_hardening: undefined variable 'item.proto'
+- /workspace/powerdns-ansible/roles/security_hardening: undefined variable 'item.src'
+- /workspace/powerdns-ansible/roles/security_hardening: undefined variable 'item.value'
+- /workspace/powerdns-ansible/roles/self_healing: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/self_healing: undefined variable 'item.dest'
+- /workspace/powerdns-ansible/roles/self_healing: undefined variable 'item.src'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'ansible_date_time.iso8601'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'config_check_result.stdout'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'final_service_check.results'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'inventory_hostname'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'item.group'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'item.home'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'item.item'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'item.line'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'item.mode'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'item.name'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'item.owner'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'item.path'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'item.regexp'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'item.status.ActiveState'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'mysql_error_log.stdout_lines'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'mysql_packages[ansible_os_family]'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'mysql_service_name'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'port_conflicts.stdout_lines'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'powerdns_db_host'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'powerdns_db_user'
+- /workspace/powerdns-ansible/roles/selfheal: undefined variable 'powerdns_mysql_backend_packages[ansible_os_family]'
+- /workspace/powerdns-ansible/roles/state_management: undefined variable 'ansible_date_time.epoch'
+- /workspace/powerdns-ansible/roles/state_management: undefined variable 'ansible_date_time.iso8601'
+- /workspace/powerdns-ansible/roles/state_management: undefined variable 'ansible_distribution'
+- /workspace/powerdns-ansible/roles/state_management: undefined variable 'ansible_distribution_version'
+- /workspace/powerdns-ansible/roles/state_management: undefined variable 'ansible_kernel'
+- /workspace/powerdns-ansible/roles/state_management: undefined variable 'ansible_user_id'
+- /workspace/powerdns-ansible/roles/state_management: undefined variable 'ansible_version.full'
+- /workspace/powerdns-ansible/roles/state_management: undefined variable 'inventory_hostname'
+- /workspace/powerdns-ansible/roles/state_management: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/state_management: undefined variable 'item.dest'
+- /workspace/powerdns-ansible/roles/state_management: undefined variable 'item.src'
+- /workspace/powerdns-ansible/roles/state_management: undefined variable 'operation_mode'
+- /workspace/powerdns-ansible/roles/state_management: undefined variable 'server_role'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'ansible_date_time.iso8601'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'ansible_default_ipv4.address'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'ansible_distribution'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'ansible_distribution_version'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'ansible_memtotal_mb'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'ansible_mounts'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'ansible_processor_vcpus'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'backup_config.retention_days'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'existing_pdns_config.stat.exists'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'inventory_hostname'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'item.dest'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'item.mount'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'item.src'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'operation_mode'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'powerdns_db_host'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'powerdns_version'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'prometheus_port'
+- /workspace/powerdns-ansible/roles/validate_config: undefined variable 'server_role'
+- /workspace/powerdns-ansible/roles/zones_as_code: undefined variable 'item'
+- /workspace/powerdns-ansible/roles/zones_as_code: undefined variable 'item.dest'
+- /workspace/powerdns-ansible/roles/zones_as_code: undefined variable 'item.src'
 
 ## ⚠️ Placeholders Detected
-- None
+- none
 
 ## 🛠 Fix Recommendations
-- Address `ansible-lint` failures (1458 detected, reduced from 1602)
-- Continue replacing `ignore_errors` with explicit failure checks across roles
-
-## 📊 Score
-90/100
-
-## 🔜 Next Actions
-- Address missing directories and meta files
-- Ensure each task has name and tags
-- Define any undefined variables in defaults or vars
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.dest' in defaults/main.yml or vars/main.yml
+- Define 'item.src' in defaults/main.yml or vars/main.yml
+- Define 'mysql_packages[ansible_os_family]' in defaults/main.yml or vars/main.yml
+- Define 'mysql_service_name' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_packages[ansible_os_family]' in defaults/main.yml or vars/main.yml
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.dest' in defaults/main.yml or vars/main.yml
+- Define 'item.name' in defaults/main.yml or vars/main.yml
+- Define 'item.src' in defaults/main.yml or vars/main.yml
+- Define 'item.value' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_backup_dir' in defaults/main.yml or vars/main.yml
+- Define 'ansible_default_ipv4.address' in defaults/main.yml or vars/main.yml
+- Define 'dnsdist_packages[ansible_os_family]' in defaults/main.yml or vars/main.yml
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.dest' in defaults/main.yml or vars/main.yml
+- Define 'item.src' in defaults/main.yml or vars/main.yml
+- Define 'ansible_date_time.iso8601' in defaults/main.yml or vars/main.yml
+- Define 'ansible_default_ipv4.address' in defaults/main.yml or vars/main.yml
+- Define 'inventory_hostname' in defaults/main.yml or vars/main.yml
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.dest' in defaults/main.yml or vars/main.yml
+- Define 'item.item.name' in defaults/main.yml or vars/main.yml
+- Define 'item.name' in defaults/main.yml or vars/main.yml
+- Define 'item.src' in defaults/main.yml or vars/main.yml
+- Define 'item.stdout' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_db_host' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_db_name' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_db_user' in defaults/main.yml or vars/main.yml
+- Define 'server_role' in defaults/main.yml or vars/main.yml
+- Define 'ansible_date_time.epoch' in defaults/main.yml or vars/main.yml
+- Define 'ansible_default_ipv4.address' in defaults/main.yml or vars/main.yml
+- Define 'galera_config_path[ansible_os_family]' in defaults/main.yml or vars/main.yml
+- Define 'galera_packages[ansible_os_family]' in defaults/main.yml or vars/main.yml
+- Define 'hostvars[groups['galera_cluster'][0]].ansible_default_ipv4.address' in defaults/main.yml or vars/main.yml
+- Define 'inventory_hostname' in defaults/main.yml or vars/main.yml
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.dest' in defaults/main.yml or vars/main.yml
+- Define 'item.src' in defaults/main.yml or vars/main.yml
+- Define 'mysql_galera_config_path[ansible_os_family]' in defaults/main.yml or vars/main.yml
+- Define 'mysql_service_name' in defaults/main.yml or vars/main.yml
+- Define 'ansible_date_time.epoch' in defaults/main.yml or vars/main.yml
+- Define 'ansible_default_ipv4.address' in defaults/main.yml or vars/main.yml
+- Define 'haproxy_service_status.status.ActiveState' in defaults/main.yml or vars/main.yml
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.dest' in defaults/main.yml or vars/main.yml
+- Define 'item.src' in defaults/main.yml or vars/main.yml
+- Define 'ansible_date_time.epoch' in defaults/main.yml or vars/main.yml
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.comment' in defaults/main.yml or vars/main.yml
+- Define 'item.dest' in defaults/main.yml or vars/main.yml
+- Define 'item.name' in defaults/main.yml or vars/main.yml
+- Define 'item.proto' in defaults/main.yml or vars/main.yml
+- Define 'item.src' in defaults/main.yml or vars/main.yml
+- Define 'item.value' in defaults/main.yml or vars/main.yml
+- Define 'keepalived_service_status.status.ActiveState' in defaults/main.yml or vars/main.yml
+- Define 'keepalived_vip' in defaults/main.yml or vars/main.yml
+- Define 'vrrp_state.stdout' in defaults/main.yml or vars/main.yml
+- Define 'ansible_default_ipv4.address' in defaults/main.yml or vars/main.yml
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.dest' in defaults/main.yml or vars/main.yml
+- Define 'item.src' in defaults/main.yml or vars/main.yml
+- Define 'monitoring_config.prometheus_port' in defaults/main.yml or vars/main.yml
+- Define 'ansible_default_ipv4.address' in defaults/main.yml or vars/main.yml
+- Define 'ansible_python_interpreter' in defaults/main.yml or vars/main.yml
+- Define 'db_tables.rowcount[0]' in defaults/main.yml or vars/main.yml
+- Define 'hostvars[mysql_master_host][''mysql_master_status''][''query_result''][0][''File'']' in defaults/main.yml or vars/main.yml
+- Define 'hostvars[mysql_master_host][''mysql_master_status''][''query_result''][0][''Position'']' in defaults/main.yml or vars/main.yml
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.dest' in defaults/main.yml or vars/main.yml
+- Define 'item.name' in defaults/main.yml or vars/main.yml
+- Define 'item.src' in defaults/main.yml or vars/main.yml
+- Define 'item.value' in defaults/main.yml or vars/main.yml
+- Define 'mysql_master_host' in defaults/main.yml or vars/main.yml
+- Define 'mysql_packages[ansible_os_family]' in defaults/main.yml or vars/main.yml
+- Define 'mysql_replication_config_path[ansible_os_family]' in defaults/main.yml or vars/main.yml
+- Define 'mysql_replication_password' in defaults/main.yml or vars/main.yml
+- Define 'mysql_replication_user' in defaults/main.yml or vars/main.yml
+- Define 'mysql_service_name' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_db_host' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_db_name' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_db_user' in defaults/main.yml or vars/main.yml
+- Define 'ansible_date_time.epoch' in defaults/main.yml or vars/main.yml
+- Define 'ansible_default_ipv4.address' in defaults/main.yml or vars/main.yml
+- Define 'dnssec_status.results' in defaults/main.yml or vars/main.yml
+- Define 'domain_ids.query_result' in defaults/main.yml or vars/main.yml
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.dest' in defaults/main.yml or vars/main.yml
+- Define 'item.id' in defaults/main.yml or vars/main.yml
+- Define 'item.item' in defaults/main.yml or vars/main.yml
+- Define 'item.name' in defaults/main.yml or vars/main.yml
+- Define 'item.src' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_backup_dir' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_config_file' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_db_name' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_packages[ansible_os_family]' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_service_name' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_service_status.status.ActiveState' in defaults/main.yml or vars/main.yml
+- Define 'primary_domains' in defaults/main.yml or vars/main.yml
+- Define 'slave_domain_count.query_result[0].count' in defaults/main.yml or vars/main.yml
+- Define 'zone_transfer_status.query_result' in defaults/main.yml or vars/main.yml
+- Define 'zone_validation.results' in defaults/main.yml or vars/main.yml
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.dest' in defaults/main.yml or vars/main.yml
+- Define 'item.src' in defaults/main.yml or vars/main.yml
+- Define 'ansible_date_time.epoch' in defaults/main.yml or vars/main.yml
+- Define 'ansible_default_ipv4.address' in defaults/main.yml or vars/main.yml
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.comment' in defaults/main.yml or vars/main.yml
+- Define 'item.dest' in defaults/main.yml or vars/main.yml
+- Define 'item.port' in defaults/main.yml or vars/main.yml
+- Define 'item.proto' in defaults/main.yml or vars/main.yml
+- Define 'item.src' in defaults/main.yml or vars/main.yml
+- Define 'recursor_api_port' in defaults/main.yml or vars/main.yml
+- Define 'recursor_backup_dir' in defaults/main.yml or vars/main.yml
+- Define 'recursor_config_dir' in defaults/main.yml or vars/main.yml
+- Define 'recursor_config_file' in defaults/main.yml or vars/main.yml
+- Define 'recursor_packages[ansible_os_family]' in defaults/main.yml or vars/main.yml
+- Define 'recursor_port' in defaults/main.yml or vars/main.yml
+- Define 'recursor_service_name' in defaults/main.yml or vars/main.yml
+- Define 'recursor_service_status.status.ActiveState' in defaults/main.yml or vars/main.yml
+- Define 'dns_network' in defaults/main.yml or vars/main.yml
+- Define 'firewall_ports' in defaults/main.yml or vars/main.yml
+- Define 'groups[''powerdns_servers'']' in defaults/main.yml or vars/main.yml
+- Define 'hostvars[item]["ansible_default_ipv4"]["address"]' in defaults/main.yml or vars/main.yml
+- Define 'hostvars[item][''ansible_default_ipv4''][''address'']' in defaults/main.yml or vars/main.yml
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.comment' in defaults/main.yml or vars/main.yml
+- Define 'item.dest' in defaults/main.yml or vars/main.yml
+- Define 'item.direction' in defaults/main.yml or vars/main.yml
+- Define 'item.line' in defaults/main.yml or vars/main.yml
+- Define 'item.mode' in defaults/main.yml or vars/main.yml
+- Define 'item.name' in defaults/main.yml or vars/main.yml
+- Define 'item.path' in defaults/main.yml or vars/main.yml
+- Define 'item.policy' in defaults/main.yml or vars/main.yml
+- Define 'item.port' in defaults/main.yml or vars/main.yml
+- Define 'item.proto' in defaults/main.yml or vars/main.yml
+- Define 'item.regexp' in defaults/main.yml or vars/main.yml
+- Define 'item.src' in defaults/main.yml or vars/main.yml
+- Define 'item.value' in defaults/main.yml or vars/main.yml
+- Define 'monitoring_config.prometheus_port' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_backup_dir' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_config_file' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_db_port' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_webserver_allow_from' in defaults/main.yml or vars/main.yml
+- Define 'ansible_date_time.iso8601' in defaults/main.yml or vars/main.yml
+- Define 'hostvars[item][''ansible_default_ipv4''][''address'']' in defaults/main.yml or vars/main.yml
+- Define 'inventory_hostname' in defaults/main.yml or vars/main.yml
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.comment' in defaults/main.yml or vars/main.yml
+- Define 'item.dest' in defaults/main.yml or vars/main.yml
+- Define 'item.direction' in defaults/main.yml or vars/main.yml
+- Define 'item.mode' in defaults/main.yml or vars/main.yml
+- Define 'item.name' in defaults/main.yml or vars/main.yml
+- Define 'item.owner' in defaults/main.yml or vars/main.yml
+- Define 'item.path' in defaults/main.yml or vars/main.yml
+- Define 'item.policy' in defaults/main.yml or vars/main.yml
+- Define 'item.port' in defaults/main.yml or vars/main.yml
+- Define 'item.proto' in defaults/main.yml or vars/main.yml
+- Define 'item.src' in defaults/main.yml or vars/main.yml
+- Define 'item.value' in defaults/main.yml or vars/main.yml
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.dest' in defaults/main.yml or vars/main.yml
+- Define 'item.src' in defaults/main.yml or vars/main.yml
+- Define 'ansible_date_time.iso8601' in defaults/main.yml or vars/main.yml
+- Define 'config_check_result.stdout' in defaults/main.yml or vars/main.yml
+- Define 'final_service_check.results' in defaults/main.yml or vars/main.yml
+- Define 'inventory_hostname' in defaults/main.yml or vars/main.yml
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.group' in defaults/main.yml or vars/main.yml
+- Define 'item.home' in defaults/main.yml or vars/main.yml
+- Define 'item.item' in defaults/main.yml or vars/main.yml
+- Define 'item.line' in defaults/main.yml or vars/main.yml
+- Define 'item.mode' in defaults/main.yml or vars/main.yml
+- Define 'item.name' in defaults/main.yml or vars/main.yml
+- Define 'item.owner' in defaults/main.yml or vars/main.yml
+- Define 'item.path' in defaults/main.yml or vars/main.yml
+- Define 'item.regexp' in defaults/main.yml or vars/main.yml
+- Define 'item.status.ActiveState' in defaults/main.yml or vars/main.yml
+- Define 'mysql_error_log.stdout_lines' in defaults/main.yml or vars/main.yml
+- Define 'mysql_packages[ansible_os_family]' in defaults/main.yml or vars/main.yml
+- Define 'mysql_service_name' in defaults/main.yml or vars/main.yml
+- Define 'port_conflicts.stdout_lines' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_db_host' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_db_user' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_mysql_backend_packages[ansible_os_family]' in defaults/main.yml or vars/main.yml
+- Define 'ansible_date_time.epoch' in defaults/main.yml or vars/main.yml
+- Define 'ansible_date_time.iso8601' in defaults/main.yml or vars/main.yml
+- Define 'ansible_distribution' in defaults/main.yml or vars/main.yml
+- Define 'ansible_distribution_version' in defaults/main.yml or vars/main.yml
+- Define 'ansible_kernel' in defaults/main.yml or vars/main.yml
+- Define 'ansible_user_id' in defaults/main.yml or vars/main.yml
+- Define 'ansible_version.full' in defaults/main.yml or vars/main.yml
+- Define 'inventory_hostname' in defaults/main.yml or vars/main.yml
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.dest' in defaults/main.yml or vars/main.yml
+- Define 'item.src' in defaults/main.yml or vars/main.yml
+- Define 'operation_mode' in defaults/main.yml or vars/main.yml
+- Define 'server_role' in defaults/main.yml or vars/main.yml
+- Define 'ansible_date_time.iso8601' in defaults/main.yml or vars/main.yml
+- Define 'ansible_default_ipv4.address' in defaults/main.yml or vars/main.yml
+- Define 'ansible_distribution' in defaults/main.yml or vars/main.yml
+- Define 'ansible_distribution_version' in defaults/main.yml or vars/main.yml
+- Define 'ansible_memtotal_mb' in defaults/main.yml or vars/main.yml
+- Define 'ansible_mounts' in defaults/main.yml or vars/main.yml
+- Define 'ansible_processor_vcpus' in defaults/main.yml or vars/main.yml
+- Define 'backup_config.retention_days' in defaults/main.yml or vars/main.yml
+- Define 'existing_pdns_config.stat.exists' in defaults/main.yml or vars/main.yml
+- Define 'inventory_hostname' in defaults/main.yml or vars/main.yml
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.dest' in defaults/main.yml or vars/main.yml
+- Define 'item.mount' in defaults/main.yml or vars/main.yml
+- Define 'item.src' in defaults/main.yml or vars/main.yml
+- Define 'operation_mode' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_db_host' in defaults/main.yml or vars/main.yml
+- Define 'powerdns_version' in defaults/main.yml or vars/main.yml
+- Define 'prometheus_port' in defaults/main.yml or vars/main.yml
+- Define 'server_role' in defaults/main.yml or vars/main.yml
+- Define 'item' in defaults/main.yml or vars/main.yml
+- Define 'item.dest' in defaults/main.yml or vars/main.yml
+- Define 'item.src' in defaults/main.yml or vars/main.yml
