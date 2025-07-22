@@ -6,7 +6,7 @@
     - haproxy
 - name: Install HAProxy stats packages
   ansible.builtin.package:
-    name: '{{ haproxy_stats_packages[ansible_os_family] | default([]) }}'
+    name: "{{ haproxy_stats_packages[ansible_os_family] | default([]) }}"
     state: present
   when: haproxy_stats_packages[ansible_os_family] is defined
   tags:
