@@ -1,19 +1,19 @@
 - name: Install monitoring packages
-  package:
+  ansible.builtin.package:
     name:
-    - htop
-    - iotop
-    - nethogs
-    - tcpdump
-    - nmap
-    - telnet
-    - curl
-    - jq
+      - htop
+      - iotop
+      - nethogs
+      - tcpdump
+      - nmap
+      - telnet
+      - curl
+      - jq
     state: present
   tags:
     - monitoring
 - name: Create monitoring directories
-  file:
+  ansible.builtin.file:
     path: '{{ item }}'
     state: directory
     owner: root
@@ -26,7 +26,7 @@
   tags:
     - monitoring
 - name: Install PowerDNS monitoring script
-  template:
+  ansible.builtin.template:
     src: powerdns-monitor.sh.j2
     dest: /usr/local/bin/powerdns-monitor.sh
     owner: root
@@ -35,7 +35,7 @@
   tags:
     - monitoring
 - name: Install system resource monitoring script
-  template:
+  ansible.builtin.template:
     src: system-monitor.sh.j2
     dest: /usr/local/bin/system-monitor.sh
     owner: root
@@ -44,7 +44,7 @@
   tags:
     - monitoring
 - name: Install DNS query monitoring script
-  template:
+  ansible.builtin.template:
     src: dns-query-monitor.sh.j2
     dest: /usr/local/bin/dns-query-monitor.sh
     owner: root
@@ -53,7 +53,7 @@
   tags:
     - monitoring
 - name: Create monitoring configuration
-  template:
+  ansible.builtin.template:
     src: monitoring.conf.j2
     dest: /etc/monitoring/monitoring.conf
     owner: root
@@ -62,7 +62,7 @@
   tags:
     - monitoring
 - name: Schedule PowerDNS monitoring
-  cron:
+  ansible.builtin.cron:
     name: PowerDNS monitoring check
     cron_file: powerdns-monitoring
     user: root
@@ -74,7 +74,7 @@
   tags:
     - monitoring
 - name: Schedule system monitoring
-  cron:
+  ansible.builtin.cron:
     name: System resource monitoring
     cron_file: system-monitoring
     user: root
@@ -86,7 +86,7 @@
   tags:
     - monitoring
 - name: Schedule DNS query monitoring
-  cron:
+  ansible.builtin.cron:
     name: DNS query monitoring
     cron_file: dns-monitoring
     user: root
@@ -98,7 +98,7 @@
   tags:
     - monitoring
 - name: Configure log rotation for monitoring logs
-  template:
+  ansible.builtin.template:
     src: monitoring-logrotate.j2
     dest: /etc/logrotate.d/monitoring
     owner: root
@@ -107,7 +107,7 @@
   tags:
     - monitoring
 - name: Install alerting script
-  template:
+  ansible.builtin.template:
     src: alert-manager.sh.j2
     dest: /usr/local/bin/alert-manager.sh
     owner: root
@@ -116,7 +116,7 @@
   tags:
     - monitoring
 - name: Create monitoring dashboard script
-  template:
+  ansible.builtin.template:
     src: monitoring-dashboard.sh.j2
     dest: /usr/local/bin/monitoring-dashboard.sh
     owner: root
@@ -125,18 +125,18 @@
   tags:
     - monitoring
 - name: Install Prometheus node exporter (if enabled)
-  include_tasks: install_prometheus.yml
+  ansible.builtin.include_tasks: install_prometheus.yml
   when: monitoring_config.prometheus_port is defined
   tags:
     - monitoring
 - name: Display monitoring setup status
-  debug:
+  ansible.builtin.debug:
     msg:
-    - Monitoring setup completed
-    - 'PowerDNS monitoring: Every 5 minutes'
-    - 'System monitoring: Every 10 minutes'
-    - 'DNS query monitoring: Every 2 minutes'
-    - 'Logs location: /var/log/monitoring/'
-    - 'Dashboard: /usr/local/bin/monitoring-dashboard.sh'
+      - Monitoring setup completed
+      - 'PowerDNS monitoring: Every 5 minutes'
+      - 'System monitoring: Every 10 minutes'
+      - 'DNS query monitoring: Every 2 minutes'
+      - 'Logs location: /var/log/monitoring/'
+      - 'Dashboard: /usr/local/bin/monitoring-dashboard.sh'
   tags:
     - monitoring
