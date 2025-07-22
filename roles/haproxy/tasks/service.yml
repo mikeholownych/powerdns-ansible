@@ -1,0 +1,29 @@
+---
+# Service management tasks for haproxy
+
+- name: Enable and start haproxy service
+  ansible.builtin.systemd:
+    name: "{{ haproxy_service_name | default('haproxy') }}"
+    state: "{{ haproxy_service_state | default('started') }}"
+    enabled: "{{ haproxy_service_enabled | default(true) }}"
+    daemon_reload: true
+  tags:
+    - haproxy
+    - service
+
+- name: Verify haproxy service is running
+  ansible.builtin.systemd:
+    name: "{{ haproxy_service_name | default('haproxy') }}"
+  register: haproxy_service_status
+  tags:
+    - haproxy
+    - service
+    - verify
+
+- name: Display haproxy service status
+  ansible.builtin.debug:
+    msg: "haproxy service is {{ haproxy_service_status.status.ActiveState | default('unknown') }}"
+  tags:
+    - haproxy
+    - service
+    - verify

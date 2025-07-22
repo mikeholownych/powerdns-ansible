@@ -1,0 +1,31 @@
+---
+# Installation tasks for dnssec_automation
+
+- name: Update package cache
+  ansible.builtin.package:
+    update_cache: true
+  when: ansible_os_family in ['Debian', 'RedHat']
+  tags:
+    - dnssec_automation
+    - install
+
+- name: Install dnssec_automation packages
+  ansible.builtin.package:
+    name: "{{ dnssec_automation_packages[ansible_os_family] | default([]) }}"
+    state: present
+  when: dnssec_automation_packages is defined
+  tags:
+    - dnssec_automation
+    - install
+
+- name: Create dnssec_automation directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ dnssec_automation_user | default('root') }}"
+    group: "{{ dnssec_automation_group | default('root') }}"
+    mode: '0755'
+  loop: "{{ dnssec_automation_directories | default([]) }}"
+  tags:
+    - dnssec_automation
+    - install

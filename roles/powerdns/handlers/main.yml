@@ -29,6 +29,6 @@
   listen: stop powerdns
 
 - name: reload systemd
-  systemd:
+  ansible.builtin.systemd:
     daemon_reload: yes
   listen: reload systemd

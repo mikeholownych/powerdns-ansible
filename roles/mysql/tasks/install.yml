@@ -1,0 +1,31 @@
+---
+# Installation tasks for mysql
+
+- name: Update package cache
+  ansible.builtin.package:
+    update_cache: true
+  when: ansible_os_family in ['Debian', 'RedHat']
+  tags:
+    - mysql
+    - install
+
+- name: Install mysql packages
+  ansible.builtin.package:
+    name: "{{ mysql_packages[ansible_os_family] | default([]) }}"
+    state: present
+  when: mysql_packages is defined
+  tags:
+    - mysql
+    - install
+
+- name: Create mysql directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ mysql_user | default('root') }}"
+    group: "{{ mysql_group | default('root') }}"
+    mode: '0755'
+  loop: "{{ mysql_directories | default([]) }}"
+  tags:
+    - mysql
+    - install

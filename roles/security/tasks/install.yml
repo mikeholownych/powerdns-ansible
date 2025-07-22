@@ -1,0 +1,31 @@
+---
+# Installation tasks for security
+
+- name: Update package cache
+  ansible.builtin.package:
+    update_cache: true
+  when: ansible_os_family in ['Debian', 'RedHat']
+  tags:
+    - security
+    - install
+
+- name: Install security packages
+  ansible.builtin.package:
+    name: "{{ security_packages[ansible_os_family] | default([]) }}"
+    state: present
+  when: security_packages is defined
+  tags:
+    - security
+    - install
+
+- name: Create security directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ security_user | default('root') }}"
+    group: "{{ security_group | default('root') }}"
+    mode: '0755'
+  loop: "{{ security_directories | default([]) }}"
+  tags:
+    - security
+    - install

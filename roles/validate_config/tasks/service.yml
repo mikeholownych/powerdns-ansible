@@ -1,0 +1,29 @@
+---
+# Service management tasks for validate_config
+
+- name: Enable and start validate_config service
+  ansible.builtin.systemd:
+    name: "{{ validate_config_service_name | default('validate_config') }}"
+    state: "{{ validate_config_service_state | default('started') }}"
+    enabled: "{{ validate_config_service_enabled | default(true) }}"
+    daemon_reload: true
+  tags:
+    - validate_config
+    - service
+
+- name: Verify validate_config service is running
+  ansible.builtin.systemd:
+    name: "{{ validate_config_service_name | default('validate_config') }}"
+  register: validate_config_service_status
+  tags:
+    - validate_config
+    - service
+    - verify
+
+- name: Display validate_config service status
+  ansible.builtin.debug:
+    msg: "validate_config service is {{ validate_config_service_status.status.ActiveState | default('unknown') }}"
+  tags:
+    - validate_config
+    - service
+    - verify

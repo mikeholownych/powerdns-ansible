@@ -1,0 +1,31 @@
+---
+# Installation tasks for prometheus
+
+- name: Update package cache
+  ansible.builtin.package:
+    update_cache: true
+  when: ansible_os_family in ['Debian', 'RedHat']
+  tags:
+    - prometheus
+    - install
+
+- name: Install prometheus packages
+  ansible.builtin.package:
+    name: "{{ prometheus_packages[ansible_os_family] | default([]) }}"
+    state: present
+  when: prometheus_packages is defined
+  tags:
+    - prometheus
+    - install
+
+- name: Create prometheus directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ prometheus_user | default('root') }}"
+    group: "{{ prometheus_group | default('root') }}"
+    mode: '0755'
+  loop: "{{ prometheus_directories | default([]) }}"
+  tags:
+    - prometheus
+    - install

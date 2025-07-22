@@ -1,17 +1,17 @@
 - name: Install AIDE
-  package:
+  ansible.builtin.package:
     name: aide
     state: present
   tags:
   - security
 - name: Check if AIDE database exists
-  stat:
+  ansible.builtin.stat:
     path: /var/lib/aide/aide.db
   register: aide_db_exists
   tags:
   - security
 - name: Create AIDE configuration
-  template:
+  ansible.builtin.template:
     src: aide.conf.j2
     dest: /etc/aide/aide.conf
     owner: root
@@ -22,19 +22,19 @@
   tags:
   - security
 - name: Initialize AIDE database (first time)
-  command: aide --init
+  ansible.builtin.command: aide --init
   when: not aide_db_exists.stat.exists
   register: aide_init
   changed_when: aide_init.rc == 0
   tags:
   - security
 - name: Move new AIDE database to active location
-  command: mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
+  ansible.builtin.command: mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
   when: not aide_db_exists.stat.exists and aide_init.rc == 0
   tags:
   - security
 - name: Create AIDE check script
-  template:
+  ansible.builtin.template:
     src: aide-check.sh.j2
     dest: /usr/local/bin/aide-check.sh
     owner: root
@@ -43,7 +43,7 @@
   tags:
   - security
 - name: Create AIDE update script
-  template:
+  ansible.builtin.template:
     src: aide-update.sh.j2
     dest: /usr/local/bin/aide-update.sh
     owner: root
@@ -52,7 +52,7 @@
   tags:
   - security
 - name: Schedule daily AIDE checks
-  cron:
+  ansible.builtin.cron:
     name: AIDE integrity check
     cron_file: aide-check
     user: root
@@ -63,7 +63,7 @@
   tags:
   - security
 - name: Schedule weekly AIDE database updates
-  cron:
+  ansible.builtin.cron:
     name: AIDE database update
     cron_file: aide-update
     user: root
@@ -75,7 +75,7 @@
   tags:
   - security
 - name: Create AIDE log directory
-  file:
+  ansible.builtin.file:
     path: /var/log/aide
     state: directory
     owner: root
@@ -84,7 +84,7 @@
   tags:
   - security
 - name: Configure AIDE log rotation
-  template:
+  ansible.builtin.template:
     src: aide-logrotate.j2
     dest: /etc/logrotate.d/aide
     owner: root
@@ -93,7 +93,7 @@
   tags:
   - security
 - name: Set proper permissions on AIDE files
-  file:
+  ansible.builtin.file:
     path: '{{ item }}'
     owner: root
     group: root
@@ -105,7 +105,7 @@
   tags:
   - security
 - name: Display AIDE setup status
-  debug:
+  ansible.builtin.debug:
     msg:
     - AIDE (file integrity monitoring) configured
     - 'Database location: /var/lib/aide/aide.db'

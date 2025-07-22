@@ -1,2 +1,98 @@
 #!/usr/bin/env python3
-print("State report generator placeholder")
+"""
+State Report Generator
+Generates comprehensive system state reports
+"""
+import argparse
+import json
+import subprocess
+import sys
+from datetime import datetime
+
+def get_system_info():
+    """Get basic system information"""
+    info = {}
+    
+    try:
+        # Get hostname
+        result = subprocess.run(['hostname'], capture_output=True, text=True)
+        info['hostname'] = result.stdout.strip()
+        
+        # Get OS info
+        with open('/etc/os-release') as f:
+            for line in f:
+                if line.startswith('PRETTY_NAME='):
+                    info['os'] = line.split('=')[1].strip('"')
+                    break
+        
+        # Get uptime
+        with open('/proc/uptime') as f:
+            uptime_seconds = float(f.read().split()[0])
+            info['uptime_hours'] = round(uptime_seconds / 3600, 2)
+        
+        # Get load average
+        with open('/proc/loadavg') as f:
+            info['load_average'] = f.read().split()[:3]
+            
+    except Exception as e:
+        info['error'] = str(e)
+    
+    return info
+
+def get_service_status():
+    """Get status of important services"""
+    services = ['pdns', 'mysql', 'haproxy', 'keepalived']
+    status = {}
+    
+    for service in services:
+        try:
+            result = subprocess.run(['systemctl', 'is-active', service], 
+                                  capture_output=True, text=True)
+            status[service] = result.stdout.strip()
+        except Exception:
+            status[service] = 'unknown'
+    
+    return status
+
+def generate_report(format_type='json'):
+    """Generate comprehensive state report"""
+    report = {
+        'timestamp': datetime.now().isoformat(),
+        'report_type': 'system_state',
+        'system_info': get_system_info(),
+        'service_status': get_service_status()
+    }
+    
+    if format_type == 'json':
+        return json.dumps(report, indent=2)
+    else:
+        # Simple text format
+        text = f"System State Report - {report['timestamp']}\n"
+        text += "=" * 50 + "\n"
+        text += f"Hostname: {report['system_info'].get('hostname', 'unknown')}\n"
+        text += f"OS: {report['system_info'].get('os', 'unknown')}\n"
+        text += f"Uptime: {report['system_info'].get('uptime_hours', 0)} hours\n"
+        text += "\nService Status:\n"
+        for service, status in report['service_status'].items():
+            text += f"  {service}: {status}\n"
+        return text
+
+def main():
+    parser = argparse.ArgumentParser(description='Generate system state report')
+    parser.add_argument('--format', choices=['json', 'text'], default='json',
+                       help='Output format')
+    parser.add_argument('--output', help='Output file (default: stdout)')
+    
+    args = parser.parse_args()
+    
+    report = generate_report(args.format)
+    
+    if args.output:
+        with open(args.output, 'w') as f:
+            f.write(report)
+        print(f"Report saved to {args.output}")
+    else:
+        print(report)
+
+if __name__ == "__main__":
+    main()

@@ -385,3 +385,26 @@ monitoring_config:
     keepalived_vip_missing: 1
     mysql_replication_lag: 60
     recursor_cache_hit_rate: 80
+
+# Security Configuration
+alert_email: "admin@{{ ansible_domain | default('example.com') }}"
+alert_webhook_url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+
+# Backup Configuration  
+backup_retention_days: 30
+backup_schedule: "0 2 * * *"
+backup_encryption_key: "{{ vault_backup_encryption_key | default('changeme') }}"
+
+# High Availability
+mysql_replication_host_pattern: "192.168.1.%"
+keepalived_virtual_ip: "192.168.1.100"
+keepalived_priority: "{{ 110 if inventory_hostname == groups['powerdns_primary'][0] else 100 }}"
+
+# Load Balancer
+haproxy_stats_enabled: true
+haproxy_stats_user: admin
+haproxy_stats_password: "{{ vault_haproxy_stats_password | default('admin') }}"
+
+# Performance Tuning
+powerdns_max_tcp_connections: 20
+mysql_innodb_buffer_pool_size: "{{ (ansible_memtotal_mb * 0.7) | int }}M"

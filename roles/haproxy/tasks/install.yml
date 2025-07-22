@@ -1,0 +1,31 @@
+---
+# Installation tasks for haproxy
+
+- name: Update package cache
+  ansible.builtin.package:
+    update_cache: true
+  when: ansible_os_family in ['Debian', 'RedHat']
+  tags:
+    - haproxy
+    - install
+
+- name: Install haproxy packages
+  ansible.builtin.package:
+    name: "{{ haproxy_packages[ansible_os_family] | default([]) }}"
+    state: present
+  when: haproxy_packages is defined
+  tags:
+    - haproxy
+    - install
+
+- name: Create haproxy directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ haproxy_user | default('root') }}"
+    group: "{{ haproxy_group | default('root') }}"
+    mode: '0755'
+  loop: "{{ haproxy_directories | default([]) }}"
+  tags:
+    - haproxy
+    - install

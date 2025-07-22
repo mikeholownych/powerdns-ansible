@@ -1,5 +1,5 @@
 - name: Install security packages
-  package:
+  ansible.builtin.package:
     name:
     - ufw
     - fail2ban
@@ -11,7 +11,7 @@
   tags:
   - security
 - name: Install security packages (RHEL)
-  package:
+  ansible.builtin.package:
     name:
     - firewalld
     - fail2ban
@@ -21,17 +21,17 @@
   tags:
   - security
 - name: Configure UFW firewall (Debian/Ubuntu)
-  include_tasks: configure_ufw.yml
+  ansible.builtin.include_tasks: configure_ufw.yml
   when: ansible_os_family == "Debian"
   tags:
   - security
 - name: Configure firewalld (RHEL/CentOS)
-  include_tasks: configure_firewalld.yml
+  ansible.builtin.include_tasks: configure_firewalld.yml
   when: ansible_os_family == "RedHat"
   tags:
   - security
 - name: Configure fail2ban
-  template:
+  ansible.builtin.template:
     src: '{{ item }}.j2'
     dest: /etc/fail2ban/{{ item }}
     owner: root
@@ -44,14 +44,14 @@
   tags:
   - security
 - name: Enable and start fail2ban
-  systemd:
+  ansible.builtin.systemd:
     name: fail2ban
     enabled: true
     state: started
   tags:
   - security
 - name: Configure SSH security
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /etc/ssh/sshd_config
     regexp: '{{ item.regexp }}'
     line: '{{ item.line }}'
@@ -73,7 +73,7 @@
   tags:
   - security
 - name: Set secure file permissions
-  file:
+  ansible.builtin.file:
     path: '{{ item.path }}'
     mode: '{{ item.mode }}'
     owner: '{{ item.owner | default(''root'') }}'
@@ -97,7 +97,7 @@
   tags:
   - security
 - name: Configure system audit rules
-  template:
+  ansible.builtin.template:
     src: audit-powerdns.rules.j2
     dest: /etc/audit/rules.d/powerdns.rules
     owner: root
@@ -108,7 +108,7 @@
   tags:
   - security
 - name: Install and configure AIDE (file integrity monitoring)
-  include_tasks: configure_aide.yml
+  ansible.builtin.include_tasks: configure_aide.yml
   tags:
   - security
 - name: Configure kernel security parameters
@@ -149,7 +149,7 @@
   tags:
   - security
 - name: Create security monitoring script
-  template:
+  ansible.builtin.template:
     src: security-monitor.sh.j2
     dest: /usr/local/bin/security-monitor.sh
     owner: root
@@ -158,7 +158,7 @@
   tags:
   - security
 - name: Schedule security monitoring
-  cron:
+  ansible.builtin.cron:
     name: Security monitoring check
     cron_file: security-monitor
     user: root
@@ -168,7 +168,7 @@
   tags:
   - security
 - name: Configure log monitoring
-  template:
+  ansible.builtin.template:
     src: logwatch-powerdns.conf.j2
     dest: /etc/logwatch/conf/services/powerdns.conf
     owner: root
@@ -178,7 +178,7 @@
   tags:
   - security
 - name: Disable unnecessary services
-  systemd:
+  ansible.builtin.systemd:
     name: '{{ item }}'
     enabled: false
     state: stopped
@@ -190,7 +190,7 @@
   tags:
   - security
 - name: Remove unnecessary packages
-  package:
+  ansible.builtin.package:
     name:
     - telnet
     - rsh-client
@@ -202,7 +202,7 @@
   tags:
   - security
 - name: Configure password policies
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /etc/login.defs
     regexp: '{{ item.regexp }}'
     line: '{{ item.line }}'
@@ -218,7 +218,7 @@
   tags:
   - security
 - name: Create security report
-  template:
+  ansible.builtin.template:
     src: security-report.sh.j2
     dest: /usr/local/bin/security-report.sh
     owner: root
@@ -227,7 +227,7 @@
   tags:
   - security
 - name: Display security status
-  debug:
+  ansible.builtin.debug:
     msg:
     - Security hardening completed
     - 'Firewall: Configured and enabled'

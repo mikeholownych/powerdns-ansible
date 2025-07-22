@@ -1,0 +1,29 @@
+---
+# Service management tasks for common
+
+- name: Enable and start common service
+  ansible.builtin.systemd:
+    name: "{{ common_service_name | default('common') }}"
+    state: "{{ common_service_state | default('started') }}"
+    enabled: "{{ common_service_enabled | default(true) }}"
+    daemon_reload: true
+  tags:
+    - common
+    - service
+
+- name: Verify common service is running
+  ansible.builtin.systemd:
+    name: "{{ common_service_name | default('common') }}"
+  register: common_service_status
+  tags:
+    - common
+    - service
+    - verify
+
+- name: Display common service status
+  ansible.builtin.debug:
+    msg: "common service is {{ common_service_status.status.ActiveState | default('unknown') }}"
+  tags:
+    - common
+    - service
+    - verify

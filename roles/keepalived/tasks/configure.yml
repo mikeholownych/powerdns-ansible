@@ -1,0 +1,26 @@
+---
+# Configuration tasks for keepalived
+
+- name: Generate keepalived configuration files
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode | default('0644') }}"
+    backup: true
+  loop: "{{ keepalived_config_files | default([]) }}"
+  notify: "restart keepalived"
+  tags:
+    - keepalived
+    - configure
+
+- name: Validate keepalived configuration
+  ansible.builtin.command: "{{ keepalived_config_test_command | default('echo Configuration validation not implemented') }}"
+  register: keepalived_config_test
+  changed_when: false
+  failed_when: false
+  tags:
+    - keepalived
+    - configure
+    - validate

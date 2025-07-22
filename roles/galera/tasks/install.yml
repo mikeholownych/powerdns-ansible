@@ -1,0 +1,31 @@
+---
+# Installation tasks for galera
+
+- name: Update package cache
+  ansible.builtin.package:
+    update_cache: true
+  when: ansible_os_family in ['Debian', 'RedHat']
+  tags:
+    - galera
+    - install
+
+- name: Install galera packages
+  ansible.builtin.package:
+    name: "{{ galera_packages[ansible_os_family] | default([]) }}"
+    state: present
+  when: galera_packages is defined
+  tags:
+    - galera
+    - install
+
+- name: Create galera directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ galera_user | default('root') }}"
+    group: "{{ galera_group | default('root') }}"
+    mode: '0755'
+  loop: "{{ galera_directories | default([]) }}"
+  tags:
+    - galera
+    - install

@@ -1,0 +1,31 @@
+---
+# Installation tasks for common
+
+- name: Update package cache
+  ansible.builtin.package:
+    update_cache: true
+  when: ansible_os_family in ['Debian', 'RedHat']
+  tags:
+    - common
+    - install
+
+- name: Install common packages
+  ansible.builtin.package:
+    name: "{{ common_packages[ansible_os_family] | default([]) }}"
+    state: present
+  when: common_packages is defined
+  tags:
+    - common
+    - install
+
+- name: Create common directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ common_user | default('root') }}"
+    group: "{{ common_group | default('root') }}"
+    mode: '0755'
+  loop: "{{ common_directories | default([]) }}"
+  tags:
+    - common
+    - install

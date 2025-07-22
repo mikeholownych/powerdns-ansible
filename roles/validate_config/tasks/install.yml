@@ -1,0 +1,31 @@
+---
+# Installation tasks for validate_config
+
+- name: Update package cache
+  ansible.builtin.package:
+    update_cache: true
+  when: ansible_os_family in ['Debian', 'RedHat']
+  tags:
+    - validate_config
+    - install
+
+- name: Install validate_config packages
+  ansible.builtin.package:
+    name: "{{ validate_config_packages[ansible_os_family] | default([]) }}"
+    state: present
+  when: validate_config_packages is defined
+  tags:
+    - validate_config
+    - install
+
+- name: Create validate_config directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ validate_config_user | default('root') }}"
+    group: "{{ validate_config_group | default('root') }}"
+    mode: '0755'
+  loop: "{{ validate_config_directories | default([]) }}"
+  tags:
+    - validate_config
+    - install

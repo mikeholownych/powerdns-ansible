@@ -1,0 +1,29 @@
+---
+# Service management tasks for state_management
+
+- name: Enable and start state_management service
+  ansible.builtin.systemd:
+    name: "{{ state_management_service_name | default('state_management') }}"
+    state: "{{ state_management_service_state | default('started') }}"
+    enabled: "{{ state_management_service_enabled | default(true) }}"
+    daemon_reload: true
+  tags:
+    - state_management
+    - service
+
+- name: Verify state_management service is running
+  ansible.builtin.systemd:
+    name: "{{ state_management_service_name | default('state_management') }}"
+  register: state_management_service_status
+  tags:
+    - state_management
+    - service
+    - verify
+
+- name: Display state_management service status
+  ansible.builtin.debug:
+    msg: "state_management service is {{ state_management_service_status.status.ActiveState | default('unknown') }}"
+  tags:
+    - state_management
+    - service
+    - verify

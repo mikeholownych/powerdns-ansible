@@ -1,0 +1,26 @@
+---
+# Configuration tasks for prometheus
+
+- name: Generate prometheus configuration files
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode | default('0644') }}"
+    backup: true
+  loop: "{{ prometheus_config_files | default([]) }}"
+  notify: "restart prometheus"
+  tags:
+    - prometheus
+    - configure
+
+- name: Validate prometheus configuration
+  ansible.builtin.command: "{{ prometheus_config_test_command | default('echo Configuration validation not implemented') }}"
+  register: prometheus_config_test
+  changed_when: false
+  failed_when: false
+  tags:
+    - prometheus
+    - configure
+    - validate

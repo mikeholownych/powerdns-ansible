@@ -1,0 +1,29 @@
+---
+# Service management tasks for prometheus
+
+- name: Enable and start prometheus service
+  ansible.builtin.systemd:
+    name: "{{ prometheus_service_name | default('prometheus') }}"
+    state: "{{ prometheus_service_state | default('started') }}"
+    enabled: "{{ prometheus_service_enabled | default(true) }}"
+    daemon_reload: true
+  tags:
+    - prometheus
+    - service
+
+- name: Verify prometheus service is running
+  ansible.builtin.systemd:
+    name: "{{ prometheus_service_name | default('prometheus') }}"
+  register: prometheus_service_status
+  tags:
+    - prometheus
+    - service
+    - verify
+
+- name: Display prometheus service status
+  ansible.builtin.debug:
+    msg: "prometheus service is {{ prometheus_service_status.status.ActiveState | default('unknown') }}"
+  tags:
+    - prometheus
+    - service
+    - verify

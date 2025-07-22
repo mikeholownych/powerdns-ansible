@@ -1,11 +1,11 @@
 - name: Install PowerDNS Recursor packages
-  package:
+  ansible.builtin.package:
     name: '{{ recursor_packages[ansible_os_family] }}'
     state: present
   tags:
   - recursor
 - name: Create PowerDNS Recursor configuration directory
-  file:
+  ansible.builtin.file:
     path: '{{ recursor_config_dir }}'
     state: directory
     owner: pdns-recursor
@@ -14,7 +14,7 @@
   tags:
   - recursor
 - name: Create PowerDNS Recursor log directory
-  file:
+  ansible.builtin.file:
     path: /var/log/pdns-recursor
     state: directory
     owner: pdns-recursor
@@ -23,7 +23,7 @@
   tags:
   - recursor
 - name: Stop PowerDNS Recursor service for initial configuration
-  systemd:
+  ansible.builtin.systemd:
     name: '{{ recursor_service_name }}'
     state: stopped
   failed_when: false
@@ -48,7 +48,7 @@
   tags:
   - recursor
 - name: Generate PowerDNS Recursor configuration
-  template:
+  ansible.builtin.template:
     src: recursor.conf.j2
     dest: '{{ recursor_config_file }}'
     owner: root
@@ -59,7 +59,7 @@
   tags:
   - recursor
 - name: Create PowerDNS Recursor systemd override directory
-  file:
+  ansible.builtin.file:
     path: /etc/systemd/system/{{ recursor_service_name }}.service.d
     state: directory
     owner: root
@@ -68,7 +68,7 @@
   tags:
   - recursor
 - name: Configure PowerDNS Recursor systemd service overrides
-  template:
+  ansible.builtin.template:
     src: recursor-override.conf.j2
     dest: /etc/systemd/system/{{ recursor_service_name }}.service.d/override.conf
     owner: root
@@ -80,7 +80,7 @@
   tags:
   - recursor
 - name: Create PowerDNS Recursor forward zones configuration
-  template:
+  ansible.builtin.template:
     src: forward-zones.conf.j2
     dest: '{{ recursor_config_dir }}/forward-zones.conf'
     owner: root
@@ -91,7 +91,7 @@
   tags:
   - recursor
 - name: Create PowerDNS Recursor Lua configuration
-  template:
+  ansible.builtin.template:
     src: recursor.lua.j2
     dest: '{{ recursor_config_dir }}/recursor.lua'
     owner: root
@@ -102,7 +102,7 @@
   tags:
   - recursor
 - name: Enable and start PowerDNS Recursor service
-  systemd:
+  ansible.builtin.systemd:
     name: '{{ recursor_service_name }}'
     enabled: true
     state: started
@@ -110,7 +110,7 @@
   tags:
   - recursor
 - name: Wait for PowerDNS Recursor to start
-  wait_for:
+  ansible.builtin.wait_for:
     port: '{{ recursor_port }}'
     host: '{{ ansible_default_ipv4.address }}'
     delay: 5
@@ -118,7 +118,7 @@
   tags:
   - recursor
 - name: Wait for PowerDNS Recursor API to start
-  wait_for:
+  ansible.builtin.wait_for:
     port: '{{ recursor_api_port }}'
     host: '{{ ansible_default_ipv4.address }}'
     delay: 5
@@ -127,26 +127,26 @@
   tags:
   - recursor
 - name: Check PowerDNS Recursor service status
-  systemd:
+  ansible.builtin.systemd:
     name: '{{ recursor_service_name }}'
   register: recursor_service_status
   tags:
   - recursor
 - name: Display PowerDNS Recursor service status
-  debug:
+  ansible.builtin.debug:
     msg: PowerDNS Recursor service is {{ recursor_service_status.status.ActiveState
       }}
   tags:
   - recursor
 - name: Test PowerDNS Recursor configuration
-  command: pdns_recursor --config-check
+  ansible.builtin.command: pdns_recursor --config-check
   register: recursor_config_check
   failed_when: recursor_config_check.rc != 0
   changed_when: false
   tags:
   - recursor
 - name: Create PowerDNS Recursor management scripts
-  template:
+  ansible.builtin.template:
     src: '{{ item }}.j2'
     dest: /usr/local/bin/{{ item }}
     owner: root
@@ -159,7 +159,7 @@
   tags:
   - recursor
 - name: Configure PowerDNS Recursor log rotation
-  template:
+  ansible.builtin.template:
     src: recursor-logrotate.j2
     dest: /etc/logrotate.d/pdns-recursor
     owner: root
@@ -168,7 +168,7 @@
   tags:
   - recursor
 - name: Create PowerDNS Recursor monitoring cron job
-  cron:
+  ansible.builtin.cron:
     name: PowerDNS Recursor Health Check
     minute: '*/5'
     job: /usr/local/bin/recursor-health-check.sh
@@ -177,14 +177,14 @@
   tags:
   - recursor
 - name: Verify PowerDNS Recursor is responding to queries
-  command: dig @{{ ansible_default_ipv4.address }} -p {{ recursor_port }} google.com
+  ansible.builtin.command: dig @{{ ansible_default_ipv4.address }} -p {{ recursor_port }} google.com
   register: recursor_test
   failed_when: recursor_test.rc != 0
   changed_when: false
   tags:
   - recursor
 - name: Display PowerDNS Recursor test result
-  debug:
+  ansible.builtin.debug:
     msg: 'PowerDNS Recursor query test: {{ ''PASSED'' if recursor_test.rc == 0 else
       ''FAILED'' }}'
   tags:

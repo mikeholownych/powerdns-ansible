@@ -1,5 +1,5 @@
 - name: Create zones-as-code directories
-  file:
+  ansible.builtin.file:
     path: '{{ item }}'
     state: directory
     owner: root
@@ -15,7 +15,7 @@
   tags:
   - zones_as_code
 - name: Install zones-as-code dependencies
-  package:
+  ansible.builtin.package:
     name: '{{ item }}'
     state: present
   loop:
@@ -40,7 +40,7 @@
   tags:
   - zones_as_code
 - name: Create zone management scripts
-  template:
+  ansible.builtin.template:
     src: '{{ item }}.j2'
     dest: /opt/zones-as-code/scripts/{{ item }}
     owner: root
@@ -55,7 +55,7 @@
   tags:
   - zones_as_code
 - name: Create zone template files
-  template:
+  ansible.builtin.template:
     src: '{{ item }}.j2'
     dest: /opt/zones-as-code/templates/{{ item }}
     owner: root
@@ -68,7 +68,7 @@
   tags:
   - zones_as_code
 - name: Create zone schema validation
-  template:
+  ansible.builtin.template:
     src: zone-schema.json.j2
     dest: /opt/zones-as-code/zone-schema.json
     owner: root
@@ -77,7 +77,7 @@
   tags:
   - zones_as_code
 - name: Generate zones from inventory
-  template:
+  ansible.builtin.template:
     src: generate-zones-from-inventory.py.j2
     dest: /opt/zones-as-code/scripts/generate-zones-from-inventory.py
     owner: root
@@ -86,14 +86,14 @@
   tags:
   - zones_as_code
 - name: Create zone configuration from inventory
-  script: /opt/zones-as-code/scripts/generate-zones-from-inventory.py
+  ansible.builtin.script: /opt/zones-as-code/scripts/generate-zones-from-inventory.py
   register: zone_generation
   changed_when: zone_generation.rc == 0
   when: zones_auto_generation | default(false)
   tags:
   - zones_as_code
 - name: Create zone files from templates
-  template:
+  ansible.builtin.template:
     src: zone-config.yaml.j2
     dest: /opt/zones-as-code/zones/{{ item }}.yaml
     owner: root
@@ -104,7 +104,7 @@
   tags:
   - zones_as_code
 - name: Create reverse zone files
-  template:
+  ansible.builtin.template:
     src: reverse-zone-config.yaml.j2
     dest: /opt/zones-as-code/zones/{{ item | replace('/', '_') }}.yaml
     owner: root
@@ -115,7 +115,7 @@
   tags:
   - zones_as_code
 - name: Validate zone configurations
-  command: /opt/zones-as-code/scripts/zone-validator.py {{ item }}
+  ansible.builtin.command: /opt/zones-as-code/scripts/zone-validator.py {{ item }}
   loop: '{{ primary_domains | default([]) }}'
   register: zone_validation
   failed_when: zone_validation.rc != 0
@@ -124,7 +124,7 @@
   tags:
   - zones_as_code
 - name: Deploy zones to PowerDNS
-  command: /opt/zones-as-code/scripts/zone-deployer.py --zone {{ item }} --deploy
+  ansible.builtin.command: /opt/zones-as-code/scripts/zone-deployer.py --zone {{ item }} --deploy
   loop: '{{ primary_domains | default([]) }}'
   register: zone_deployment
   changed_when: '''DEPLOYED'' in zone_deployment.stdout'
@@ -134,7 +134,7 @@
   tags:
   - zones_as_code
 - name: Create zone backup before changes
-  command: /opt/zones-as-code/scripts/zone-backup.py --all
+  ansible.builtin.command: /opt/zones-as-code/scripts/zone-backup.py --all
   register: zone_backup
   changed_when: zone_backup.rc == 0
   when: zones_backup_before_deploy | default(true)
@@ -152,7 +152,7 @@
   tags:
   - zones_as_code
 - name: Configure Git hooks for zone validation
-  template:
+  ansible.builtin.template:
     src: '{{ item }}.j2'
     dest: /opt/zones-as-code/git-repo/.git/hooks/{{ item }}
     owner: root
@@ -165,7 +165,7 @@
   tags:
   - zones_as_code
 - name: Create zone monitoring and alerting
-  template:
+  ansible.builtin.template:
     src: zone-monitor.py.j2
     dest: /opt/zones-as-code/scripts/zone-monitor.py
     owner: root
@@ -174,7 +174,7 @@
   tags:
   - zones_as_code
 - name: Schedule zone monitoring
-  cron:
+  ansible.builtin.cron:
     name: Zone Monitoring
     cron_file: zone-monitoring
     user: root
@@ -185,7 +185,7 @@
   tags:
   - zones_as_code
 - name: Create zone API integration
-  template:
+  ansible.builtin.template:
     src: zone-api-client.py.j2
     dest: /opt/zones-as-code/scripts/zone-api-client.py
     owner: root
@@ -194,7 +194,7 @@
   tags:
   - zones_as_code
 - name: Create zone synchronization script
-  template:
+  ansible.builtin.template:
     src: zone-sync.py.j2
     dest: /opt/zones-as-code/scripts/zone-sync.py
     owner: root
@@ -203,7 +203,7 @@
   tags:
   - zones_as_code
 - name: Schedule zone synchronization
-  cron:
+  ansible.builtin.cron:
     name: Zone Synchronization
     cron_file: zone-sync
     user: root
@@ -214,7 +214,7 @@
   tags:
   - zones_as_code
 - name: Create zone rollback mechanism
-  template:
+  ansible.builtin.template:
     src: zone-rollback.py.j2
     dest: /opt/zones-as-code/scripts/zone-rollback.py
     owner: root
@@ -223,7 +223,7 @@
   tags:
   - zones_as_code
 - name: Create zone management CLI
-  template:
+  ansible.builtin.template:
     src: zone-cli.py.j2
     dest: /usr/local/bin/zone-cli
     owner: root
@@ -232,7 +232,7 @@
   tags:
   - zones_as_code
 - name: Create zone management web interface (optional)
-  template:
+  ansible.builtin.template:
     src: zone-web-interface.py.j2
     dest: /opt/zones-as-code/scripts/zone-web-interface.py
     owner: root
@@ -242,7 +242,7 @@
   tags:
   - zones_as_code
 - name: Configure zone change notifications
-  template:
+  ansible.builtin.template:
     src: zone-notifications.py.j2
     dest: /opt/zones-as-code/scripts/zone-notifications.py
     owner: root
@@ -251,7 +251,7 @@
   tags:
   - zones_as_code
 - name: Create zone documentation generator
-  template:
+  ansible.builtin.template:
     src: zone-docs-generator.py.j2
     dest: /opt/zones-as-code/scripts/zone-docs-generator.py
     owner: root
@@ -260,14 +260,14 @@
   tags:
   - zones_as_code
 - name: Generate zone documentation
-  command: /opt/zones-as-code/scripts/zone-docs-generator.py
+  ansible.builtin.command: /opt/zones-as-code/scripts/zone-docs-generator.py
   register: zone_docs
   changed_when: zone_docs.rc == 0
   when: zone_documentation_enabled | default(true)
   tags:
   - zones_as_code
 - name: Create zone testing framework
-  template:
+  ansible.builtin.template:
     src: zone-tests.py.j2
     dest: /opt/zones-as-code/scripts/zone-tests.py
     owner: root
@@ -276,7 +276,7 @@
   tags:
   - zones_as_code
 - name: Run zone tests
-  command: /opt/zones-as-code/scripts/zone-tests.py --all
+  ansible.builtin.command: /opt/zones-as-code/scripts/zone-tests.py --all
   register: zone_tests
   failed_when: zone_tests.rc != 0
   changed_when: false
@@ -284,7 +284,7 @@
   tags:
   - zones_as_code
 - name: Create zone performance monitoring
-  template:
+  ansible.builtin.template:
     src: zone-performance.py.j2
     dest: /opt/zones-as-code/scripts/zone-performance.py
     owner: root
@@ -293,7 +293,7 @@
   tags:
   - zones_as_code
 - name: Schedule zone performance monitoring
-  cron:
+  ansible.builtin.cron:
     name: Zone Performance Monitoring
     cron_file: zone-performance
     user: root
@@ -304,7 +304,7 @@
   tags:
   - zones_as_code
 - name: Display zones-as-code setup summary
-  debug:
+  ansible.builtin.debug:
     msg:
     - === Zones-as-Code Setup Complete ===
     - 'Zone Management CLI: zone-cli --help'

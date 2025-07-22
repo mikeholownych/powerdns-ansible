@@ -1,5 +1,5 @@
 - name: Start and enable firewalld
-  systemd:
+  ansible.builtin.systemd:
     name: firewalld
     state: started
     enabled: true
@@ -28,7 +28,7 @@
   - security
 - name: Allow SSH access
   firewalld:
-    service: ssh
+    ansible.builtin.service: ssh
     zone: public
     permanent: true
     state: enabled
@@ -75,7 +75,7 @@
   - security
 - name: Allow NTP
   firewalld:
-    service: ntp
+    ansible.builtin.service: ntp
     zone: public
     permanent: true
     state: enabled
@@ -108,7 +108,7 @@
   tags:
   - security
 - name: Enable firewalld logging
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /etc/firewalld/firewalld.conf
     regexp: ^LogDenied=
     line: LogDenied=all
@@ -118,21 +118,21 @@
   tags:
   - security
 - name: Reload firewalld configuration
-  systemd:
+  ansible.builtin.systemd:
     name: firewalld
     state: reloaded
   when: ansible_os_family == "RedHat"
   tags:
   - security
 - name: Check firewalld status
-  command: firewall-cmd --list-all
+  ansible.builtin.command: firewall-cmd --list-all
   register: firewalld_status
   changed_when: false
   when: ansible_os_family == "RedHat"
   tags:
   - security
 - name: Display firewalld status
-  debug:
+  ansible.builtin.debug:
     var: firewalld_status.stdout_lines
   when:
   - ansible_os_family == "RedHat"

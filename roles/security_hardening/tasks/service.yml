@@ -1,0 +1,29 @@
+---
+# Service management tasks for security_hardening
+
+- name: Enable and start security_hardening service
+  ansible.builtin.systemd:
+    name: "{{ security_hardening_service_name | default('security_hardening') }}"
+    state: "{{ security_hardening_service_state | default('started') }}"
+    enabled: "{{ security_hardening_service_enabled | default(true) }}"
+    daemon_reload: true
+  tags:
+    - security_hardening
+    - service
+
+- name: Verify security_hardening service is running
+  ansible.builtin.systemd:
+    name: "{{ security_hardening_service_name | default('security_hardening') }}"
+  register: security_hardening_service_status
+  tags:
+    - security_hardening
+    - service
+    - verify
+
+- name: Display security_hardening service status
+  ansible.builtin.debug:
+    msg: "security_hardening service is {{ security_hardening_service_status.status.ActiveState | default('unknown') }}"
+  tags:
+    - security_hardening
+    - service
+    - verify

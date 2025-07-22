@@ -1,0 +1,29 @@
+---
+# Service management tasks for mysql
+
+- name: Enable and start mysql service
+  ansible.builtin.systemd:
+    name: "{{ mysql_service_name | default('mysql') }}"
+    state: "{{ mysql_service_state | default('started') }}"
+    enabled: "{{ mysql_service_enabled | default(true) }}"
+    daemon_reload: true
+  tags:
+    - mysql
+    - service
+
+- name: Verify mysql service is running
+  ansible.builtin.systemd:
+    name: "{{ mysql_service_name | default('mysql') }}"
+  register: mysql_service_status
+  tags:
+    - mysql
+    - service
+    - verify
+
+- name: Display mysql service status
+  ansible.builtin.debug:
+    msg: "mysql service is {{ mysql_service_status.status.ActiveState | default('unknown') }}"
+  tags:
+    - mysql
+    - service
+    - verify

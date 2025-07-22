@@ -10,20 +10,20 @@
   tags:
   - mysql
 - name: Install MySQL/MariaDB packages
-  package:
+  ansible.builtin.package:
     name: '{{ mysql_packages[ansible_os_family] }}'
     state: present
   tags:
   - mysql
 - name: Ensure Python MySQL packages are installed for Ansible modules
-  package:
+  ansible.builtin.package:
     name: python3-pymysql
     state: present
   when: ansible_os_family == "Debian"
   tags:
   - mysql
 - name: Ensure Python MySQL packages are installed for Ansible modules (RHEL)
-  package:
+  ansible.builtin.package:
     name: python3-PyMySQL
     state: present
   when: ansible_os_family == "RedHat"
@@ -36,20 +36,20 @@
   tags:
   - mysql
 - name: Display Python MySQL module status
-  debug:
+  ansible.builtin.debug:
     msg: '{{ pymysql_check.stdout if pymysql_check.rc == 0 else ''PyMySQL not available:
       '' + pymysql_check.stderr }}'
   tags:
   - mysql
 - name: Start and enable MySQL/MariaDB service
-  systemd:
+  ansible.builtin.systemd:
     name: '{{ mysql_service_name }}'
     state: started
     enabled: true
   tags:
   - mysql
 - name: Wait for MySQL to be ready
-  wait_for:
+  ansible.builtin.wait_for:
     port: 3306
     host: localhost
     timeout: 30
@@ -67,7 +67,7 @@
   tags:
   - mysql
 - name: Create MySQL configuration file for root
-  template:
+  ansible.builtin.template:
     src: mysql-root.cnf.j2
     dest: /root/.my.cnf
     owner: root
@@ -119,7 +119,7 @@
   tags:
   - mysql
 - name: Configure MySQL for PowerDNS performance
-  template:
+  ansible.builtin.template:
     src: mysql-powerdns.cnf.j2
     dest: /etc/mysql/conf.d/powerdns.cnf
     owner: root
@@ -130,7 +130,7 @@
   tags:
   - mysql
 - name: Configure MariaDB for PowerDNS performance (RHEL)
-  template:
+  ansible.builtin.template:
     src: mysql-powerdns.cnf.j2
     dest: /etc/my.cnf.d/powerdns.cnf
     owner: root
@@ -215,7 +215,7 @@
   tags:
   - mysql
 - name: Display database tables
-  debug:
+  ansible.builtin.debug:
     msg: PowerDNS database contains {{ db_tables.rowcount[0] }} tables
   when: db_tables.rowcount is defined
   tags:
@@ -257,7 +257,7 @@
   tags:
   - mysql
 - name: Configure MySQL for replication (Master)
-  template:
+  ansible.builtin.template:
     src: mysql-replication-master.cnf.j2
     dest: '{{ mysql_replication_config_path[ansible_os_family] }}'
     owner: root
@@ -270,7 +270,7 @@
   tags:
   - mysql
 - name: Configure MySQL for replication (Slave)
-  template:
+  ansible.builtin.template:
     src: mysql-replication-slave.cnf.j2
     dest: '{{ mysql_replication_config_path[ansible_os_family] }}'
     owner: root
@@ -347,7 +347,7 @@
   tags:
   - mysql
 - name: Display replication status
-  debug:
+  ansible.builtin.debug:
     msg:
     - 'Slave IO Running: {{ mysql_slave_status.Slave_IO_Running | default(''N/A'')
       }}'
@@ -362,7 +362,7 @@
   tags:
   - mysql
 - name: Create MySQL failover scripts
-  template:
+  ansible.builtin.template:
     src: '{{ item }}.j2'
     dest: /usr/local/bin/{{ item }}
     owner: root
@@ -408,7 +408,7 @@
   tags:
   - mysql
 - name: Wait for MySQL to be ready with retries
-  wait_for:
+  ansible.builtin.wait_for:
     port: 3306
     host: '{{ mysql_host | default(''127.0.0.1'') }}'
     delay: 5
@@ -430,7 +430,7 @@
   tags:
   - mysql
 - name: Display MySQL connectivity test result
-  debug:
+  ansible.builtin.debug:
     msg: 'MySQL connectivity test: {{ ''PASSED'' if mysql_connectivity_test.query_result[0][''test_connection'']
       == 1 else ''FAILED'' }}'
   tags:
@@ -447,7 +447,7 @@
   tags:
   - mysql
 - name: Display schema validation result
-  debug:
+  ansible.builtin.debug:
     msg: 'PowerDNS schema validation: {{ ''PASSED'' if schema_check.rowcount[0] >
       0 else ''FAILED - records table missing'' }}'
   when: server_role == 'primary' and schema_check is defined
