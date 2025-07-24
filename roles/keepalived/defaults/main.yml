@@ -16,3 +16,14 @@ keepalived_vrrp_auth_password: ""
 keepalived_script: /usr/local/bin/check_service.sh
 keepalived_notification_email: root@localhost
 keepalived_check_interval: 2
+
+# Virtual IP settings
+keepalived_vip: 192.168.1.100
+keepalived_vip_netmask: 24
+keepalived_dns_vip_enabled: true
+keepalived_dns_vip: 192.168.1.101
+keepalived_mysql_vip_enabled: false
+keepalived_mysql_vip: 192.168.1.102
+
+# Monitoring
+keepalived_monitoring_enabled: true

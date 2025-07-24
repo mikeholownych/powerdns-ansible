@@ -15,6 +15,8 @@ Key variables are listed below. See `defaults/main.yml` for details.
 | `keepalived_router_id` | `51` | VRRP router ID |
 | `keepalived_priority` | `100` | Priority of the local node |
 | `keepalived_vrrp_auth_password` | `""` | Authentication password (set via Vault) |
+| `keepalived_vip` | `192.168.1.100` | Primary virtual IP |
+| `keepalived_monitoring_enabled` | `true` | Enable health monitoring |
 
 ## Dependencies
 None

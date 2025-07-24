@@ -29,3 +29,25 @@ haproxy_ssl_enabled: false
 haproxy_ssl_cert: /etc/ssl/certs/haproxy.pem
 
 haproxy_firewall_enabled: true
+
+# Additional service endpoints
+haproxy_dns_port: 53
+haproxy_api_enabled: true
+haproxy_api_port: 8081
+haproxy_mysql_enabled: true
+haproxy_mysql_port: 3306
+haproxy_recursor_enabled: false
+haproxy_recursor_port: 5353
+haproxy_health_port: 8080
+
+# Monitoring and management
+haproxy_monitor_user: haproxy_monitor
+# Monitoring password should be stored in Ansible Vault
+haproxy_monitor_password: ""
+haproxy_mysql_monitoring: true
+
+# Directories created during installation
+haproxy_directories:
+  - /etc/haproxy
+  - /var/lib/haproxy
+  - /var/log/haproxy

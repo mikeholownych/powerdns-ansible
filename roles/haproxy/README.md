@@ -17,6 +17,8 @@ Common variables are shown below. See `defaults/main.yml` for the full list.
 | `haproxy_max_connections` | `2000` | Maximum concurrent connections |
 | `haproxy_ssl_enabled` | `false` | Enable TLS termination |
 | `haproxy_firewall_enabled` | `true` | Manage firewall rules |
+| `haproxy_api_port` | `8081` | API listener port |
+| `haproxy_mysql_port` | `3306` | MySQL backend port |
 
 ## Dependencies
 None
