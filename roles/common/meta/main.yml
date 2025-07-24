@@ -3,7 +3,7 @@ galaxy_info:
   author: PowerDNS Team
   description: Common system preparation tasks for PowerDNS infrastructure
   license: MIT
-  min_ansible_version: '2.9'
+  min_ansible_version: '2.9.0'
   platforms:
     - name: Ubuntu
       versions:

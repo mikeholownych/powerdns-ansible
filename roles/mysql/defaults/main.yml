@@ -4,7 +4,8 @@ mysql_enabled: true
 mysql_service_name: "{{ mysql_service_name_map[ansible_os_family] }}"
 mysql_service_state: started
 mysql_service_enabled: true
-mysql_root_password: secret
+# Root password should be defined via vault or host variables
+mysql_root_password: ""
 mysql_user: mysql
 mysql_group: mysql
 mysql_directories: []
@@ -23,6 +24,6 @@ mysql_replication_user: replication
 mysql_replication_password: replication123
 powerdns_db_name: powerdns
 powerdns_db_user: powerdns
-powerdns_db_password: secret
+powerdns_db_password: ""
 powerdns_db_host: localhost
 powerdns_db_port: 3306
