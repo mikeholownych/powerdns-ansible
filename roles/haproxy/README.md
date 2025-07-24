@@ -13,6 +13,7 @@ Common variables are shown below. See `defaults/main.yml` for the full list.
 |----------|---------|-------------|
 | `haproxy_frontend_port` | `53` | Frontend listener port for DNS traffic |
 | `haproxy_stats_port` | `8404` | Port for the HAProxy statistics interface |
+| `haproxy_stats_password` | `""` | Password for the statistics interface |
 | `haproxy_max_connections` | `2000` | Maximum concurrent connections |
 | `haproxy_ssl_enabled` | `false` | Enable TLS termination |
 

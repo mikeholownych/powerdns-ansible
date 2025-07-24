@@ -14,7 +14,7 @@ Key variables are listed below. See `defaults/main.yml` for details.
 | `keepalived_virtual_ipaddress` | `["192.168.1.100"]` | Virtual IPs managed by keepalived |
 | `keepalived_router_id` | `51` | VRRP router ID |
 | `keepalived_priority` | `100` | Priority of the local node |
-| `keepalived_vrrp_auth_password` | `changeme` | Authentication password |
+| `keepalived_vrrp_auth_password` | `""` | Authentication password (set via Vault) |
 
 ## Dependencies
 None

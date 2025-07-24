@@ -20,7 +20,8 @@ recursor_lua_config_enabled: false
 
 recursor_api_enabled: false
 recursor_api_port: 8082
-recursor_api_key: changeme
+# API key for the optional recursor API. Define in inventory or Ansible Vault.
+recursor_api_key: ""
 recursor_api_allowed_networks:
   - 127.0.0.1/8
 
