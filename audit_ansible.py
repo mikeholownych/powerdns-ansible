@@ -46,6 +46,23 @@ def find_roles(root: str) -> List[str]:
     ] if os.path.isdir(roles_path) else []
 
 
+def find_playbooks(root: str) -> List[str]:
+    """Return a deduplicated list of playbook files relative to the root."""
+
+    playbooks: set[str] = set()
+    for dir_name in [".", "playbooks"]:
+        path = os.path.join(root, dir_name)
+        if not os.path.isdir(path):
+            continue
+        for fname in os.listdir(path):
+            full = os.path.join(path, fname)
+            if not fname.endswith((".yml", ".yaml")) or not os.path.isfile(full):
+                continue
+            if dir_name == "playbooks" or "playbook" in fname:
+                playbooks.add(os.path.relpath(full, root))
+    return sorted(playbooks)
+
+
 def load_yaml(path: str):
     """Load YAML data, returning ``None`` on failure."""
 
@@ -218,6 +235,7 @@ def main() -> None:
     defined_vars = load_all_defined_vars()
     report: Dict[str, Dict[str, List[str]]] = {}
     valid_roles: List[str] = []
+    playbooks: List[str] = find_playbooks(ROOT_DIR)
 
     for role in find_roles(ROOT_DIR):
         role_name = os.path.basename(role)
@@ -232,7 +250,10 @@ def main() -> None:
     if valid_roles:
         for r in sorted(valid_roles):
             lines.append(f"- roles/{r}")
-    else:
+    if playbooks:
+        for p in playbooks:
+            lines.append(f"- {p}")
+    if not valid_roles and not playbooks:
         lines.append("- None")
 
     lines.append("\n## ❌ Missing or Broken")
