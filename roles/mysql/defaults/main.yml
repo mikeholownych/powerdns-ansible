@@ -21,7 +21,8 @@ mysql_packages:
 mysql_config_files: []
 mysql_config_test_command: 'mysqld --help >/dev/null'
 mysql_replication_user: replication
-mysql_replication_password: replication123
+# Replication password should be provided via host vars or vault when replication is enabled
+mysql_replication_password: ""
 powerdns_db_name: powerdns
 powerdns_db_user: powerdns
 powerdns_db_password: ""
