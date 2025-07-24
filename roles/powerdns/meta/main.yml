@@ -3,7 +3,7 @@ galaxy_info:
   author: PowerDNS Team
   description: Manage PowerDNS authoritative server with MySQL backend and DNSSEC support
   license: MIT
-  min_ansible_version: '2.9'
+  min_ansible_version: '2.9.0'
   platforms:
     - name: Ubuntu
       versions:
