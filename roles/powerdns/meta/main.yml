@@ -1,7 +1,17 @@
 ---
 galaxy_info:
-  author: codex
-  description: Skeleton for powerdns role
-  min_ansible_version: '2.15'
+  author: PowerDNS Team
+  description: Manage PowerDNS authoritative server with MySQL backend and DNSSEC support
   license: MIT
-dependencies: []
+  min_ansible_version: '2.9'
+  platforms:
+    - name: Ubuntu
+      versions:
+        - '20.04'
+        - '22.04'
+    - name: EL
+      versions:
+        - '8'
+        - '9'
+dependencies:
+  - role: mysql

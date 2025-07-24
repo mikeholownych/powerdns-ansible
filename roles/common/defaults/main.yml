@@ -1,8 +1,19 @@
 ---
-# defaults for common role
-
+# Default variables for the common role
+common_enabled: true
 alert_email: ops@example.com
-powerdns_config_dir: "/etc/powerdns"
-powerdns_db_password: "secret"
-powerdns_group: "pdns"
-powerdns_user: "pdns"
+powerdns_user: pdns
+powerdns_group: pdns
+powerdns_config_dir: /etc/powerdns
+powerdns_config_file: /etc/powerdns/pdns.conf
+powerdns_backup_dir: /etc/powerdns/backups
+backup_config:
+  retention_days: 30
+  compress: true
+monitoring_config:
+  health_check_interval: 300
+logging_config:
+  rotate_size: 100M
+  rotate_count: 5
+system_tuning:
+  file_descriptors: 65536

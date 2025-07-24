@@ -1,2 +1,9 @@
 ---
-# vars for common role
+# Common role constants
+common_packages:
+  Debian:
+    - cron
+    - rsync
+  RedHat:
+    - cronie
+    - rsync

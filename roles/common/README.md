@@ -1,16 +1,23 @@
 # common
 
-Describe the purpose of the common role here.
+Prepare systems for PowerDNS deployment. Installs required packages, sets base configuration and provides health check utilities.
 
 ## Requirements
-None
+- Ansible 2.9+
+- Root privileges on managed nodes
 
 ## Role Variables
-Refer to `defaults/main.yml` for available variables.
+See `defaults/main.yml` for full list.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `alert_email` | `ops@example.com` | Address for system alerts |
+| `powerdns_user` | `pdns` | System user for PowerDNS processes |
+| `powerdns_config_dir` | `/etc/powerdns` | Base configuration directory |
 
 ## Example Playbook
 ```yaml
 - hosts: all
   roles:
-    - common
+    - role: common
 ```
