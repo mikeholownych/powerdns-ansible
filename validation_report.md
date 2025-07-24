@@ -75,7 +75,6 @@
 - /workspace/powerdns-ansible/roles/keepalived: undefined variable 'item.src'
 - /workspace/powerdns-ansible/roles/keepalived: undefined variable 'item.value'
 - /workspace/powerdns-ansible/roles/keepalived: undefined variable 'keepalived_service_status.status.ActiveState'
-- /workspace/powerdns-ansible/roles/keepalived: undefined variable 'keepalived_vip'
 - /workspace/powerdns-ansible/roles/keepalived: undefined variable 'vrrp_state.stdout'
 - /workspace/powerdns-ansible/roles/monitoring: undefined variable 'ansible_default_ipv4.address'
 - /workspace/powerdns-ansible/roles/monitoring: undefined variable 'item'
@@ -283,7 +282,6 @@
 - Define 'item.src' in defaults/main.yml or vars/main.yml
 - Define 'item.value' in defaults/main.yml or vars/main.yml
 - Define 'keepalived_service_status.status.ActiveState' in defaults/main.yml or vars/main.yml
-- Define 'keepalived_vip' in defaults/main.yml or vars/main.yml
 - Define 'vrrp_state.stdout' in defaults/main.yml or vars/main.yml
 - Define 'ansible_default_ipv4.address' in defaults/main.yml or vars/main.yml
 - Define 'item' in defaults/main.yml or vars/main.yml
