@@ -14,44 +14,44 @@
 - **Fix Required**: Yes – add role docstrings or README metadata
 
 ## Phase 2: Syntax & Structure
-- [ ] Playbook syntax valid
-- [x] Inventory parsing works (production inventory missing)
+- [x] Playbook syntax valid
+- [x] Inventory parsing works
 - [ ] Templates render correctly
-- **Issues Found**: Duplicate vars and invalid task (`skip` with `mysql_db`)
-- **Fix Required**: Yes – clean vars and remove `skip`
+- **Issues Found**: Duplicate vars removed; `skip` removed from MySQL task
+- **Fix Required**: Continue cleanup of templates
 
 ## Phase 3: Functional Validation
 - [ ] Minimal deployment succeeds
 - [ ] Core functionality works
 - [ ] Advanced features functional
-- **Issues Found**: Playbook execution fails during MySQL schema task
-- **Fix Required**: Yes – fix task syntax
+- **Issues Found**: Molecule scenarios failing; Docker unavailable
+- **Fix Required**: Adjust Molecule configs and ensure Docker daemon
 
 ## Phase 4: Testing Framework
 - [ ] Molecule tests pass
 - [ ] CI/CD workflows valid
-- **Issues Found**: Molecule scenario schema invalid; Docker daemon required
-- **Fix Required**: Yes – update Molecule configs and run tests
+- **Issues Found**: Schema errors in molecule and yamllint failures
+- **Fix Required**: Update configurations
 
 ## Phase 5: Galaxy Compliance
 - [x] Metadata compliant
 - [ ] Content structure correct
-- **Issues Found**: Yamllint errors in workflows and meta/main.yml line length
-- **Fix Required**: Yes – address lint warnings
+- **Issues Found**: Workflow YAML line-length errors
+- **Fix Required**: Fix lint warnings
 
 ## Critical Issues (Blocking Galaxy Submission)
-1. MySQL role task uses unsupported `skip` parameter causing syntax error
-2. Molecule tests fail due to invalid configuration and missing Docker daemon
+1. Molecule scenarios invalid and Docker unreachable
+2. Role documentation not displayed via `ansible-doc`
 
 ## Minor Issues (Recommended Improvements)
-1. Role documentation not displayed via `ansible-doc`
-2. Inventory/production.yml is placeholder and not parsed
+1. Clean up workflow YAML lines
+2. Provide additional template checks
 
 ## Next Steps
-1. Fix MySQL schema task and duplicate vars
-2. Correct Molecule scenarios and enable Docker
-3. Update CI YAML files and add role docstrings
-4. Re-run validation; target Galaxy submission after fixes (~2-3 weeks)
+1. Fix molecule configs and ensure Docker or remote driver
+2. Add README metadata for roles
+3. Update workflows for lint compliance
+4. Re-run validation before Galaxy submission
 
 ## Confidence Assessment
 - **Technical Readiness**: Medium
