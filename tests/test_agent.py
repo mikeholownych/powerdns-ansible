@@ -27,3 +27,24 @@ def test_agent_generates_report(tmp_path):
     assert Path(report).is_file()
     content = Path(report).read_text()
     assert "roles/sample" in content
+
+
+def test_agent_lists_playbooks(tmp_path):
+    tmpdir = create_role(tmp_path)
+    playbook_dir = tmpdir / "playbooks"
+    playbook_dir.mkdir()
+    playbook = playbook_dir / "test_playbook.yml"
+    playbook.write_text(
+        """
+- hosts: all
+  roles:
+    - sample
+"""
+    )
+    config = yaml.safe_load(Path("config/config.yml").read_text())
+    agent = AuditAgent(str(tmpdir), config)
+    report_file = tmpdir / "out.md"
+    report = agent.run(str(report_file))
+    assert Path(report).is_file()
+    content = Path(report).read_text()
+    assert "playbooks/test_playbook.yml" in content
