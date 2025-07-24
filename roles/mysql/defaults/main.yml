@@ -1,7 +1,7 @@
 ---
 # Default variables for the mysql role
 mysql_enabled: true
-mysql_service_name: "{{ 'mysql' if ansible_os_family == 'Debian' else 'mariadb' }}"
+mysql_service_name: "{{ mysql_service_name_map[ansible_os_family] }}"
 mysql_service_state: started
 mysql_service_enabled: true
 mysql_root_password: secret

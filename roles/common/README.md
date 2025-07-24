@@ -11,7 +11,7 @@ See `defaults/main.yml` for full list.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `alert_email` | `ops@example.com` | Address for system alerts |
+| `common_alert_email` | `ops@example.com` | Address for system alerts |
 | `powerdns_user` | `pdns` | System user for PowerDNS processes |
 | `powerdns_config_dir` | `/etc/powerdns` | Base configuration directory |
 
