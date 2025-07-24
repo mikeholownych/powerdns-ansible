@@ -1,7 +1,7 @@
 ---
 # Default variables for the common role
 common_enabled: true
-common_alert_email: ops@example.com
+alert_email: ops@example.com
 powerdns_user: pdns
 powerdns_group: pdns
 powerdns_config_dir: /etc/powerdns
