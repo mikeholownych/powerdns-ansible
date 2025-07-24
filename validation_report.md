@@ -226,7 +226,7 @@
 - /workspace/powerdns-ansible/roles/zones_as_code: undefined variable 'item.src'
 
 ## ⚠️ Placeholders Detected
-- none
+- None
 
 ## 🛠 Fix Recommendations
 - Define 'item' in defaults/main.yml or vars/main.yml

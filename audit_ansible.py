@@ -47,20 +47,19 @@ def find_roles(root: str) -> List[str]:
 
 
 def find_playbooks(root: str) -> List[str]:
-    """Return a list of playbook files relative to the repository root."""
+    """Return a deduplicated list of playbook files relative to the root."""
 
-    playbooks: List[str] = []
+    playbooks: set[str] = set()
     for dir_name in [".", "playbooks"]:
         path = os.path.join(root, dir_name)
         if not os.path.isdir(path):
             continue
         for fname in os.listdir(path):
             full = os.path.join(path, fname)
-            if not fname.endswith(('.yml', '.yaml')) or not os.path.isfile(full):
+            if not fname.endswith((".yml", ".yaml")) or not os.path.isfile(full):
                 continue
             if dir_name == "playbooks" or "playbook" in fname:
-                rel_path = os.path.relpath(full, root)
-                playbooks.append(rel_path)
+                playbooks.add(os.path.relpath(full, root))
     return sorted(playbooks)
 
 

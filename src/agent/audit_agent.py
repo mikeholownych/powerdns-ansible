@@ -25,9 +25,9 @@ class AuditAgent:
         self.report_lines: List[str] = []
 
     def _find_playbooks(self) -> List[str]:
-        """Return list of playbook files relative to ``root_dir``."""
+        """Return a deduplicated list of playbook files relative to ``root_dir``."""
 
-        playbooks: List[str] = []
+        playbooks: set[str] = set()
         for dir_name in [".", "playbooks"]:
             path = os.path.join(self.root_dir, dir_name)
             if not os.path.isdir(path):
@@ -37,7 +37,7 @@ class AuditAgent:
                 if not fname.endswith((".yml", ".yaml")) or not os.path.isfile(full):
                     continue
                 if dir_name == "playbooks" or "playbook" in fname:
-                    playbooks.append(os.path.relpath(full, self.root_dir))
+                    playbooks.add(os.path.relpath(full, self.root_dir))
         return sorted(playbooks)
 
     def run(self, report_path: str | None = None) -> str:
@@ -90,7 +90,7 @@ class AuditAgent:
             for item in items:
                 self.report_lines.append(f"- {item}")
         else:
-            self.report_lines.append("- none")
+            self.report_lines.append("- None")
         self.report_lines.append("")
 
     def _check_role_structure(self, role_path: str) -> List[str]:
