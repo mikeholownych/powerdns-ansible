@@ -10,7 +10,7 @@
   listen: restart powerdns
 
 - name: reload powerdns
-  ansible.buitin.systemd:
+  ansible.builtin.systemd:
     name: "{{ powerdns_service_name | default('pdns') }}"
     state: reloaded
   listen: reload powerdns

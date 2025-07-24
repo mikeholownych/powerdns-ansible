@@ -1,6 +1,28 @@
 ---
-# defaults for mysql role
-
-mysql_root_password: "secret"
-powerdns_db_password: "secret"
-db_tables: []
+# Default variables for the mysql role
+mysql_enabled: true
+mysql_service_name: "{{ 'mysql' if ansible_os_family == 'Debian' else 'mariadb' }}"
+mysql_service_state: started
+mysql_service_enabled: true
+mysql_root_password: secret
+mysql_user: mysql
+mysql_group: mysql
+mysql_directories: []
+mysql_packages:
+  Debian:
+    - mysql-server
+    - mysql-client
+    - python3-pymysql
+  RedHat:
+    - mariadb-server
+    - mariadb
+    - python3-PyMySQL
+mysql_config_files: []
+mysql_config_test_command: 'mysqld --help >/dev/null'
+mysql_replication_user: replication
+mysql_replication_password: replication123
+powerdns_db_name: powerdns
+powerdns_db_user: powerdns
+powerdns_db_password: secret
+powerdns_db_host: localhost
+powerdns_db_port: 3306
