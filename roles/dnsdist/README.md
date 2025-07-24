@@ -15,6 +15,9 @@ Frequently used variables are shown below. Consult `defaults/main.yml` for the f
 | `dnsdist_console_port` | `5199` | Administrative console port |
 | `dnsdist_webserver_port` | `8083` | Optional web interface port |
 | `dnsdist_enable_webserver` | `false` | Enable the internal web server |
+| `dnsdist_geodns_enabled` | `false` | Enable GeoDNS routing support |
+| `dnsdist_geodns_rules` | `[]` | GeoDNS country-to-pool mapping |
+| `dnsdist_geodns_database_path` | `/usr/share/GeoIP/GeoLite2-Country.mmdb` | GeoIP database path |
 
 ## Dependencies
 None

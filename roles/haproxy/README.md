@@ -16,6 +16,7 @@ Common variables are shown below. See `defaults/main.yml` for the full list.
 | `haproxy_stats_password` | `""` | Password for the statistics interface |
 | `haproxy_max_connections` | `2000` | Maximum concurrent connections |
 | `haproxy_ssl_enabled` | `false` | Enable TLS termination |
+| `haproxy_firewall_enabled` | `true` | Manage firewall rules |
 
 ## Dependencies
 None

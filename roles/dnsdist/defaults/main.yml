@@ -19,6 +19,8 @@ dnsdist_allow_from:
   - 127.0.0.1
 
 dnsdist_custom_rules: []
-geodns_rules: []
+dnsdist_geodns_enabled: false
+dnsdist_geodns_rules: []
+dnsdist_geodns_database_path: /usr/share/GeoIP/GeoLite2-Country.mmdb
 
 dnsdist_enable_webserver: false

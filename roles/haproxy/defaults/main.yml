@@ -28,4 +28,4 @@ haproxy_timeout_server: 50s
 haproxy_ssl_enabled: false
 haproxy_ssl_cert: /etc/ssl/certs/haproxy.pem
 
-firewall_enabled: true
+haproxy_firewall_enabled: true
