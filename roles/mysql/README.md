@@ -15,6 +15,8 @@ See `defaults/main.yml` for all options. Common variables:
 | `mysql_service_name` | distribution dependent | Service name for MySQL/MariaDB |
 | `mysql_replication_user` | `replication` | Replication user when replication is enabled |
 
+`mysql_root_password` should be stored securely using Ansible Vault.
+
 ## Example Playbook
 ```yaml
 - hosts: database_servers
