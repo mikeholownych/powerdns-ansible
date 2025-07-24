@@ -18,8 +18,8 @@
 - roles/state_management
 - roles/validate_config
 - roles/zones_as_code
-- playbooks/powerdns-operational-playbook.yml
-- playbooks/powerdns-playbook.yml
+- powerdns-operational-playbook.yml
+- powerdns-playbook.yml
 
 ## ❌ Missing or Broken
 - /workspace/powerdns-ansible/roles/clean_install: undefined variable 'item'

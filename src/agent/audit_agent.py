@@ -24,6 +24,22 @@ class AuditAgent:
         self.placeholders = config["audit"].get("placeholder_keywords", [])
         self.report_lines: List[str] = []
 
+    def _find_playbooks(self) -> List[str]:
+        """Return list of playbook files relative to ``root_dir``."""
+
+        playbooks: List[str] = []
+        for dir_name in [".", "playbooks"]:
+            path = os.path.join(self.root_dir, dir_name)
+            if not os.path.isdir(path):
+                continue
+            for fname in os.listdir(path):
+                full = os.path.join(path, fname)
+                if not fname.endswith((".yml", ".yaml")) or not os.path.isfile(full):
+                    continue
+                if dir_name == "playbooks" or "playbook" in fname:
+                    playbooks.append(os.path.relpath(full, self.root_dir))
+        return sorted(playbooks)
+
     def run(self, report_path: str | None = None) -> str:
         self.logger.info("Starting audit", extra={"root": self.root_dir})
         if report_path is None:
@@ -53,6 +69,9 @@ class AuditAgent:
             self._check_placeholders(role_path, placeholders)
             self._check_variables(role_path, missing_items, suggestions)
             valid_items.append(f"roles/{role}")
+
+        for playbook in self._find_playbooks():
+            valid_items.append(playbook)
 
         self._write_section("## ✅ Valid Items", valid_items)
         self._write_section("## ❌ Missing or Broken", missing_items)
