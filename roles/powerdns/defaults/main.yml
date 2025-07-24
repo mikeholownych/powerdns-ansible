@@ -5,7 +5,8 @@ powerdns_service_name: pdns
 powerdns_service_state: started
 powerdns_service_enabled: true
 powerdns_webserver_port: 8081
-powerdns_api_key: changeme
+# API key for the PowerDNS HTTP API. Define in host vars or vault for security
+powerdns_api_key: ""
 powerdns_backend: gmysql
 powerdns_config_dir: /etc/powerdns
 powerdns_config_file: /etc/powerdns/pdns.conf
@@ -15,11 +16,11 @@ powerdns_group: pdns
 powerdns_db_host: localhost
 powerdns_db_name: powerdns
 powerdns_db_user: powerdns
-powerdns_db_password: secret
+powerdns_db_password: ""
 primary_domains: []
 ad_domains: []
 reverse_zones: []
-dnssec_enabled: false
+dnssec_enabled: true
 logging_config:
   rotate_size: 100M
   rotate_count: 10

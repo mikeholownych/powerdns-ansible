@@ -1,23 +1,8 @@
 ## ✅ Valid Items
 - roles/clean_install
-- roles/common
-- roles/dnsdist
-- roles/dnssec_automation
-- roles/galera
-- roles/haproxy
-- roles/keepalived
-- roles/monitoring
-- roles/mysql
 - roles/powerdns
-- roles/prometheus
-- roles/recursor
-- roles/security
-- roles/security_hardening
-- roles/self_healing
-- roles/selfheal
-- roles/state_management
-- roles/validate_config
-- roles/zones_as_code
+- roles/mysql
+- playbooks/powerdns-playbook.yml
 
 ## ❌ Missing or Broken
 - /workspace/powerdns-ansible/roles/clean_install: undefined variable 'item'

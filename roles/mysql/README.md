@@ -11,9 +11,12 @@ See `defaults/main.yml` for all options. Common variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `mysql_root_password` | `secret` | Root password for the database server |
+| `mysql_root_password` | *(unset)* | Root password for the database server |
 | `mysql_service_name` | distribution dependent | Service name for MySQL/MariaDB |
 | `mysql_replication_user` | `replication` | Replication user when replication is enabled |
+| `mysql_replication_password` | *(unset)* | Replication user password |
+
+`mysql_root_password` and `mysql_replication_password` should be stored securely using Ansible Vault.
 
 ## Example Playbook
 ```yaml
