@@ -1,10 +1,29 @@
 ---
-# defaults for keepalived role
+# Default variables for the keepalived role
+keepalived_enabled: true
+keepalived_service_name: keepalived
+keepalived_service_state: started
+keepalived_service_enabled: true
 
-alert_email: admin@example.com
-keepalived_webhook_url: "http://localhost/keepalived"
-keepalived_service_status: "started"
-instance: "VI_1"
-script: "/usr/local/bin/check_service.sh"
-vrrp_state: "MASTER"
-powerdns_db_password: "secret"
+keepalived_router_id: 51
+keepalived_interface: "{{ ansible_default_ipv4.interface | default('eth0') }}"
+keepalived_virtual_ipaddress:
+  - 192.168.1.100
+keepalived_priority: 100
+keepalived_vrrp_auth_type: PASS
+# Authentication password for VRRP. Set via Ansible Vault.
+keepalived_vrrp_auth_password: ""
+keepalived_script: /usr/local/bin/check_service.sh
+keepalived_notification_email: root@localhost
+keepalived_check_interval: 2
+
+# Virtual IP settings
+keepalived_vip: 192.168.1.100
+keepalived_vip_netmask: 24
+keepalived_dns_vip_enabled: true
+keepalived_dns_vip: 192.168.1.101
+keepalived_mysql_vip_enabled: false
+keepalived_mysql_vip: 192.168.1.102
+
+# Monitoring
+keepalived_monitoring_enabled: true

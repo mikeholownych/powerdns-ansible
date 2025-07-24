@@ -1,2 +1,7 @@
 ---
-# vars for dnsdist role
+# OS specific variables for dnsdist
+dnsdist_packages:
+  Debian:
+    - dnsdist
+  RedHat:
+    - dnsdist

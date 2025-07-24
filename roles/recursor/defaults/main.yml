@@ -1,9 +1,66 @@
 ---
-# defaults for recursor role
+# Default variables for the PowerDNS recursor role
+recursor_enabled: true
+recursor_service_name: "{{ recursor_service_name_map[ansible_os_family] }}"
+recursor_service_state: started
+recursor_service_enabled: true
 
-recursor_service_status: "started"
-domain: "example.com"
-zone: "example.com"
-record: "A"
-key: "changeme"
-value: "1.2.3.4"
+recursor_port: 5353
+recursor_config_dir: /etc/powerdns
+recursor_config_file: /etc/powerdns/recursor.conf
+recursor_backup_dir: /etc/powerdns/backups
+recursor_user: pdns-recursor
+recursor_group: pdns-recursor
+
+recursor_allowed_networks:
+  - 127.0.0.1/8
+
+recursor_forward_zones: {}
+recursor_lua_config_enabled: false
+
+recursor_api_enabled: false
+recursor_api_port: 8082
+# API key for the optional recursor API. Define in inventory or Ansible Vault.
+recursor_api_key: ""
+recursor_api_allowed_networks:
+  - 127.0.0.1/8
+
+recursor_dnssec_enabled: true
+
+# API bind address and mode
+recursor_bind_address: "{{ ansible_default_ipv4.address }}"
+recursor_api_bind_address: "{{ ansible_default_ipv4.address }}"
+recursor_api_readonly: true
+
+# Performance tuning
+recursor_performance:
+  max_cache_entries: 1000000
+  max_negative_ttl: 3600
+  max_tcp_clients: 128
+  threads: 2
+  pdns_distributes_queries: 'yes'
+  network_timeout: 1500
+  client_tcp_timeout: 2
+  server_down_max_fails: 64
+  server_down_throttle_time: 60
+
+# Security and logging
+recursor_security:
+  spoof_nearmiss_max: 20
+  max_qperq: 60
+  max_total_msec: 7000
+
+recursor_logging:
+  level: 4
+  facility: 0
+  quiet: 'no'
+  log_common_errors: 'yes'
+
+# Advanced options
+recursor_export_etc_hosts: 'yes'
+recursor_serve_rfc1918: 'yes'
+recursor_monitoring_enabled: true
+recursor_auth_integration_enabled: true
+recursor_split_horizon_enabled: false
+recursor_stats:
+  ringbuffer_entries: 10000

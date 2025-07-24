@@ -1,20 +1,57 @@
 ---
-# defaults for dnsdist role
+# Default variables for the dnsdist role
+dnsdist_enabled: true
+dnsdist_service_name: dnsdist
+dnsdist_service_state: started
+dnsdist_service_enabled: true
 
-# Package names per OS family
-dnsdist_packages:
-  Debian:
-    - dnsdist
-  RedHat:
-    - dnsdist
+dnsdist_user: dnsdist
+dnsdist_group: dnsdist
 
-# Basic ports and web credentials
+dnsdist_config_dir: /etc/dnsdist
+dnsdist_config_file: /etc/dnsdist/dnsdist.conf
+dnsdist_log_dir: /var/log/dnsdist
+
 dnsdist_port: 53
 dnsdist_console_port: 5199
 dnsdist_webserver_port: 8083
+dnsdist_allow_from:
+  - 127.0.0.1
 
-# Example variables for templates
-domain: "example.com"
-zone: "example.com"
-geodns_rules: []
 dnsdist_custom_rules: []
+dnsdist_geodns_enabled: false
+dnsdist_geodns_rules: []
+dnsdist_geodns_database_path: /usr/share/GeoIP/GeoLite2-Country.mmdb
+
+dnsdist_webserver_enabled: false
+dnsdist_webserver_password: ""
+dnsdist_api_key: ""
+
+# Prometheus metrics
+dnsdist_prometheus_port: 9199
+dnsdist_prometheus_password: ""
+dnsdist_prometheus_api_key: ""
+
+# IPv6 and rate limits
+dnsdist_bind_ipv6: false
+dnsdist_max_qps_per_ip: 50
+dnsdist_max_qps_total: 10000
+
+# TCP/UDP tuning
+dnsdist_max_tcp_per_client: 10
+dnsdist_max_queries_per_tcp: 100
+dnsdist_tcp_recv_timeout: 2
+dnsdist_tcp_send_timeout: 2
+dnsdist_udp_timeout: 2
+
+# Packet cache options
+dnsdist_cache_size: 100000
+dnsdist_cache_shards: 20
+dnsdist_cache_max_ttl: 86400
+dnsdist_cache_min_ttl: 60
+dnsdist_cache_failure_ttl: 60
+dnsdist_cache_stale_ttl: 60
+dnsdist_cache_negative_ttl: 3600
+
+dnsdist_ecs_prefix_v4: 24
+dnsdist_ecs_prefix_v6: 56

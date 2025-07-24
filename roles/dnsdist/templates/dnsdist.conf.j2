@@ -169,14 +169,14 @@ webserver('{{ ansible_default_ipv4.address }}:{{ dnsdist_prometheus_port | defau
 {% endif %}
 
 -- GeoDNS support (if enabled)
-{% if geodns_enabled | default(false) %}
-geoip = newGeoIPBackend('{{ geodns_database_path | default("/usr/share/GeoIP/GeoLite2-Country.mmdb") }}')
+{% if dnsdist_geodns_enabled | default(false) %}
+geoip = newGeoIPBackend('{{ dnsdist_geodns_database_path | default("/usr/share/GeoIP/GeoLite2-Country.mmdb") }}')
 
 function geoPolicy(servers, dq)
     local country = geoip:lookupCountry(dq.remoteaddr)
     
     -- Route based on country
-    {% for geo_rule in geodns_rules | default([]) %}
+    {% for geo_rule in dnsdist_geodns_rules | default([]) %}
     if country == '{{ geo_rule.country }}' then
         return getPoolServers('{{ geo_rule.pool }}')[1]
     end

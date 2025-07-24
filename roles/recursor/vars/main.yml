@@ -1,2 +1,11 @@
 ---
-# vars for recursor role
+# OS specific variables for PowerDNS recursor
+recursor_packages:
+  Debian:
+    - pdns-recursor
+  RedHat:
+    - pdns-recursor
+
+recursor_service_name_map:
+  Debian: pdns-recursor
+  RedHat: pdns-recursor
