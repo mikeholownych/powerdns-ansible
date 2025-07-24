@@ -1,20 +1,27 @@
 ---
-# defaults for powerdns role
-
-powerdns_api_key: "changeme"
-powerdns_backend: "gmysql"
-powerdns_config_dir: "/etc/powerdns"
-powerdns_db_password: "secret"
-powerdns_group: "pdns"
-powerdns_user: "pdns"
-powerdns_service_status: "started"
-
+# Default variables for the powerdns role
+powerdns_enabled: true
+powerdns_service_name: pdns
+powerdns_service_state: started
+powerdns_service_enabled: true
+powerdns_webserver_port: 8081
+powerdns_api_key: changeme
+powerdns_backend: gmysql
+powerdns_config_dir: /etc/powerdns
+powerdns_config_file: /etc/powerdns/pdns.conf
+powerdns_backup_dir: /etc/powerdns/backups
+powerdns_user: pdns
+powerdns_group: pdns
+powerdns_db_host: localhost
+powerdns_db_name: powerdns
+powerdns_db_user: powerdns
+powerdns_db_password: secret
+primary_domains: []
 ad_domains: []
-dnssec_status: false
-domain: "example.com"
-domain_ids: []
-record: "A"
 reverse_zones: []
-slave_domain_count: 0
-zone_transfer_status: "enabled"
-zone_validation: true
+dnssec_enabled: false
+logging_config:
+  rotate_size: 100M
+  rotate_count: 10
+system_tuning:
+  file_descriptors: 65536

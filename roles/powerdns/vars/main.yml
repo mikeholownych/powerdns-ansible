@@ -1,2 +1,9 @@
 ---
-# vars for powerdns role
+# OS specific package names for PowerDNS
+powerdns_packages:
+  Debian:
+    - pdns-server
+    - pdns-backend-mysql
+  RedHat:
+    - pdns
+    - pdns-backend-mysql

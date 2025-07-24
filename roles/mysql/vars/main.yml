@@ -1,2 +1,12 @@
 ---
-# vars for mysql role
+# Platform specific defaults for MySQL
+mysql_service_name_map:
+  Debian: mysql
+  RedHat: mariadb
+mysql_packages:
+  Debian:
+    - mysql-server
+    - mysql-client
+  RedHat:
+    - mariadb-server
+    - mariadb

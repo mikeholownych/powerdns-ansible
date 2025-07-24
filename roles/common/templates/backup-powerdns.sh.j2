@@ -133,10 +133,10 @@ info "Total backups: $BACKUP_COUNT"
 info "Backup directory size: $BACKUP_SIZE"
 
 # Send notification if configured
-{% if alert_email is defined %}
+{% if common_alert_email is defined %}
 if command -v mail &> /dev/null; then
     echo "PowerDNS backup completed successfully on $(hostname) at $(date)" | \
-    mail -s "PowerDNS Backup Success - $(hostname)" "{{ alert_email }}"
+    mail -s "PowerDNS Backup Success - $(hostname)" "{{ common_alert_email }}"
 fi
 {% endif %}
 
