@@ -1,2 +1,13 @@
 ---
-# vars for haproxy role
+# OS specific variables for haproxy
+haproxy_packages:
+  Debian:
+    - haproxy
+  RedHat:
+    - haproxy
+
+haproxy_stats_packages:
+  Debian:
+    - socat
+  RedHat:
+    - socat

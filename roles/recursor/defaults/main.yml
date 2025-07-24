@@ -1,9 +1,27 @@
 ---
-# defaults for recursor role
+# Default variables for the PowerDNS recursor role
+recursor_enabled: true
+recursor_service_name: "{{ recursor_service_name_map[ansible_os_family] }}"
+recursor_service_state: started
+recursor_service_enabled: true
 
-recursor_service_status: "started"
-domain: "example.com"
-zone: "example.com"
-record: "A"
-key: "changeme"
-value: "1.2.3.4"
+recursor_port: 5353
+recursor_config_dir: /etc/powerdns
+recursor_config_file: /etc/powerdns/recursor.conf
+recursor_backup_dir: /etc/powerdns/backups
+recursor_user: pdns-recursor
+recursor_group: pdns-recursor
+
+recursor_allowed_networks:
+  - 127.0.0.1/8
+
+recursor_forward_zones: {}
+recursor_lua_config_enabled: false
+
+recursor_api_enabled: false
+recursor_api_port: 8082
+recursor_api_key: changeme
+recursor_api_allowed_networks:
+  - 127.0.0.1/8
+
+recursor_dnssec_enabled: true

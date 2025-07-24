@@ -1,16 +1,27 @@
 # keepalived
 
-Describe the purpose of the keepalived role here.
+Deploy VRRP based failover for PowerDNS services.
 
 ## Requirements
-None
+- Ansible 2.9+
+- Root privileges on managed nodes
 
 ## Role Variables
-Refer to `defaults/main.yml` for available variables.
+Key variables are listed below. See `defaults/main.yml` for details.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `keepalived_virtual_ipaddress` | `["192.168.1.100"]` | Virtual IPs managed by keepalived |
+| `keepalived_router_id` | `51` | VRRP router ID |
+| `keepalived_priority` | `100` | Priority of the local node |
+| `keepalived_vrrp_auth_password` | `changeme` | Authentication password |
+
+## Dependencies
+None
 
 ## Example Playbook
 ```yaml
-- hosts: all
+- hosts: dns_servers
   roles:
-    - keepalived
+    - role: keepalived
 ```

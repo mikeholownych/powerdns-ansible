@@ -1,4 +1,30 @@
 ---
-# defaults for haproxy role
+# Default variables for the haproxy role
+haproxy_enabled: true
+haproxy_service_name: haproxy
+haproxy_service_state: started
+haproxy_service_enabled: true
 
-haproxy_service_status: "started"
+haproxy_user: haproxy
+haproxy_group: haproxy
+
+haproxy_config_dir: /etc/haproxy
+haproxy_config_file: /etc/haproxy/haproxy.cfg
+haproxy_log_dir: /var/log/haproxy
+haproxy_admin_socket: /run/haproxy/admin.sock
+
+haproxy_frontend_port: 53
+haproxy_stats_enabled: true
+haproxy_stats_port: 8404
+haproxy_stats_user: admin
+haproxy_stats_password: changeme
+haproxy_stats_uri: "/stats"
+
+haproxy_max_connections: 2000
+haproxy_timeout_connect: 5s
+haproxy_timeout_client: 50s
+haproxy_timeout_server: 50s
+haproxy_ssl_enabled: false
+haproxy_ssl_cert: /etc/ssl/certs/haproxy.pem
+
+firewall_enabled: true

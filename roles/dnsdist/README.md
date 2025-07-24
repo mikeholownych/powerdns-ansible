@@ -1,16 +1,27 @@
 # dnsdist
 
-Describe the purpose of the dnsdist role here.
+Configure dnsdist to provide advanced DNS load balancing and filtering.
 
 ## Requirements
-None
+- Ansible 2.9+
+- Root privileges on managed nodes
 
 ## Role Variables
-Refer to `defaults/main.yml` for available variables.
+Frequently used variables are shown below. Consult `defaults/main.yml` for the full set.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `dnsdist_port` | `53` | Listening port for DNS traffic |
+| `dnsdist_console_port` | `5199` | Administrative console port |
+| `dnsdist_webserver_port` | `8083` | Optional web interface port |
+| `dnsdist_enable_webserver` | `false` | Enable the internal web server |
+
+## Dependencies
+None
 
 ## Example Playbook
 ```yaml
-- hosts: all
+- hosts: dns_load_balancers
   roles:
-    - dnsdist
+    - role: dnsdist
 ```

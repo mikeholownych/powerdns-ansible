@@ -1,2 +1,11 @@
 ---
-# vars for keepalived role
+# OS specific variables for keepalived
+keepalived_packages:
+  Debian:
+    - keepalived
+  RedHat:
+    - keepalived
+
+keepalived_service_name_map:
+  Debian: keepalived
+  RedHat: keepalived

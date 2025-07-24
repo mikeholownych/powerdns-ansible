@@ -1,20 +1,24 @@
 ---
-# defaults for dnsdist role
+# Default variables for the dnsdist role
+dnsdist_enabled: true
+dnsdist_service_name: dnsdist
+dnsdist_service_state: started
+dnsdist_service_enabled: true
 
-# Package names per OS family
-dnsdist_packages:
-  Debian:
-    - dnsdist
-  RedHat:
-    - dnsdist
+dnsdist_user: dnsdist
+dnsdist_group: dnsdist
 
-# Basic ports and web credentials
+dnsdist_config_dir: /etc/dnsdist
+dnsdist_config_file: /etc/dnsdist/dnsdist.conf
+dnsdist_log_dir: /var/log/dnsdist
+
 dnsdist_port: 53
 dnsdist_console_port: 5199
 dnsdist_webserver_port: 8083
+dnsdist_allow_from:
+  - 127.0.0.1
 
-# Example variables for templates
-domain: "example.com"
-zone: "example.com"
-geodns_rules: []
 dnsdist_custom_rules: []
+geodns_rules: []
+
+dnsdist_enable_webserver: false

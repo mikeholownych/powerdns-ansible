@@ -1,7 +1,12 @@
 ---
 galaxy_info:
   author: codex
-  description: Skeleton for keepalived role
-  min_ansible_version: '2.15'
+  description: VRRP failover management using keepalived
+  min_ansible_version: '2.9'
   license: MIT
+  platforms:
+    - name: Ubuntu
+      versions: ['20.04', '22.04']
+    - name: EL
+      versions: ['8']
 dependencies: []
